@@ -1,0 +1,23 @@
+package org.erwinkok.conjvm.tac
+
+import org.erwinkok.conjvm.tac.instructions.TacFunctionDefinition
+import org.erwinkok.conjvm.tac.instructions.TacLabeledInstruction
+import java.io.Writer
+
+class TacCodeWriter(val writer: Writer) {
+    fun printFunctions(functions: Map<String, TacFunctionDefinition>) {
+        functions.forEach { (name, fd) ->
+            writer.appendLine("void ${fd.name}(void)")
+            writer.appendLine("{")
+            fd.instructions.forEach {
+                if (it !is TacLabeledInstruction) {
+                    writer.append("\t")
+                }
+                writer.appendLine(it.toString())
+            }
+            writer.appendLine("}")
+            writer.appendLine()
+            writer.appendLine()
+        }
+    }
+}

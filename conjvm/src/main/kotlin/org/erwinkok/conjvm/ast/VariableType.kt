@@ -1,0 +1,57 @@
+package org.erwinkok.conjvm.ast
+
+enum class VariableType : DeclarationSpecifier {
+    INT,
+    INT8,
+    INT16,
+    INT32,
+    UINT,
+    UINT8,
+    UINT16,
+    UINT64,
+    SINT,
+    SINT32,
+    SINT64,
+    BITFIELD,
+    VOID,
+    ;
+
+    override fun toString(): String {
+        return when (this) {
+            INT -> "int"
+            INT8 -> "int8"
+            INT16 -> "int16"
+            INT32 -> "int32"
+            UINT -> "uint"
+            UINT8 -> "uint8"
+            UINT16 -> "uint16"
+            UINT64 -> "uint64"
+            SINT -> "sint"
+            SINT32 -> "sint32"
+            SINT64 -> "sint64"
+            BITFIELD -> "m68ki_bitfield_t"
+            VOID -> "void"
+        }
+    }
+
+    companion object {
+        fun parse(type: String): VariableType {
+            return when (type) {
+                "int" -> INT
+                "int8" -> INT8
+                "int16" -> INT16
+                "int32" -> INT32
+                "uint" -> UINT
+                "uint8" -> UINT8
+                "uint16" -> UINT16
+                "uint64" -> UINT64
+                "sint" -> SINT
+                "sint32" -> SINT32
+                "sint64" -> SINT64
+                "m68ki_bitfield_t" -> BITFIELD
+                "void" -> VOID
+                else -> error("Invalid variable type: $type")
+            }
+        }
+    }
+}
