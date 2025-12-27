@@ -142,24 +142,22 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
         )
     }
 
-    override fun visitSimpleLogicalOr(ctx: CParser.SimpleLogicalOrContext): Value {
-        return visit(ctx.logical_and_expression())
+    override fun visitLogical_or_expression(ctx: CParser.Logical_or_expressionContext): Value {
+        return Value.of(
+            ctx
+                .logical_and_expression()
+                .map { visit(it).cast<Expression>() }
+                .leftBinaryAssoc(ctx.location, BinaryExpressionType.LogicalOr),
+        )
     }
 
-    override fun visitCompoundLogicalOr(ctx: CParser.CompoundLogicalOrContext): Value {
-        val leftResult = visit(ctx.left).cast<Expression>()
-        val rightResult = visit(ctx.right).cast<Expression>()
-        return Value.of(BinaryExpression(ctx.location, BinaryExpressionType.LogicalOr, leftResult, rightResult))
-    }
-
-    override fun visitSimpleLogicalAnd(ctx: CParser.SimpleLogicalAndContext): Value {
-        return visit(ctx.inclusive_or_expression())
-    }
-
-    override fun visitCompoundLogicalAnd(ctx: CParser.CompoundLogicalAndContext): Value {
-        val leftResult = visit(ctx.left).cast<Expression>()
-        val rightResult = visit(ctx.right).cast<Expression>()
-        return Value.of(BinaryExpression(ctx.location, BinaryExpressionType.LogicalAnd, leftResult, rightResult))
+    override fun visitLogical_and_expression(ctx: CParser.Logical_and_expressionContext): Value {
+        return Value.of(
+            ctx
+                .inclusive_or_expression()
+                .map { visit(it).cast<Expression>() }
+                .leftBinaryAssoc(ctx.location, BinaryExpressionType.LogicalAnd),
+        )
     }
 
     override fun visitSimpleInclusiveOr(ctx: CParser.SimpleInclusiveOrContext): Value {
@@ -676,6 +674,10 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
 
     override fun visitInitializer(ctx: CParser.InitializerContext): Value {
         return visit(ctx.assignment_expression())
+    }
+
+    private fun List<Expression>.leftBinaryAssoc(location: SourceLocation, type: BinaryExpressionType) = reduce { acc, rhs ->
+        BinaryExpression(location, type, acc, rhs)
     }
 
     private fun Value.toBlockStatement(location: SourceLocation): BlockStatement {

@@ -11,6 +11,10 @@ functionDefinition
 //
 // EXPRESSIONS
 //
+constant_expression
+    : conditional_expression
+    ;
+
 expression
     :   assignment_expression
     ;
@@ -40,14 +44,12 @@ conditional_expression
 	;
 
 logical_or_expression
-	:	logical_and_expression                                                                      #simpleLogicalOr
-	|	left = logical_or_expression '||' right = logical_and_expression                            #compoundLogicalOr
-	;
+    : logical_and_expression ('||' logical_and_expression)*
+    ;
 
 logical_and_expression
-	:	inclusive_or_expression                                                                     #simpleLogicalAnd
-	|	left = logical_and_expression '&&' right = inclusive_or_expression                          #compoundLogicalAnd
-	;
+    : inclusive_or_expression ('&&' inclusive_or_expression)*
+    ;
 
 inclusive_or_expression
 	:	exclusive_or_expression                                                                     #simpleInclusiveOr
