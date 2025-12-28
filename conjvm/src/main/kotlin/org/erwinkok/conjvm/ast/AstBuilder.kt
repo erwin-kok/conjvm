@@ -319,6 +319,10 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
         )
     }
 
+    override fun visitSizeofUnaryCore(ctx: CParser.SizeofUnaryCoreContext?): Value? {
+        error("sizeof(type_name) is currently not supported")
+    }
+
     override fun visitPostfix_expression(ctx: CParser.Postfix_expressionContext): Value {
         return Value.of(
             ctx

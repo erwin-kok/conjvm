@@ -59,120 +59,15 @@ declarationList
 // EXPRESSIONS
 //
 constantExpression
-    : conditionalExpression
+    : ','
     ;
 
 expression
-    : assignmentExpression (',' assignmentExpression)*
+    : ','
     ;
 
 assignmentExpression
-    : conditionalExpression
-    | unaryExpression assignmentOperator assignmentExpression
-    | DigitSequence // for
-    ;
-
-assignmentOperator
-    : '='
-    | '*='
-    | '/='
-    | '%='
-    | '+='
-    | '-='
-    | '<<='
-    | '>>='
-    | '&='
-    | '^='
-    | '|='
-    ;
-
-conditionalExpression
-    : logicalOrExpression ('?' expression ':' conditionalExpression)?
-    ;
-
-logicalOrExpression
-    : logicalAndExpression ('||' logicalAndExpression)*
-    ;
-
-logicalAndExpression
-    : inclusiveOrExpression ('&&' inclusiveOrExpression)*
-    ;
-
-inclusiveOrExpression
-    : exclusiveOrExpression ('|' exclusiveOrExpression)*
-    ;
-
-exclusiveOrExpression
-    : andExpression ('^' andExpression)*
-    ;
-
-andExpression
-    : equalityExpression ('&' equalityExpression)*
-    ;
-
-equalityExpression
-    : relationalExpression (('==' | '!=') relationalExpression)*
-    ;
-
-relationalExpression
-    : shiftExpression (('<' | '>' | '<=' | '>=') shiftExpression)*
-    ;
-
-shiftExpression
-    : additiveExpression (('<<' | '>>') additiveExpression)*
-    ;
-
-additiveExpression
-    : multiplicativeExpression (('+' | '-') multiplicativeExpression)*
-    ;
-
-multiplicativeExpression
-    : castExpression (('*' | '/' | '%') castExpression)*
-    ;
-
-castExpression
-    : '(' typeName ')' castExpression
-    | unaryExpression
-    | DigitSequence // for
-    ;
-
-unaryExpression
-    : ('++' | '--' | 'sizeof')* (
-        postfixExpression
-        | unaryOperator castExpression
-        | 'sizeof' '(' typeName ')'
-    )
-    ;
-
-unaryOperator
-    : '&'
-    | '*'
-    | '+'
-    | '-'
-    | '~'
-    | '!'
-    ;
-
-postfixExpression
-    : primaryExpression (
-        '[' expression ']'
-        | '(' argumentExpressionList? ')'
-        | ('.' | '->') Identifier
-        | '++'
-        | '--'
-    )*
-    ;
-
-primaryExpression
-    : Identifier
-    | Constant
-    | StringLiteral+
-    | '(' expression ')'
-    ;
-
-
-argumentExpressionList
-    : assignmentExpression (',' assignmentExpression)*
+    : ','
     ;
 
 //
@@ -239,7 +134,6 @@ jumpStatement
         | 'continue'
         | 'break'
         | 'return' expression?
-        | 'goto' unaryExpression // GCC extension
     ) ';'
     ;
 

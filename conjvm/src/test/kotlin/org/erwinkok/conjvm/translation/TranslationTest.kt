@@ -11,15 +11,6 @@ import java.util.zip.GZIPInputStream
 class TranslationTest {
     @Test
     fun translationTest() {
-        Parser.parseString(
-            """
-            void m68k_op_divl_32_ai(void)
-            {
-            	quotient = (uint64)(dividend);
-            }
-        """.trimIndent(),
-        )
-
         val classLoader = TranslationTest::class.java.classLoader
         val inputStream = classLoader.getResourceAsStream("input.c.gz")
         requireNotNull(inputStream)

@@ -12,7 +12,7 @@ functionDefinition
 // EXPRESSIONS
 //
 constant_expression
-    : conditional_expression
+    :   conditional_expression
     ;
 
 expression
@@ -100,6 +100,7 @@ prefix_operator
 unary_core
     :   postfix_expression                                                                          #simpleUnaryCore
     |   unary_operator cast_expression                                                              #compoundUnaryCore
+    |   sizeof_type                                                                                 #sizeofUnaryCore
     ;
 
 unary_operator
@@ -109,6 +110,10 @@ unary_operator
     |   '-'
     |   '~'
     |   '!'
+    ;
+
+sizeof_type
+    : 'sizeof' '(' type_name ')'
     ;
 
 postfix_expression
