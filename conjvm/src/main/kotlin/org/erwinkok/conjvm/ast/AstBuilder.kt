@@ -383,7 +383,8 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
     }
 
     override fun visitPrimaryStringLiteral(ctx: CParser.PrimaryStringLiteralContext): Value {
-        return Value.of(ConstantStringExpression(ctx.location, ctx.StringLiteral().text))
+        val str = ctx.StringLiteral().joinToString("") { it.text }
+        return Value.of(ConstantStringExpression(ctx.location, str))
     }
 
     override fun visitPrimaryParenthesized(ctx: CParser.PrimaryParenthesizedContext): Value {
@@ -669,10 +670,6 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
 
     override fun visitInitializer(ctx: CParser.InitializerContext): Value {
         return visit(ctx.assignment_expression())
-    }
-
-    private fun List<Expression>.leftBinaryAssoc(location: SourceLocation, type: BinaryExpressionType) = reduce { acc, rhs ->
-        BinaryExpression(location, type, acc, rhs)
     }
 
     private fun Value.toBlockStatement(location: SourceLocation): BlockStatement {
