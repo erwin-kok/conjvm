@@ -44,40 +44,31 @@ conditional_expression
 	;
 
 logical_or_expression
-    : logical_and_expression ('||' logical_and_expression)*
+    :   left = logical_and_expression (op += '||' right += logical_and_expression)*
     ;
 
 logical_and_expression
-    : inclusive_or_expression ('&&' inclusive_or_expression)*
+    :   left = inclusive_or_expression (op += '&&' right += inclusive_or_expression)*
     ;
 
 inclusive_or_expression
-	:	exclusive_or_expression                                                                     #simpleInclusiveOr
-	|	left = inclusive_or_expression '|' right = exclusive_or_expression                          #compoundInclusiveOr
+    :   left = exclusive_or_expression (op += '|' right += exclusive_or_expression)*
 	;
 
 exclusive_or_expression
-	:	and_expression                                                                              #simpleExclusiveOr
-	|	left = exclusive_or_expression '^' right = and_expression                                   #compoundExclusiveOr
+    :   left = and_expression (op += '^' right += and_expression)*
 	;
 
 and_expression
-	:	equality_expression                                                                         #simpleAnd
-	|	left = and_expression '&' right = equality_expression                                       #compoundAnd
+    :   left = equality_expression (op += '&' right += equality_expression)*
 	;
 
 equality_expression
-	:	relational_expression                                                                       #simpleEquality
-	|	left = equality_expression '==' right = relational_expression                               #equalityEquals
-	|	left = equality_expression '!=' right = relational_expression                               #equalityNotEquals
+    :   left = relational_expression (op += ('==' | '!=') right += relational_expression)*
 	;
 
 relational_expression
-	:	shift_expression                                                                            #simpleRelational
-	|	left = relational_expression '<' right = shift_expression                                   #relationalLess
-	|	left = relational_expression '>' right = shift_expression                                   #relationalGreater
-	|	left = relational_expression '<=' right = shift_expression                                  #relationalLessOrEqual
-	|	left = relational_expression '>=' right = shift_expression                                  #relationalGreaterOrEqual
+    :   left = shift_expression (op += ('<' | '>' | '<=' | '>=') right += shift_expression)*
 	;
 
 shift_expression

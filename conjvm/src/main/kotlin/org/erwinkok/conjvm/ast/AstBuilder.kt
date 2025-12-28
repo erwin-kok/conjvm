@@ -144,94 +144,100 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
 
     override fun visitLogical_or_expression(ctx: CParser.Logical_or_expressionContext): Value {
         return Value.of(
-            ctx
-                .logical_and_expression()
-                .map { visit(it).cast<Expression>() }
-                .leftBinaryAssoc(ctx.location, BinaryExpressionType.LogicalOr),
+            ctx.op.zip(ctx.right)
+                .fold(visit(ctx.left).cast<Expression>()) { acc, (op, right) ->
+                    BinaryExpression(
+                        ctx.location,
+                        BinaryExpressionType.parse(op.text),
+                        acc,
+                        visit(right).cast<Expression>(),
+                    )
+                },
         )
     }
 
     override fun visitLogical_and_expression(ctx: CParser.Logical_and_expressionContext): Value {
         return Value.of(
-            ctx
-                .inclusive_or_expression()
-                .map { visit(it).cast<Expression>() }
-                .leftBinaryAssoc(ctx.location, BinaryExpressionType.LogicalAnd),
+            ctx.op.zip(ctx.right)
+                .fold(visit(ctx.left).cast<Expression>()) { acc, (op, right) ->
+                    BinaryExpression(
+                        ctx.location,
+                        BinaryExpressionType.parse(op.text),
+                        acc,
+                        visit(right).cast<Expression>(),
+                    )
+                },
         )
     }
 
-    override fun visitSimpleInclusiveOr(ctx: CParser.SimpleInclusiveOrContext): Value {
-        return visit(ctx.exclusive_or_expression())
+    override fun visitInclusive_or_expression(ctx: CParser.Inclusive_or_expressionContext): Value {
+        return Value.of(
+            ctx.op.zip(ctx.right)
+                .fold(visit(ctx.left).cast<Expression>()) { acc, (op, right) ->
+                    BinaryExpression(
+                        ctx.location,
+                        BinaryExpressionType.parse(op.text),
+                        acc,
+                        visit(right).cast<Expression>(),
+                    )
+                },
+        )
     }
 
-    override fun visitCompoundInclusiveOr(ctx: CParser.CompoundInclusiveOrContext): Value {
-        val leftResult = visit(ctx.left).cast<Expression>()
-        val rightResult = visit(ctx.right).cast<Expression>()
-        return Value.of(BinaryExpression(ctx.location, BinaryExpressionType.InclusiveOr, leftResult, rightResult))
+    override fun visitExclusive_or_expression(ctx: CParser.Exclusive_or_expressionContext): Value {
+        return Value.of(
+            ctx.op.zip(ctx.right)
+                .fold(visit(ctx.left).cast<Expression>()) { acc, (op, right) ->
+                    BinaryExpression(
+                        ctx.location,
+                        BinaryExpressionType.parse(op.text),
+                        acc,
+                        visit(right).cast<Expression>(),
+                    )
+                },
+        )
     }
 
-    override fun visitSimpleExclusiveOr(ctx: CParser.SimpleExclusiveOrContext): Value {
-        return visit(ctx.and_expression())
+    override fun visitAnd_expression(ctx: CParser.And_expressionContext): Value {
+        return Value.of(
+            ctx.op.zip(ctx.right)
+                .fold(visit(ctx.left).cast<Expression>()) { acc, (op, right) ->
+                    BinaryExpression(
+                        ctx.location,
+                        BinaryExpressionType.parse(op.text),
+                        acc,
+                        visit(right).cast<Expression>(),
+                    )
+                },
+        )
     }
 
-    override fun visitCompoundExclusiveOr(ctx: CParser.CompoundExclusiveOrContext): Value {
-        val leftResult = visit(ctx.left).cast<Expression>()
-        val rightResult = visit(ctx.right).cast<Expression>()
-        return Value.of(BinaryExpression(ctx.location, BinaryExpressionType.ExclusiveOr, leftResult, rightResult))
+    override fun visitEquality_expression(ctx: CParser.Equality_expressionContext): Value {
+        return Value.of(
+            ctx.op.zip(ctx.right)
+                .fold(visit(ctx.left).cast<Expression>()) { acc, (op, right) ->
+                    BinaryExpression(
+                        ctx.location,
+                        BinaryExpressionType.parse(op.text),
+                        acc,
+                        visit(right).cast<Expression>(),
+                    )
+                },
+        )
     }
 
-    override fun visitSimpleAnd(ctx: CParser.SimpleAndContext): Value {
-        return visit(ctx.equality_expression())
-    }
-
-    override fun visitCompoundAnd(ctx: CParser.CompoundAndContext): Value {
-        val leftResult = visit(ctx.left).cast<Expression>()
-        val rightResult = visit(ctx.right).cast<Expression>()
-        return Value.of(BinaryExpression(ctx.location, BinaryExpressionType.And, leftResult, rightResult))
-    }
-
-    override fun visitSimpleEquality(ctx: CParser.SimpleEqualityContext): Value {
-        return visit(ctx.relational_expression())
-    }
-
-    override fun visitEqualityEquals(ctx: CParser.EqualityEqualsContext): Value {
-        val leftResult = visit(ctx.left).cast<Expression>()
-        val rightResult = visit(ctx.right).cast<Expression>()
-        return Value.of(BinaryExpression(ctx.location, BinaryExpressionType.Equals, leftResult, rightResult))
-    }
-
-    override fun visitEqualityNotEquals(ctx: CParser.EqualityNotEqualsContext): Value {
-        val leftResult = visit(ctx.left).cast<Expression>()
-        val rightResult = visit(ctx.right).cast<Expression>()
-        return Value.of(BinaryExpression(ctx.location, BinaryExpressionType.NotEquals, leftResult, rightResult))
-    }
-
-    override fun visitSimpleRelational(ctx: CParser.SimpleRelationalContext): Value {
-        return visit(ctx.shift_expression())
-    }
-
-    override fun visitRelationalLess(ctx: CParser.RelationalLessContext): Value {
-        val leftResult = visit(ctx.left).cast<Expression>()
-        val rightResult = visit(ctx.right).cast<Expression>()
-        return Value.of(BinaryExpression(ctx.location, BinaryExpressionType.Less, leftResult, rightResult))
-    }
-
-    override fun visitRelationalGreater(ctx: CParser.RelationalGreaterContext): Value {
-        val leftResult = visit(ctx.left).cast<Expression>()
-        val rightResult = visit(ctx.right).cast<Expression>()
-        return Value.of(BinaryExpression(ctx.location, BinaryExpressionType.Greater, leftResult, rightResult))
-    }
-
-    override fun visitRelationalLessOrEqual(ctx: CParser.RelationalLessOrEqualContext): Value {
-        val leftResult = visit(ctx.left).cast<Expression>()
-        val rightResult = visit(ctx.right).cast<Expression>()
-        return Value.of(BinaryExpression(ctx.location, BinaryExpressionType.LessOrEqual, leftResult, rightResult))
-    }
-
-    override fun visitRelationalGreaterOrEqual(ctx: CParser.RelationalGreaterOrEqualContext): Value {
-        val leftResult = visit(ctx.left).cast<Expression>()
-        val rightResult = visit(ctx.right).cast<Expression>()
-        return Value.of(BinaryExpression(ctx.location, BinaryExpressionType.GreaterOrEqual, leftResult, rightResult))
+    override fun visitRelational_expression(ctx: CParser.Relational_expressionContext): Value {
+        return Value.of(
+            ctx.op.zip(ctx.right)
+                .fold(visit(ctx.left).cast<Expression>()) { acc, (op, right) ->
+                    BinaryExpression(
+                        ctx.location,
+                        BinaryExpressionType.parse(op.text),
+                        acc,
+                        visit(right).cast<Expression>(),
+                    )
+                },
+        )
     }
 
     override fun visitSimpleShift(ctx: CParser.SimpleShiftContext): Value {
