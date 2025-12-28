@@ -48,7 +48,7 @@ abstract class BaseTranslationVisitor : TranslationVisitor {
         val (rts, rte) = translate(expression.rightExpression)
         requireNotNull(lte)
         requireNotNull(rte)
-        return TranslationResult(lts + rts, AssignmentExpression(expression.location, expression.op, lte, rte))
+        return TranslationResult(lts + rts, AssignmentExpression(expression.location, expression.type, lte, rte))
     }
 
     override fun translateBinary(expression: BinaryExpression): TranslationResult {

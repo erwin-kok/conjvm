@@ -43,7 +43,7 @@ external_declaration
     ;
 
 function_definition
-    :  declaration_specifiers? id = Identifier '(' Void ')' block_statement
+    :   declaration_specifiers? id = Identifier '(' Void ')' block_statement
     ;
 
 //
@@ -202,7 +202,7 @@ embedded_statement
     ;
 
 block_statement
-    : '{' statement* '}'
+    :   '{' statement* '}'
     ;
 
 labeled_statement
@@ -214,15 +214,15 @@ expression_statement
     ;
 
 if_then_statement
-    : If '(' test = expression ')' thenExpr = embedded_statement
+    :   If '(' test = expression ')' thenExpr = embedded_statement
     ;
 
 if_then_else_statement
-    : If '(' test = expression ')' thenExpr = embedded_statement 'else' elseExpr = embedded_statement
+    :   If '(' test = expression ')' thenExpr = embedded_statement 'else' elseExpr = embedded_statement
     ;
 
 switch_statement
-    : Switch '(' expression ')' '{' switch_section* '}'
+    :   Switch '(' expression ')' '{' switch_section* '}'
     ;
 
 switch_section

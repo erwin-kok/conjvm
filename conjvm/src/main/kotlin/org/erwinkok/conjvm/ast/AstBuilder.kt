@@ -5,6 +5,7 @@ import org.erwinkok.conjvm.CBaseVisitor
 import org.erwinkok.conjvm.CParser
 import org.erwinkok.conjvm.ast.expressions.ArrayAccessExpression
 import org.erwinkok.conjvm.ast.expressions.AssignmentExpression
+import org.erwinkok.conjvm.ast.expressions.AssignmentExpressionType
 import org.erwinkok.conjvm.ast.expressions.BinaryExpression
 import org.erwinkok.conjvm.ast.expressions.BinaryExpressionType
 import org.erwinkok.conjvm.ast.expressions.CallExpression
@@ -126,7 +127,7 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
         return Value.of(
             AssignmentExpression(
                 ctx.location,
-                ctx.assignment_operator().text,
+                AssignmentExpressionType.parse(ctx.assignment_operator().text),
                 visit(ctx.unary_expression()).cast<Expression>(),
                 visit(ctx.assignment_expression()).cast<Expression>(),
             ),

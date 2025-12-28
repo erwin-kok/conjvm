@@ -64,7 +64,7 @@ class CodeWriter(val writer: Writer) : AstVisitor<String, DisplayContext> {
     override fun visitAssignment(expression: AssignmentExpression, ctx: DisplayContext): String {
         val leftResult = visit(expression.leftExpression, ctx)
         val rightResult = visit(expression.rightExpression, ctx)
-        return "$leftResult ${expression.op} $rightResult"
+        return "$leftResult ${expression.type} $rightResult"
     }
 
     override fun visitBinary(expression: BinaryExpression, ctx: DisplayContext): String {

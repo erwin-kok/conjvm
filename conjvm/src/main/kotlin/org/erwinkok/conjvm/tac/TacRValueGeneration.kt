@@ -3,6 +3,7 @@ package org.erwinkok.conjvm.tac
 import org.erwinkok.conjvm.ast.AstExpressionVisitor
 import org.erwinkok.conjvm.ast.expressions.ArrayAccessExpression
 import org.erwinkok.conjvm.ast.expressions.AssignmentExpression
+import org.erwinkok.conjvm.ast.expressions.AssignmentExpressionType
 import org.erwinkok.conjvm.ast.expressions.BinaryExpression
 import org.erwinkok.conjvm.ast.expressions.BinaryExpressionType
 import org.erwinkok.conjvm.ast.expressions.CallExpression
@@ -134,7 +135,7 @@ class TacRValueGeneration(
         val (rts, rte) = translate(expression.rightExpression)
         requireNotNull(lte)
         requireNotNull(rte)
-        require(expression.op == "=")
+        require(expression.type == AssignmentExpressionType.Assign)
         val (tsl, tel) = generateStoreInstruction(lte, rte)
         return TacResult(lts + rts + tsl, tel)
     }

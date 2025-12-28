@@ -1,6 +1,7 @@
 package org.erwinkok.conjvm.translation
 
 import org.erwinkok.conjvm.ast.expressions.AssignmentExpression
+import org.erwinkok.conjvm.ast.expressions.AssignmentExpressionType
 import org.erwinkok.conjvm.ast.expressions.BinaryExpression
 import org.erwinkok.conjvm.ast.expressions.BinaryExpressionType
 import org.erwinkok.conjvm.ast.expressions.CallExpression
@@ -106,23 +107,22 @@ class AssignmentTranslation : BaseTranslationVisitor() {
     }
 
     private fun translateCompoundAssignmentExpression(expression: AssignmentExpression, leftExpression: Expression, rightExpression: Expression): AssignmentExpression {
-        if (expression.op == "=") {
-            return AssignmentExpression(expression.location, expression.op, leftExpression, rightExpression)
+        if (expression.type == AssignmentExpressionType.Assign) {
+            return AssignmentExpression(expression.location, expression.type, leftExpression, rightExpression)
         }
-        val binOp = when (expression.op) {
-            "+=" -> BinaryExpressionType.Add
-            "-=" -> BinaryExpressionType.Subtract
-            "&=" -> BinaryExpressionType.And
-            "|=" -> BinaryExpressionType.InclusiveOr
-            "^=" -> BinaryExpressionType.ExclusiveOr
-            "*=" -> BinaryExpressionType.Multiply
-            "/=" -> BinaryExpressionType.Divide
-            "%=" -> BinaryExpressionType.Modulo
-            ">>=" -> BinaryExpressionType.ShiftRight
-            "<<=" -> BinaryExpressionType.ShiftLeft
-            else -> error("Unexpected operator: ${expression.op}")
+        val binOp = when (expression.type) {
+            AssignmentExpressionType.PlusAssign -> BinaryExpressionType.Add
+            AssignmentExpressionType.MinusAssign -> BinaryExpressionType.Subtract
+            AssignmentExpressionType.AndAssign -> BinaryExpressionType.And
+            AssignmentExpressionType.OrAssign -> BinaryExpressionType.InclusiveOr
+            AssignmentExpressionType.XorAssign -> BinaryExpressionType.ExclusiveOr
+            AssignmentExpressionType.MultiplyAssign -> BinaryExpressionType.Multiply
+            AssignmentExpressionType.DivideAssign -> BinaryExpressionType.Divide
+            AssignmentExpressionType.ModuloAssign -> BinaryExpressionType.Modulo
+            AssignmentExpressionType.RightShiftAssign -> BinaryExpressionType.ShiftRight
+            AssignmentExpressionType.LeftShiftAssign -> BinaryExpressionType.ShiftLeft
         }
         val rhs = BinaryExpression(expression.location, binOp, leftExpression, rightExpression)
-        return AssignmentExpression(expression.location, "=", leftExpression, rhs)
+        return AssignmentExpression(expression.location, AssignmentExpressionType.Assign, leftExpression, rhs)
     }
 }
