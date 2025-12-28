@@ -3,18 +3,18 @@ package org.erwinkok.conjvm.ast.expressions
 import org.erwinkok.conjvm.ast.AstExpressionVisitor
 import org.erwinkok.conjvm.ast.SourceLocation
 
-class PostfixMinusMinusExpression(location: SourceLocation, val expression: Expression) : Expression(location) {
-    override fun <R, C> accept(visitor: AstExpressionVisitor<R, C>, ctx: C): R = visitor.visitPostfixMinusMinus(this, ctx)
+class PostfixIncrementExpression(location: SourceLocation, val expression: Expression) : Expression(location) {
+    override fun <R, C> accept(visitor: AstExpressionVisitor<R, C>, ctx: C): R = visitor.visitPostfixIncrement(this, ctx)
 
     override fun toString(): String {
-        return "$expression--"
+        return "$expression++"
     }
 
     override fun equals(other: Any?): Boolean {
         if (other === this) {
             return true
         }
-        if (other !is PostfixMinusMinusExpression) {
+        if (other !is PostfixIncrementExpression) {
             return false
         }
 

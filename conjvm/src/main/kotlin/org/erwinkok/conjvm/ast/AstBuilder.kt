@@ -17,8 +17,8 @@ import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.ast.expressions.FieldAccessExpression
 import org.erwinkok.conjvm.ast.expressions.Identifier
 import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
-import org.erwinkok.conjvm.ast.expressions.PostfixMinusMinusExpression
-import org.erwinkok.conjvm.ast.expressions.PostfixPlusPlusExpression
+import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
+import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryType
@@ -319,39 +319,46 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
         )
     }
 
-    override fun visitPostfixPrimary(ctx: CParser.PostfixPrimaryContext): Value {
-        return visit(ctx.primary_expression())
-    }
+    override fun visitPostfix_expression(ctx: CParser.Postfix_expressionContext): Value {
+        return Value.of(
+            ctx
+                .postfix_suffix()
+                .fold(visit(ctx.primary_expression()).cast<Expression>()) { acc, suffix ->
+                    when (suffix) {
+                        is CParser.PostfixArrayAccessContext -> {
+                            ArrayAccessExpression(ctx.location, acc, visit(suffix.index).cast<Expression>())
+                        }
 
-    override fun visitPostfixArrayAccess(ctx: CParser.PostfixArrayAccessContext): Value {
-        val base = visit(ctx.postfix_expression()).cast<Expression>()
-        return Value.of(ArrayAccessExpression(ctx.location, base, visit(ctx.expression()).cast<Expression>()))
-    }
+                        is CParser.PostfixFunctionCallContext -> {
+                            val argumentList = suffix.args?.assignment_expression()?.map { visit(it).cast<Expression>() } ?: emptyList()
+                            if (acc is Identifier) {
+                                CallExpression(ctx.location, acc.id, argumentList)
+                            } else {
+                                error("XXX")
+                            }
+                        }
 
-    override fun visitPostfixCall(ctx: CParser.PostfixCallContext): Value {
-        val argumentList = ctx.argument_list()?.let { visit(it).cast<List<Expression>>() } ?: emptyList()
-        return Value.of(CallExpression(ctx.location, ctx.id.text, argumentList))
-    }
+                        is CParser.PostfixMemberAccessContext -> {
+                            FieldAccessExpression(ctx.location, acc, suffix.field.text)
+                        }
 
-    override fun visitPostfixFieldAccess(ctx: CParser.PostfixFieldAccessContext): Value {
-        val base = visit(ctx.postfix_expression()).cast<Expression>()
-        return Value.of(FieldAccessExpression(ctx.location, base, ctx.Identifier().text))
-    }
+                        is CParser.PostfixPointerMemberAccessContext -> {
+                            val deref = UnaryExpression(ctx.location, UnaryType.Indirection, acc)
+                            FieldAccessExpression(ctx.location, deref, suffix.field.text)
+                        }
 
-    override fun visitPostfixPtrFieldAccess(ctx: CParser.PostfixPtrFieldAccessContext): Value {
-        val base = visit(ctx.postfix_expression()).cast<Expression>()
-        val deref = UnaryExpression(ctx.location, UnaryType.Indirection, base)
-        return Value.of(FieldAccessExpression(ctx.location, deref, ctx.Identifier().text))
-    }
+                        is CParser.PostfixIncrementContext -> {
+                            PostfixIncrementExpression(ctx.location, acc)
+                        }
 
-    override fun visitPostfixPlusPlus(ctx: CParser.PostfixPlusPlusContext): Value {
-        val expression = visit(ctx.postfix_expression()).cast<Expression>()
-        return Value.of(PostfixPlusPlusExpression(ctx.location, expression))
-    }
+                        is CParser.PostfixDecrementContext -> {
+                            PostfixDecrementExpression(ctx.location, acc)
+                        }
 
-    override fun visitPostfixMinusMinus(ctx: CParser.PostfixMinusMinusContext): Value {
-        val expression = visit(ctx.postfix_expression()).cast<Expression>()
-        return Value.of(PostfixMinusMinusExpression(ctx.location, expression))
+                        else -> error("unknown postfix suffix $suffix")
+                    }
+                },
+        )
     }
 
     override fun visitPrimaryId(ctx: CParser.PrimaryIdContext): Value {

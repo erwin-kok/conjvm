@@ -8,6 +8,7 @@ enum class VariableType : DeclarationSpecifier {
     UINT,
     UINT8,
     UINT16,
+    UINT32,
     UINT64,
     SINT,
     SINT32,
@@ -25,6 +26,7 @@ enum class VariableType : DeclarationSpecifier {
             UINT -> "uint"
             UINT8 -> "uint8"
             UINT16 -> "uint16"
+            UINT32 -> "uint32"
             UINT64 -> "uint64"
             SINT -> "sint"
             SINT32 -> "sint32"
@@ -44,6 +46,7 @@ enum class VariableType : DeclarationSpecifier {
                 "uint" -> UINT
                 "uint8" -> UINT8
                 "uint16" -> UINT16
+                "uint32" -> UINT32
                 "uint64" -> UINT64
                 "sint" -> SINT
                 "sint32" -> SINT32

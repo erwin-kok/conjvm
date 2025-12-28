@@ -14,8 +14,8 @@ import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.ast.expressions.FieldAccessExpression
 import org.erwinkok.conjvm.ast.expressions.Identifier
 import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
-import org.erwinkok.conjvm.ast.expressions.PostfixMinusMinusExpression
-import org.erwinkok.conjvm.ast.expressions.PostfixPlusPlusExpression
+import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
+import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryType
@@ -87,7 +87,7 @@ class TacRValueGeneration(
         return TacResult(ts, te)
     }
 
-    override fun visitPostfixMinusMinus(expression: PostfixMinusMinusExpression, ctx: TacContext): TacResult {
+    override fun visitPostfixDecrement(expression: PostfixDecrementExpression, ctx: TacContext): TacResult {
         val (addrInstrs, addr) = lValueVisitor.translate(expression.expression)
         val instructions = mutableListOf<TacInstruction>()
         instructions.addAll(addrInstrs)
@@ -108,7 +108,7 @@ class TacRValueGeneration(
         return TacResult(instructions, lte)
     }
 
-    override fun visitPostfixPlusPlus(expression: PostfixPlusPlusExpression, ctx: TacContext): TacResult {
+    override fun visitPostfixIncrement(expression: PostfixIncrementExpression, ctx: TacContext): TacResult {
         val (addrInstrs, addr) = lValueVisitor.translate(expression.expression)
         val instructions = mutableListOf<TacInstruction>()
         instructions.addAll(addrInstrs)
@@ -199,8 +199,8 @@ class TacRValueGeneration(
             UnaryType.Minus -> translateUnaryMinus(expression)
             UnaryType.BitwiseNot -> translateUnaryBitwiseNot(expression)
             UnaryType.LogicalNot -> translateUnaryLogicalNot(expression)
-            UnaryType.PlusPlus -> translateUnaryPlusPlus(expression)
-            UnaryType.MinusMinus -> translateUnaryMinusMinus(expression)
+            UnaryType.PlusPlus -> translateUnaryIncrement(expression)
+            UnaryType.MinusMinus -> translateUnaryDecrement(expression)
         }
     }
 
@@ -254,7 +254,7 @@ class TacRValueGeneration(
         return TacResult(allArguments, temp)
     }
 
-    private fun translateUnaryPlusPlus(expression: UnaryExpression): TacResult {
+    private fun translateUnaryIncrement(expression: UnaryExpression): TacResult {
         val (addrInstrs, addr) = lValueVisitor.translate(expression.expression)
         val instructions = mutableListOf<TacInstruction>()
         instructions.addAll(addrInstrs)
@@ -275,7 +275,7 @@ class TacRValueGeneration(
         return TacResult(instructions, newTemp)
     }
 
-    private fun translateUnaryMinusMinus(expression: UnaryExpression): TacResult {
+    private fun translateUnaryDecrement(expression: UnaryExpression): TacResult {
         val (addrInstrs, addr) = lValueVisitor.translate(expression.expression)
         val instructions = mutableListOf<TacInstruction>()
         instructions.addAll(addrInstrs)

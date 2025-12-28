@@ -25,17 +25,17 @@ assignment_expression
     ;
 
 assignment_operator
-    : '='
-    | '+='
-    | '-='
-    | '*='
-    | '/='
-    | '%='
-    | '&='
-    | '|='
-    | '^='
-    | '<<='
-    | '>>='
+    :   '='
+    |   '+='
+    |   '-='
+    |   '*='
+    |   '/='
+    |   '%='
+    |   '&='
+    |   '|='
+    |   '^='
+    |   '<<='
+    |   '>>='
     ;
 
 conditional_expression
@@ -84,8 +84,8 @@ multiplicative_expression
 	;
 
 cast_expression
-    :   unary_expression                                                                            #simpleCast
-    |   '(' type_name ')' cast_expression                                                           #castExpr
+    :   '(' type_name ')' cast_expression                                                           #castExpr
+    |   unary_expression                                                                            #simpleCast
     ;
 
 unary_expression
@@ -103,23 +103,25 @@ unary_core
     ;
 
 unary_operator
-    : '&'
-    | '*'
-    | '+'
-    | '-'
-    | '~'
-    | '!'
+    :   '&'
+    |   '*'
+    |   '+'
+    |   '-'
+    |   '~'
+    |   '!'
     ;
 
 postfix_expression
-    :   primary_expression                                                                          #postfixPrimary
-    |   postfix_expression '[' expression ']'                                                       #postfixArrayAccess
-    |   id = Identifier '(' argument_list? ')'                                                      #postfixCall
-//    |   postfix_expression '(' argument_list? ')'                                                   #postfixCall
-    |   postfix_expression '.' Identifier                                                           #postfixFieldAccess
-    |   postfix_expression '->' Identifier                                                          #postfixPtrFieldAccess
-    |   postfix_expression '++'                                                                     #postfixPlusPlus
-    |   postfix_expression '--'                                                                     #postfixMinusMinus
+    :   primary_expression postfix_suffix*
+    ;
+
+postfix_suffix
+    :   '[' index = expression ']'                                                                  #postfixArrayAccess
+    |   '(' args = argument_list? ')'                                                               #postfixFunctionCall
+    |   '.' field = Identifier                                                                      #postfixMemberAccess
+    |   '->' field = Identifier                                                                     #postfixPointerMemberAccess
+    |   '++'                                                                                        #postfixIncrement
+    |   '--'                                                                                        #postfixDecrement
     ;
 
 primary_expression

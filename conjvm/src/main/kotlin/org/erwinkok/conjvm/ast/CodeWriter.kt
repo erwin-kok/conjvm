@@ -11,8 +11,8 @@ import org.erwinkok.conjvm.ast.expressions.ConstantStringExpression
 import org.erwinkok.conjvm.ast.expressions.FieldAccessExpression
 import org.erwinkok.conjvm.ast.expressions.Identifier
 import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
-import org.erwinkok.conjvm.ast.expressions.PostfixMinusMinusExpression
-import org.erwinkok.conjvm.ast.expressions.PostfixPlusPlusExpression
+import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
+import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
 import org.erwinkok.conjvm.ast.statements.BlockStatement
@@ -116,12 +116,12 @@ class CodeWriter(val writer: Writer) : AstVisitor<String, DisplayContext> {
         return "($nodeResult)"
     }
 
-    override fun visitPostfixMinusMinus(expression: PostfixMinusMinusExpression, ctx: DisplayContext): String {
+    override fun visitPostfixDecrement(expression: PostfixDecrementExpression, ctx: DisplayContext): String {
         val nodeResult = visit(expression.expression, ctx)
         return "$nodeResult--"
     }
 
-    override fun visitPostfixPlusPlus(expression: PostfixPlusPlusExpression, ctx: DisplayContext): String {
+    override fun visitPostfixIncrement(expression: PostfixIncrementExpression, ctx: DisplayContext): String {
         val nodeResult = visit(expression.expression, ctx)
         return "$nodeResult++"
     }

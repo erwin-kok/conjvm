@@ -6,8 +6,8 @@ import org.erwinkok.conjvm.ast.expressions.BinaryExpressionType
 import org.erwinkok.conjvm.ast.expressions.CallExpression
 import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
-import org.erwinkok.conjvm.ast.expressions.PostfixMinusMinusExpression
-import org.erwinkok.conjvm.ast.expressions.PostfixPlusPlusExpression
+import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
+import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.ExpressionStatement
 import org.erwinkok.conjvm.ast.statements.Statement
@@ -33,7 +33,7 @@ class AssignmentTranslation : BaseTranslationVisitor() {
         val (ts, te) = translate(expression)
         requireNotNull(te)
         allStatements.addAll(ts)
-        if (te is CallExpression || te is PostfixPlusPlusExpression || te is PostfixMinusMinusExpression) {
+        if (te is CallExpression || te is PostfixIncrementExpression || te is PostfixDecrementExpression) {
             allStatements.add(ExpressionStatement(statement.location, te))
         }
         return TranslationResult(allStatements, null)

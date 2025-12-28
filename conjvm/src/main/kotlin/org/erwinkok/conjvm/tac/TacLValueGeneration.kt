@@ -13,8 +13,8 @@ import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.ast.expressions.FieldAccessExpression
 import org.erwinkok.conjvm.ast.expressions.Identifier
 import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
-import org.erwinkok.conjvm.ast.expressions.PostfixMinusMinusExpression
-import org.erwinkok.conjvm.ast.expressions.PostfixPlusPlusExpression
+import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
+import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryType
@@ -70,11 +70,11 @@ class TacLValueGeneration(
         return translate(expression.expression)
     }
 
-    override fun visitPostfixMinusMinus(expression: PostfixMinusMinusExpression, ctx: TacContext): TacAddressResult {
+    override fun visitPostfixDecrement(expression: PostfixDecrementExpression, ctx: TacContext): TacAddressResult {
         error("cannot generate address of postfix--")
     }
 
-    override fun visitPostfixPlusPlus(expression: PostfixPlusPlusExpression, ctx: TacContext): TacAddressResult {
+    override fun visitPostfixIncrement(expression: PostfixIncrementExpression, ctx: TacContext): TacAddressResult {
         error("cannot generate address of postfix++")
     }
 

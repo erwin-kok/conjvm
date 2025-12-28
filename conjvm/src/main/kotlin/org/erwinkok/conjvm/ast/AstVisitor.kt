@@ -12,8 +12,8 @@ import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.ast.expressions.FieldAccessExpression
 import org.erwinkok.conjvm.ast.expressions.Identifier
 import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
-import org.erwinkok.conjvm.ast.expressions.PostfixMinusMinusExpression
-import org.erwinkok.conjvm.ast.expressions.PostfixPlusPlusExpression
+import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
+import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
 import org.erwinkok.conjvm.ast.statements.BlockStatement
@@ -47,8 +47,8 @@ interface AstExpressionVisitor<out R, in C> {
     fun visitFieldAccess(expression: FieldAccessExpression, ctx: C): R
     fun visitIdentifier(identifier: Identifier, ctx: C): R
     fun visitParenthesized(expression: ParenthesizedExpression, ctx: C): R
-    fun visitPostfixMinusMinus(expression: PostfixMinusMinusExpression, ctx: C): R
-    fun visitPostfixPlusPlus(expression: PostfixPlusPlusExpression, ctx: C): R
+    fun visitPostfixDecrement(expression: PostfixDecrementExpression, ctx: C): R
+    fun visitPostfixIncrement(expression: PostfixIncrementExpression, ctx: C): R
     fun visitTernary(expression: TernaryExpression, ctx: C): R
     fun visitUnary(expression: UnaryExpression, ctx: C): R
 }

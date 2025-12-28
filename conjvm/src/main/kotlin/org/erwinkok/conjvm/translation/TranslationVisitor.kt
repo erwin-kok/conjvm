@@ -14,8 +14,8 @@ import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.ast.expressions.FieldAccessExpression
 import org.erwinkok.conjvm.ast.expressions.Identifier
 import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
-import org.erwinkok.conjvm.ast.expressions.PostfixMinusMinusExpression
-import org.erwinkok.conjvm.ast.expressions.PostfixPlusPlusExpression
+import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
+import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
 import org.erwinkok.conjvm.ast.statements.BlockStatement
@@ -56,8 +56,8 @@ interface ExpressionTranslationVisitor : AstExpressionVisitor<TranslationResult,
     fun translateFieldAccess(expression: FieldAccessExpression): TranslationResult
     fun translateIdentifier(identifier: Identifier): TranslationResult
     fun translateParenthesized(expression: ParenthesizedExpression): TranslationResult
-    fun translatePostfixMinusMinus(expression: PostfixMinusMinusExpression): TranslationResult
-    fun translatePostfixPlusPlus(expression: PostfixPlusPlusExpression): TranslationResult
+    fun translatePostfixDecrement(expression: PostfixDecrementExpression): TranslationResult
+    fun translatePostfixIncrement(expression: PostfixIncrementExpression): TranslationResult
     fun translateTernary(expression: TernaryExpression): TranslationResult
     fun translateUnary(expression: UnaryExpression): TranslationResult
 
@@ -105,12 +105,12 @@ interface ExpressionTranslationVisitor : AstExpressionVisitor<TranslationResult,
         return translateParenthesized(expression)
     }
 
-    override fun visitPostfixMinusMinus(expression: PostfixMinusMinusExpression, ctx: TranslationContext): TranslationResult {
-        return translatePostfixMinusMinus(expression)
+    override fun visitPostfixDecrement(expression: PostfixDecrementExpression, ctx: TranslationContext): TranslationResult {
+        return translatePostfixDecrement(expression)
     }
 
-    override fun visitPostfixPlusPlus(expression: PostfixPlusPlusExpression, ctx: TranslationContext): TranslationResult {
-        return translatePostfixPlusPlus(expression)
+    override fun visitPostfixIncrement(expression: PostfixIncrementExpression, ctx: TranslationContext): TranslationResult {
+        return translatePostfixIncrement(expression)
     }
 
     override fun visitTernary(expression: TernaryExpression, ctx: TranslationContext): TranslationResult {

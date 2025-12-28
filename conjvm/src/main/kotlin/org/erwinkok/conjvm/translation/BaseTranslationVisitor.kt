@@ -12,8 +12,8 @@ import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.ast.expressions.FieldAccessExpression
 import org.erwinkok.conjvm.ast.expressions.Identifier
 import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
-import org.erwinkok.conjvm.ast.expressions.PostfixMinusMinusExpression
-import org.erwinkok.conjvm.ast.expressions.PostfixPlusPlusExpression
+import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
+import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
 import org.erwinkok.conjvm.ast.statements.BlockStatement
@@ -103,16 +103,16 @@ abstract class BaseTranslationVisitor : TranslationVisitor {
         return TranslationResult(ts, ParenthesizedExpression(expression.location, te))
     }
 
-    override fun translatePostfixMinusMinus(expression: PostfixMinusMinusExpression): TranslationResult {
+    override fun translatePostfixDecrement(expression: PostfixDecrementExpression): TranslationResult {
         val (ts, te) = translate(expression.expression)
         requireNotNull(te)
-        return TranslationResult(ts, PostfixMinusMinusExpression(expression.location, te))
+        return TranslationResult(ts, PostfixDecrementExpression(expression.location, te))
     }
 
-    override fun translatePostfixPlusPlus(expression: PostfixPlusPlusExpression): TranslationResult {
+    override fun translatePostfixIncrement(expression: PostfixIncrementExpression): TranslationResult {
         val (ts, te) = translate(expression.expression)
         requireNotNull(te)
-        return TranslationResult(ts, PostfixPlusPlusExpression(expression.location, te))
+        return TranslationResult(ts, PostfixIncrementExpression(expression.location, te))
     }
 
     override fun translateTernary(expression: TernaryExpression): TranslationResult {
