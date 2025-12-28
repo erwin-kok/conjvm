@@ -72,22 +72,15 @@ relational_expression
 	;
 
 shift_expression
-	:	additive_expression                                                                         #simpleShift
-	|	left = shift_expression '<<' right = additive_expression                                    #shiftLeft
-	|	left = shift_expression '>>' right = additive_expression                                    #shiftRight
+	:   left = additive_expression (op += ('<<' | '>>') right += additive_expression)*
 	;
 
 additive_expression
-	:	multiplicative_expression                                                                   #simpleAdditive
-	|	left = additive_expression '+' right = multiplicative_expression                            #additiveAdd
-	|	left = additive_expression '-' right = multiplicative_expression                            #additiveSubtract
+    :   left = multiplicative_expression (op += ('+' | '-') right += multiplicative_expression)*
 	;
 
 multiplicative_expression
-	:	cast_expression                                                                             #simpleMultiplicative
-	|	left = multiplicative_expression '*' right = cast_expression                                #multiplicativeMultiply
-	|	left = multiplicative_expression '/' right = cast_expression                                #multiplicativeDivide
-	|	left = multiplicative_expression '%' right = cast_expression                                #multiplicativeModulo
+	:   left = cast_expression (op += ('*' | '/' | '%') right += cast_expression)*
 	;
 
 cast_expression
@@ -96,15 +89,26 @@ cast_expression
     ;
 
 unary_expression
-    :   postfix_expression                                                                          #simpleUnary
-    |   '&' cast_expression                                                                         #unaryAddress
-    |   '*' cast_expression                                                                         #unaryIndirection
-    |   '+' cast_expression                                                                         #unaryPlus
-	|   '-' cast_expression                                                                         #unaryMinus
-	|   '~' cast_expression                                                                         #unaryBitwiseNot
-	|   '!' cast_expression                                                                         #unaryLogicalNot
-    |   '++' cast_expression                                                                        #unaryPlusPlus
-    |   '--' cast_expression                                                                        #unaryMinusMinus
+    :   prefix_operator* unary_core
+    ;
+
+prefix_operator
+    :   '++'
+    |   '--'
+    ;
+
+unary_core
+    :   postfix_expression                                                                          #simpleUnaryCore
+    |   unary_operator cast_expression                                                              #compoundUnaryCore
+    ;
+
+unary_operator
+    : '&'
+    | '*'
+    | '+'
+    | '-'
+    | '~'
+    | '!'
     ;
 
 postfix_expression

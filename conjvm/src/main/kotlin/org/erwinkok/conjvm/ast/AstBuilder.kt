@@ -240,58 +240,46 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
         )
     }
 
-    override fun visitSimpleShift(ctx: CParser.SimpleShiftContext): Value {
-        return visit(ctx.additive_expression())
+    override fun visitShift_expression(ctx: CParser.Shift_expressionContext): Value {
+        return Value.of(
+            ctx.op.zip(ctx.right)
+                .fold(visit(ctx.left).cast<Expression>()) { acc, (op, right) ->
+                    BinaryExpression(
+                        ctx.location,
+                        BinaryExpressionType.parse(op.text),
+                        acc,
+                        visit(right).cast<Expression>(),
+                    )
+                },
+        )
     }
 
-    override fun visitShiftLeft(ctx: CParser.ShiftLeftContext): Value {
-        val leftResult = visit(ctx.left).cast<Expression>()
-        val rightResult = visit(ctx.right).cast<Expression>()
-        return Value.of(BinaryExpression(ctx.location, BinaryExpressionType.ShiftLeft, leftResult, rightResult))
+    override fun visitAdditive_expression(ctx: CParser.Additive_expressionContext): Value {
+        return Value.of(
+            ctx.op.zip(ctx.right)
+                .fold(visit(ctx.left).cast<Expression>()) { acc, (op, right) ->
+                    BinaryExpression(
+                        ctx.location,
+                        BinaryExpressionType.parse(op.text),
+                        acc,
+                        visit(right).cast<Expression>(),
+                    )
+                },
+        )
     }
 
-    override fun visitShiftRight(ctx: CParser.ShiftRightContext): Value {
-        val leftResult = visit(ctx.left).cast<Expression>()
-        val rightResult = visit(ctx.right).cast<Expression>()
-        return Value.of(BinaryExpression(ctx.location, BinaryExpressionType.ShiftRight, leftResult, rightResult))
-    }
-
-    override fun visitSimpleAdditive(ctx: CParser.SimpleAdditiveContext): Value {
-        return visit(ctx.multiplicative_expression())
-    }
-
-    override fun visitAdditiveAdd(ctx: CParser.AdditiveAddContext): Value {
-        val leftResult = visit(ctx.left).cast<Expression>()
-        val rightResult = visit(ctx.right).cast<Expression>()
-        return Value.of(BinaryExpression(ctx.location, BinaryExpressionType.Add, leftResult, rightResult))
-    }
-
-    override fun visitAdditiveSubtract(ctx: CParser.AdditiveSubtractContext): Value {
-        val leftResult = visit(ctx.left).cast<Expression>()
-        val rightResult = visit(ctx.right).cast<Expression>()
-        return Value.of(BinaryExpression(ctx.location, BinaryExpressionType.Subtract, leftResult, rightResult))
-    }
-
-    override fun visitSimpleMultiplicative(ctx: CParser.SimpleMultiplicativeContext): Value {
-        return visit(ctx.cast_expression())
-    }
-
-    override fun visitMultiplicativeMultiply(ctx: CParser.MultiplicativeMultiplyContext): Value {
-        val leftResult = visit(ctx.left).cast<Expression>()
-        val rightResult = visit(ctx.right).cast<Expression>()
-        return Value.of(BinaryExpression(ctx.location, BinaryExpressionType.Multiply, leftResult, rightResult))
-    }
-
-    override fun visitMultiplicativeDivide(ctx: CParser.MultiplicativeDivideContext): Value {
-        val leftResult = visit(ctx.left).cast<Expression>()
-        val rightResult = visit(ctx.right).cast<Expression>()
-        return Value.of(BinaryExpression(ctx.location, BinaryExpressionType.Divide, leftResult, rightResult))
-    }
-
-    override fun visitMultiplicativeModulo(ctx: CParser.MultiplicativeModuloContext): Value {
-        val leftResult = visit(ctx.left).cast<Expression>()
-        val rightResult = visit(ctx.right).cast<Expression>()
-        return Value.of(BinaryExpression(ctx.location, BinaryExpressionType.Modulo, leftResult, rightResult))
+    override fun visitMultiplicative_expression(ctx: CParser.Multiplicative_expressionContext): Value {
+        return Value.of(
+            ctx.op.zip(ctx.right)
+                .fold(visit(ctx.left).cast<Expression>()) { acc, (op, right) ->
+                    BinaryExpression(
+                        ctx.location,
+                        BinaryExpressionType.parse(op.text),
+                        acc,
+                        visit(right).cast<Expression>(),
+                    )
+                },
+        )
     }
 
     override fun visitSimpleCast(ctx: CParser.SimpleCastContext): Value {
@@ -306,48 +294,29 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
         return Value.of(CastExpression(ctx.location, VariableType.parse(variableType), nodeResult))
     }
 
-    override fun visitSimpleUnary(ctx: CParser.SimpleUnaryContext): Value {
-        return visit(ctx.postfix_expression())
+    override fun visitUnary_expression(ctx: CParser.Unary_expressionContext): Value {
+        val coreExpr = visit(ctx.unary_core()).cast<Expression>()
+        return Value.of(
+            ctx.prefix_operator()
+                .asReversed()
+                .fold(coreExpr) { acc, op ->
+                    UnaryExpression(ctx.location, UnaryType.parse(op.text), acc)
+                },
+        )
     }
 
-    override fun visitUnaryAddress(ctx: CParser.UnaryAddressContext): Value {
-        val result = visit(ctx.cast_expression()).cast<Expression>()
-        return Value.of(UnaryExpression(ctx.location, UnaryType.Address, result))
+    override fun visitSimpleUnaryCore(ctx: CParser.SimpleUnaryCoreContext): Value {
+        return Value.of(visit(ctx.postfix_expression()).cast<Expression>())
     }
 
-    override fun visitUnaryIndirection(ctx: CParser.UnaryIndirectionContext): Value {
-        val result = visit(ctx.cast_expression()).cast<Expression>()
-        return Value.of(UnaryExpression(ctx.location, UnaryType.Indirection, result))
-    }
-
-    override fun visitUnaryPlus(ctx: CParser.UnaryPlusContext): Value {
-        val result = visit(ctx.cast_expression()).cast<Expression>()
-        return Value.of(UnaryExpression(ctx.location, UnaryType.Plus, result))
-    }
-
-    override fun visitUnaryMinus(ctx: CParser.UnaryMinusContext): Value {
-        val result = visit(ctx.cast_expression()).cast<Expression>()
-        return Value.of(UnaryExpression(ctx.location, UnaryType.Minus, result))
-    }
-
-    override fun visitUnaryBitwiseNot(ctx: CParser.UnaryBitwiseNotContext): Value {
-        val result = visit(ctx.cast_expression()).cast<Expression>()
-        return Value.of(UnaryExpression(ctx.location, UnaryType.BitwiseNot, result))
-    }
-
-    override fun visitUnaryLogicalNot(ctx: CParser.UnaryLogicalNotContext): Value {
-        val result = visit(ctx.cast_expression()).cast<Expression>()
-        return Value.of(UnaryExpression(ctx.location, UnaryType.LogicalNot, result))
-    }
-
-    override fun visitUnaryPlusPlus(ctx: CParser.UnaryPlusPlusContext): Value {
-        val result = visit(ctx.cast_expression()).cast<Expression>()
-        return Value.of(UnaryExpression(ctx.location, UnaryType.PlusPlus, result))
-    }
-
-    override fun visitUnaryMinusMinus(ctx: CParser.UnaryMinusMinusContext): Value {
-        val result = visit(ctx.cast_expression()).cast<Expression>()
-        return Value.of(UnaryExpression(ctx.location, UnaryType.MinusMinus, result))
+    override fun visitCompoundUnaryCore(ctx: CParser.CompoundUnaryCoreContext): Value {
+        return Value.of(
+            UnaryExpression(
+                ctx.location,
+                UnaryType.parse(ctx.unary_operator().text),
+                visit(ctx.cast_expression()).cast<Expression>(),
+            ),
+        )
     }
 
     override fun visitPostfixPrimary(ctx: CParser.PostfixPrimaryContext): Value {

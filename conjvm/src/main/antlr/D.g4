@@ -118,9 +118,6 @@ relationalExpression
     : shiftExpression (('<' | '>' | '<=' | '>=') shiftExpression)*
     ;
 
-
-
-
 shiftExpression
     : additiveExpression (('<<' | '>>') additiveExpression)*
     ;
