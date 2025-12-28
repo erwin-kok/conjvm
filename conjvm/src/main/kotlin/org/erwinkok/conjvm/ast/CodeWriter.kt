@@ -155,7 +155,7 @@ class CodeWriter(val writer: Writer) : AstVisitor<String, DisplayContext> {
 
     override fun visitCompilationUnit(statement: CompilationUnitStatement, ctx: DisplayContext): String {
         require(ctx.indent == 0)
-        statement.functionDefinitionStatements.forEach { visit(it, ctx) }
+        statement.functionDefinitions.forEach { visit(it, ctx) }
         return ""
     }
 

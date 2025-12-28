@@ -73,70 +73,9 @@ assignmentExpression
 //
 // STATEMENTS
 //
-statement
-    : labeledStatement
-    | compoundStatement
-    | expressionStatement
-    | selectionStatement
-    | iterationStatement
-    | jumpStatement
-    ;
-
-labeledStatement
-    : Identifier ':' statement?
-    | 'case' constantExpression ':' statement
-    | 'default' ':' statement
-    ;
-
 compoundStatement
-    : '{' blockItemList? '}'
+    : ','
     ;
-
-blockItemList
-    : blockItem+
-    ;
-
-blockItem
-    : statement
-    | variable_declaration
-    ;
-
-expressionStatement
-    : expression? ';'
-    ;
-
-selectionStatement
-    : 'if' '(' expression ')' statement ('else' statement)?
-    | 'switch' '(' expression ')' statement
-    ;
-
-iterationStatement
-    : While '(' expression ')' statement
-    | Do statement While '(' expression ')' ';'
-    | For '(' forCondition ')' statement
-    ;
-
-forCondition
-    : (forDeclaration | expression?) ';' forExpression? ';' forExpression?
-    ;
-
-forDeclaration
-    : declarationSpecifiers initDeclaratorList?
-    ;
-
-forExpression
-    : assignmentExpression (',' assignmentExpression)*
-    ;
-
-jumpStatement
-    : (
-        'goto' Identifier
-        | 'continue'
-        | 'break'
-        | 'return' expression?
-    ) ';'
-    ;
-
 
 //
 // VARIABLE DECLARATION

@@ -42,7 +42,7 @@ class TacTranslation : AstStatementVisitor<TacResult, TacContext> {
     fun translateExpression(node: Expression): TacResult = node.accept(rvalueGeneration, TacContext())
 
     override fun visitCompilationUnit(statement: CompilationUnitStatement, ctx: TacContext): TacResult {
-        statement.functionDefinitionStatements.forEach {
+        statement.functionDefinitions.forEach {
             val (ts, te) = translateStatement(it)
             require(te == null)
             require(ts.size == 1)

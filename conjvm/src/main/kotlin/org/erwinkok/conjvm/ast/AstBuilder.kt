@@ -83,16 +83,25 @@ class Value private constructor(val value: Any) {
 
 class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
     override fun visitCompilationUnit(ctx: CParser.CompilationUnitContext): Value {
-        val functionDefinitionStatements = ctx.functionDefinition().map { visit(it).cast<FunctionDefinitionStatement>() }
+        val varDecls = mutableListOf<VariableDeclarationStatement>()
+        val funcDefs = mutableListOf<FunctionDefinitionStatement>()
+        for (decl in ctx.external_declaration()) {
+            when (decl) {
+                is CParser.DeclrVarDeclContext -> varDecls.add(visit(decl).cast<VariableDeclarationStatement>())
+                is CParser.DeclrFunctionDefContext -> funcDefs.add(visit(decl).cast<FunctionDefinitionStatement>())
+                is CParser.DeclrStrayContext -> {} // ignore stray semicolon
+            }
+        }
         return Value.of(
             CompilationUnitStatement(
                 ctx.location,
-                functionDefinitionStatements,
+                varDecls,
+                funcDefs,
             ),
         )
     }
 
-    override fun visitFunctionDefinition(ctx: CParser.FunctionDefinitionContext): Value {
+    override fun visitFunction_definition(ctx: CParser.Function_definitionContext): Value {
         return Value.of(
             FunctionDefinitionStatement(
                 ctx.location,
@@ -506,7 +515,7 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
         return Value.of(
             SwitchCaseStatement(
                 ctx.location,
-                visit(ctx.expression()).cast<ConstantExpression>(),
+                visit(ctx.constant_expression()).cast<ConstantExpression>(),
                 BlockStatement(ctx.location, ctx.statement().map { visit(it).cast<Statement>() }),
             ),
         )

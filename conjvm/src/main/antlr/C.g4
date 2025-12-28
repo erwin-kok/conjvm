@@ -1,10 +1,16 @@
 grammar C;
 
 compilationUnit
-    :   functionDefinition* EOF
+    :   external_declaration* EOF
     ;
 
-functionDefinition
+external_declaration
+    :   function_definition                                                                         #declrFunctionDef
+    |   variable_declaration                                                                        #declrVarDecl
+    |   ';'                                                                                         #declrStray
+    ;
+
+function_definition
     :  Static? Void id = Identifier '(' Void ')' block_statement
     ;
 
@@ -172,7 +178,7 @@ labeled_statement
     ;
 
 expression_statement
-    :   expression ';'                                                                              #exprStatAssign
+    :   expression? ';'                                                                              #exprStatAssign
     ;
 
 if_then_statement
@@ -180,7 +186,7 @@ if_then_statement
     ;
 
 if_then_else_statement
-    : If '(' test = expression ')' thenExpr = statement 'else' elseExpr = embedded_statement
+    : If '(' test = expression ')' thenExpr = embedded_statement 'else' elseExpr = embedded_statement
     ;
 
 switch_statement
@@ -188,7 +194,7 @@ switch_statement
     ;
 
 switch_section
-	:	'case' expression ':' statement+                                                            #switchSectionCase
+	:	'case' constant_expression ':' statement+                                                   #switchSectionCase
 	|   'default' ':' statement+                                                                    #switchSectionDefault
 	;
 

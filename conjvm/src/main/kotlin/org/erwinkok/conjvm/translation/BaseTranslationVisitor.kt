@@ -143,7 +143,15 @@ abstract class BaseTranslationVisitor : TranslationVisitor {
     }
 
     override fun translateCompilationUnit(statement: CompilationUnitStatement): TranslationResult {
-        val translatedStatements = statement.functionDefinitionStatements.map {
+        val translatedVarDecls = statement.variableDeclarations.map {
+            val (ts, te) = translate(it)
+            require(te == null)
+            require(ts.size == 1)
+            val variableDeclaration = ts.first()
+            require(variableDeclaration is VariableDeclarationStatement)
+            variableDeclaration
+        }
+        val translatedStatements = statement.functionDefinitions.map {
             val (ts, te) = translate(it)
             require(te == null)
             require(ts.size == 1)
@@ -151,7 +159,12 @@ abstract class BaseTranslationVisitor : TranslationVisitor {
             require(functionDefinitionStatement is FunctionDefinitionStatement)
             functionDefinitionStatement
         }
-        return TranslationResult(listOf(CompilationUnitStatement(statement.location, translatedStatements)), null)
+        return TranslationResult(
+            listOf(
+                CompilationUnitStatement(statement.location, translatedVarDecls, translatedStatements),
+            ),
+            null,
+        )
     }
 
     override fun translateContinue(statement: ContinueStatement): TranslationResult {
