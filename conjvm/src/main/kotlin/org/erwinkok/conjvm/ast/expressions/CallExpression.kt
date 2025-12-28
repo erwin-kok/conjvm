@@ -3,7 +3,7 @@ package org.erwinkok.conjvm.ast.expressions
 import org.erwinkok.conjvm.ast.AstExpressionVisitor
 import org.erwinkok.conjvm.ast.SourceLocation
 
-class CallExpression(location: SourceLocation, val name: String, val arguments: List<Expression>) : Expression(location) {
+class CallExpression(location: SourceLocation, val name: Expression, val arguments: List<Expression>) : Expression(location) {
     override fun <R, C> accept(visitor: AstExpressionVisitor<R, C>, ctx: C): R = visitor.visitCall(this, ctx)
 
     override fun toString(): String {

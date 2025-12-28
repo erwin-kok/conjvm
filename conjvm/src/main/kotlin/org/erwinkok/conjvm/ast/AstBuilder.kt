@@ -345,11 +345,7 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
 
                         is CParser.PostfixFunctionCallContext -> {
                             val argumentList = suffix.args?.assignment_expression()?.map { visit(it).cast<Expression>() } ?: emptyList()
-                            if (acc is Identifier) {
-                                CallExpression(ctx.location, acc.id, argumentList)
-                            } else {
-                                error("XXX")
-                            }
+                            CallExpression(ctx.location, acc, argumentList)
                         }
 
                         is CParser.PostfixMemberAccessContext -> {

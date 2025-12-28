@@ -3,7 +3,7 @@ package org.erwinkok.conjvm.tac.instructions
 import org.erwinkok.conjvm.tac.values.TacTemp
 import org.erwinkok.conjvm.tac.values.TacValue
 
-class TacCallInstruction(val dst: TacTemp, val name: String, val arguments: List<TacValue>) : TacInstruction {
+class TacCallInstruction(val dst: TacTemp, val name: TacValue, val arguments: List<TacValue>) : TacInstruction {
     override fun toString(): String {
         return "$dst = $name(${arguments.joinToString(", ")})"
     }

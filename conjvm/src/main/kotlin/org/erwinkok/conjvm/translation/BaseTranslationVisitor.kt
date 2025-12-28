@@ -252,7 +252,8 @@ abstract class BaseTranslationVisitor : TranslationVisitor {
     protected fun translateBlockStatement(statement: BlockStatement): BlockStatement {
         val allStatements = mutableListOf<Statement>()
         for (s in statement.statements) {
-            val (ts, _) = translate(s)
+            val (ts, te) = translate(s)
+            require(te == null)
             allStatements.addAll(ts)
         }
         return BlockStatement(statement.location, allStatements)

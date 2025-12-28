@@ -46,11 +46,7 @@ class AssignmentTranslation : BaseTranslationVisitor() {
             val (ts, te) = translate(it)
             allStatements.addAll(ts)
             requireNotNull(te)
-            if (te is ParenthesizedExpression) {
-                te.expression
-            } else {
-                te
-            }
+            te
         }
         return TranslationResult(
             allStatements,
@@ -73,13 +69,9 @@ class AssignmentTranslation : BaseTranslationVisitor() {
 
     override fun translateParenthesized(expression: ParenthesizedExpression): TranslationResult {
         val e = expression.expression
-        return if (e is AssignmentExpression) {
-            val (ts, te) = translate(e)
-            requireNotNull(te)
-            return TranslationResult(ts, ParenthesizedExpression(expression.location, te))
-        } else {
-            TranslationResult(emptyList(), expression)
-        }
+        val (ts, te) = translate(e)
+        requireNotNull(te)
+        return TranslationResult(ts, te)
     }
 
     override fun translateVariableDeclaration(statement: VariableDeclarationStatement): TranslationResult {

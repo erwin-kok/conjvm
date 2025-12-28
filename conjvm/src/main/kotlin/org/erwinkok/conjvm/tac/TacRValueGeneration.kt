@@ -162,7 +162,14 @@ class TacRValueGeneration(
             te
         }
         val temp = tempFactory.newTemp()
-        allArguments.add(TacCallInstruction(temp, expression.name, args))
+        if (expression.name is Identifier) {
+            allArguments.add(TacCallInstruction(temp, TacConstantStringValue(expression.name.id), args))
+        } else {
+            val (ts, te) = translate(expression.name)
+            requireNotNull(te)
+            allArguments.addAll(ts)
+            allArguments.add(TacCallInstruction(temp, te, args))
+        }
         return TacResult(allArguments, temp)
     }
 
