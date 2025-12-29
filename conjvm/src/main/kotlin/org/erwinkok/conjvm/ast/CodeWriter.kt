@@ -108,7 +108,7 @@ class CodeWriter(val writer: Writer) : AstVisitor<String, DisplayContext> {
     }
 
     override fun visitIdentifier(identifier: Identifier, ctx: DisplayContext): String {
-        return identifier.id
+        return identifier.name
     }
 
     override fun visitParenthesized(expression: ParenthesizedExpression, ctx: DisplayContext): String {

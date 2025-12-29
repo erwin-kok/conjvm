@@ -188,7 +188,7 @@ abstract class BaseTranslationVisitor : TranslationVisitor {
     override fun translateFunctionDefinition(definition: FunctionDefinitionStatement): TranslationResult {
         val translatedBlock = translateBlockStatement(definition.statements)
         return TranslationResult(
-            listOf(FunctionDefinitionStatement(definition.location, definition.name, translatedBlock)),
+            listOf(FunctionDefinitionStatement(definition.location, definition.declarationSpecifiers, definition.name, translatedBlock)),
             null,
         )
     }

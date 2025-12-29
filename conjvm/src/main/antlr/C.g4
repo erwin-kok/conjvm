@@ -53,7 +53,7 @@ external_declaration
     ;
 
 function_definition
-    :   declaration_specifiers? id = Identifier '(' Void ')' block_statement
+    :   declaration_specifiers? Identifier '(' Void ')' block_statement
     ;
 
 //

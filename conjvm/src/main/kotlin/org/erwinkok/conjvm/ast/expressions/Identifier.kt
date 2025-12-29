@@ -3,7 +3,7 @@ package org.erwinkok.conjvm.ast.expressions
 import org.erwinkok.conjvm.ast.AstExpressionVisitor
 import org.erwinkok.conjvm.ast.SourceLocation
 
-class Identifier(location: SourceLocation, val id: String) : Expression(location) {
+class Identifier(location: SourceLocation, val name: String) : Expression(location) {
     override fun <R, C> accept(visitor: AstExpressionVisitor<R, C>, ctx: C): R = visitor.visitIdentifier(this, ctx)
 
     override fun equals(other: Any?): Boolean {
@@ -14,14 +14,14 @@ class Identifier(location: SourceLocation, val id: String) : Expression(location
             return false
         }
 
-        return id == other.id
+        return name == other.name
     }
 
     override fun hashCode(): Int {
-        return id.hashCode()
+        return name.hashCode()
     }
 
     override fun toString(): String {
-        return id
+        return name
     }
 }

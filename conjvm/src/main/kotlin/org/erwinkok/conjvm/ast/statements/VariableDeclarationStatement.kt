@@ -1,10 +1,30 @@
 package org.erwinkok.conjvm.ast.statements
 
 import org.erwinkok.conjvm.ast.AstStatementVisitor
-import org.erwinkok.conjvm.ast.Declarator
 import org.erwinkok.conjvm.ast.SourceLocation
 import org.erwinkok.conjvm.ast.VariableType
 import org.erwinkok.conjvm.ast.expressions.Expression
+
+class Declarator(val location: SourceLocation, val pointer: Boolean, val name: String) {
+    override fun equals(other: Any?): Boolean {
+        if (other === this) {
+            return true
+        }
+        if (other !is Declarator) {
+            return false
+        }
+        if (pointer != other.pointer) return false
+        if (name != other.name) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = pointer.hashCode()
+        result = 31 * result + name.hashCode()
+        return result
+    }
+}
 
 data class VariableDeclarator(val location: SourceLocation, val declarator: Declarator, val init: Expression?) {
     override fun equals(other: Any?): Boolean {

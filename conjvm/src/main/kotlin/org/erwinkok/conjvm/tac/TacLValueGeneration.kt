@@ -76,7 +76,7 @@ class TacLValueGeneration(private val rValueVisitor: TacRValueGeneration) : AstE
     }
 
     override fun visitIdentifier(identifier: Identifier, ctx: TacContext): TacAddressResult {
-        return TacAddressResult(emptyList(), VarLValue(TacIdentifier(identifier.id)))
+        return TacAddressResult(emptyList(), VarLValue(TacIdentifier(identifier.name)))
     }
 
     override fun visitParenthesized(expression: ParenthesizedExpression, ctx: TacContext): TacAddressResult {

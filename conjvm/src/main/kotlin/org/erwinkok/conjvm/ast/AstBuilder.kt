@@ -27,6 +27,7 @@ import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.BreakStatement
 import org.erwinkok.conjvm.ast.statements.CompilationUnitStatement
 import org.erwinkok.conjvm.ast.statements.ContinueStatement
+import org.erwinkok.conjvm.ast.statements.Declarator
 import org.erwinkok.conjvm.ast.statements.ExpressionStatement
 import org.erwinkok.conjvm.ast.statements.ForInit
 import org.erwinkok.conjvm.ast.statements.ForInitAssignmentExpression
@@ -103,9 +104,11 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
     }
 
     override fun visitFunction_definition(ctx: CParser.Function_definitionContext): Value {
+        val declarationSpecifiers = visit(ctx.declaration_specifiers()).cast<List<DeclarationSpecifier>>()
         return Value.of(
             FunctionDefinitionStatement(
                 ctx.location,
+                declarationSpecifiers,
                 ctx.Identifier().text,
                 visit(ctx.block_statement()).cast<BlockStatement>(),
             ),
