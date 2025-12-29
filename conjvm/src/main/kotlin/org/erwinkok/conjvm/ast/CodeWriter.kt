@@ -255,7 +255,7 @@ class CodeWriter(val writer: Writer) : AstVisitor<String, DisplayContext> {
     }
 
     override fun visitWhile(statement: WhileStatement, ctx: DisplayContext): String {
-        val testResult = statement.condition?.let { visit(it, ctx) } ?: ""
+        val testResult = visit(statement.condition, ctx)
         appendIndent(ctx)
         writer.appendLine("while ($testResult)")
         writer.appendLine(visit(statement.statements, ctx))

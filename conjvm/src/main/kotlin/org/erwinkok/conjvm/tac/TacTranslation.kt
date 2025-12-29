@@ -138,55 +138,67 @@ class TacTranslation : AstStatementVisitor<TacResult, TacContext> {
 
     override fun visitSwitch(statement: SwitchStatement, ctx: TacContext): TacResult {
         val allStatements = mutableListOf<TacInstruction>()
-        val (ts, te) = translateExpression(statement.test)
-        allStatements.addAll(ts)
-        require(te != null)
-        val caseList = mutableListOf<Pair<TacLabel, BlockStatement>>()
-        for (section in statement.sections) {
-            val temp = tempFactory.newTemp()
-            val caseLabel = labelFactory.new()
-            val (tst, tet) = translateExpression(section.test)
-            require(tet != null)
-            allStatements.addAll(tst)
-            allStatements.add(TacBinaryInstruction(temp, BinaryExpressionType.Equals, te, tet))
-            allStatements.add(TacIfGotoInstruction(temp, caseLabel))
-            caseList.add(caseLabel to section.blockStatement)
-        }
+
+        // Evaluate switch expression
+        val (testInstrs, testExpr) = translateExpression(statement.test)
+        require(testExpr != null)
+        allStatements.addAll(testInstrs)
+
+        // Prepare labels
+        val caseLabels = statement.sections.map { it to labelFactory.new() }
         val endLabel = labelFactory.new()
-        var defaultLabel: TacLabel? = null
-        var defaultBlock: BlockStatement? = null
-        if (statement.defaultSection != null) {
-            defaultLabel = labelFactory.new()
-            allStatements.add(TacGotoInstruction(defaultLabel))
-            defaultBlock = statement.defaultSection.blockStatement
+
+        // Assign label to default if present
+        val defaultLabel = statement.defaultSection?.let { it to labelFactory.new() }
+
+        // First, write the case goto table.
+        for ((caseStatement, caseLabel) in caseLabels) {
+            val (caseInstrs, caseTemp) = translateExpression(caseStatement.test)
+            require(caseTemp != null)
+            val cmpTemp = tempFactory.newTemp()
+            allStatements.addAll(caseInstrs)
+            allStatements.add(TacBinaryInstruction(cmpTemp, BinaryExpressionType.Equals, testExpr, caseTemp))
+            allStatements.add(TacIfGotoInstruction(cmpTemp, caseLabel))
+        }
+
+        // Then, if there is a default block...
+        if (defaultLabel != null) {
+            // jump to the default label
+            allStatements.add(TacGotoInstruction(defaultLabel.second))
         } else {
+            // If not, jump to the end label
             allStatements.add(TacGotoInstruction(endLabel))
         }
-        for (case in caseList) {
-            allStatements.add(TacLabeledInstruction(case.first))
-            for (i in case.second.statements) {
-                if (i is BreakStatement) {
-                    allStatements.add(TacGotoInstruction(endLabel))
-                } else {
-                    val (ts, te) = translateStatement(i)
-                    require(te == null)
-                    allStatements.addAll(ts)
-                }
-            }
+
+        // Write all the case blocks with their label
+        for ((caseStatement, caseLabel) in caseLabels) {
+            allStatements.add(TacLabeledInstruction(caseLabel))
+            allStatements.addAll(emitSwitchBlock(caseStatement.blockStatement, endLabel))
         }
+
+        // If there is a default block, write the block
         if (defaultLabel != null) {
-            for (i in defaultBlock!!.statements) {
-                if (i is BreakStatement) {
-                    allStatements.add(TacGotoInstruction(endLabel))
-                } else {
-                    val (ts, te) = translateStatement(i)
-                    require(te == null)
-                    allStatements.addAll(ts)
-                }
-            }
+            allStatements.add(TacLabeledInstruction(defaultLabel.second))
+            allStatements.addAll(emitSwitchBlock(defaultLabel.first.blockStatement, endLabel))
         }
+
+        // Write the end label
         allStatements.add(TacLabeledInstruction(endLabel))
         return TacResult(allStatements, null)
+    }
+
+    private fun emitSwitchBlock(blockStatement: BlockStatement, endLabel: TacLabel): List<TacInstruction> {
+        val allStatements = mutableListOf<TacInstruction>()
+        for (i in blockStatement.statements) {
+            if (i is BreakStatement) {
+                allStatements.add(TacGotoInstruction(endLabel))
+            } else {
+                val (ts, te) = translateStatement(i)
+                require(te == null)
+                allStatements.addAll(ts)
+            }
+        }
+        return allStatements
     }
 
     override fun visitVariableDeclaration(statement: VariableDeclarationStatement, ctx: TacContext): TacResult {
