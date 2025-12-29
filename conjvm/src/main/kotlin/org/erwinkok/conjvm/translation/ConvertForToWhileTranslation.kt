@@ -13,42 +13,61 @@ import org.erwinkok.conjvm.ast.statements.ForStatement
 import org.erwinkok.conjvm.ast.statements.IfThenElseStatement
 import org.erwinkok.conjvm.ast.statements.IfThenStatement
 import org.erwinkok.conjvm.ast.statements.Statement
+import org.erwinkok.conjvm.ast.statements.SwitchStatement
 import org.erwinkok.conjvm.ast.statements.WhileStatement
 
 class ConvertForToWhileTranslation : BaseTranslationVisitor() {
     override fun translateFor(statement: ForStatement): TranslationResult {
         val allStatements = mutableListOf<Statement>()
+
+        // Translate the for-loop initialization
         allStatements.addAll(translateForInit(statement.location, statement.init))
 
+        // Translate the condition (or default to 'true')
         val (cts, cte) = translateCondition(statement.location, statement.condition)
         allStatements.addAll(cts)
         requireNotNull(cte)
 
-        val whileStatements = mutableListOf<Statement>()
+        // Translate iterators
         val translatedIterators = translateIterators(statement.location, statement.iterators)
-        whileStatements.add(rewriteContinues(statement.location, statement.statements, statement.iterators))
-        whileStatements.addAll(translatedIterators)
 
-        val whileStatement = WhileStatement(statement.location, cte, BlockStatement(statement.location, whileStatements))
+        // Rewrite the loop body to handle continue statements
+        val rewrittenBody = rewriteContinues(statement.location, statement.statements, translatedIterators)
+
+        val whileBodyStatements = mutableListOf<Statement>()
+        whileBodyStatements.add(rewrittenBody)
+        whileBodyStatements.addAll(translatedIterators)
+
+        val whileStatement = WhileStatement(
+            statement.location,
+            cte,
+            BlockStatement(statement.location, whileBodyStatements),
+        )
         allStatements.add(whileStatement)
         return TranslationResult(listOf(BlockStatement(statement.location, allStatements)), null)
     }
 
     private fun translateForInit(location: SourceLocation, statement: ForInit?): List<Statement> {
-        val allStatements = mutableListOf<Statement>()
-        if (statement is ForInitAssignmentExpression) {
-            statement.assignments.map {
-                val (ts, te) = translate(it)
-                requireNotNull(te)
-                allStatements.addAll(ts)
-                allStatements.add(ExpressionStatement(location, te))
+        return when (statement) {
+            is ForInitAssignmentExpression -> {
+                val allStatements = mutableListOf<Statement>()
+                statement.assignments.map {
+                    val (ts, te) = translate(it)
+                    requireNotNull(te)
+                    allStatements.addAll(ts)
+                    allStatements.add(ExpressionStatement(location, te))
+                }
+                allStatements
             }
-        } else if (statement is ForInitVariableDeclaration) {
-            val (ts, te) = translate(statement.variableDeclaration)
-            require(te == null)
-            allStatements.addAll(ts)
+
+            is ForInitVariableDeclaration -> {
+                val (ts, te) = translate(statement.variableDeclaration)
+                require(te == null)
+                ts
+            }
+
+            null -> emptyList()
         }
-        return allStatements
     }
 
     private fun translateCondition(location: SourceLocation, condition: Expression?): TranslationResult {
@@ -62,7 +81,7 @@ class ConvertForToWhileTranslation : BaseTranslationVisitor() {
 
     private fun translateIterators(location: SourceLocation, iterators: List<Expression>?): List<Statement> {
         val allStatements = mutableListOf<Statement>()
-        iterators?.map {
+        iterators?.forEach {
             val (ts, te) = translate(it)
             requireNotNull(te)
             allStatements.addAll(ts)
@@ -71,47 +90,46 @@ class ConvertForToWhileTranslation : BaseTranslationVisitor() {
         return allStatements
     }
 
-    private fun rewriteContinues(location: SourceLocation, stmt: Statement, iterators: List<Expression>?): Statement {
-        if (iterators.isNullOrEmpty()) {
+    private fun rewriteContinues(location: SourceLocation, stmt: Statement, iterators: List<Statement>): Statement {
+        if (iterators.isEmpty()) {
             return stmt
         }
         return when (stmt) {
             is ContinueStatement -> {
-                BlockStatement(
-                    location,
-                    buildList {
-                        for (it in iterators) {
-                            add(ExpressionStatement(location, it))
-                        }
-                        add(stmt)
-                    },
-                )
+                BlockStatement(location, iterators + stmt)
             }
 
             is BlockStatement ->
                 BlockStatement(
                     location,
-                    stmt.statements.map {
-                        rewriteContinues(location, it, iterators)
-                    },
+                    stmt.statements.map { rewriteContinues(location, it, iterators) },
                 )
 
             is IfThenStatement ->
                 IfThenStatement(
                     location,
                     stmt.test,
-                    BlockStatement(location, listOf(rewriteContinues(location, stmt.thenBlock, iterators))),
+                    toBlockStatement(rewriteContinues(location, stmt.thenBlock, iterators)),
                 )
 
             is IfThenElseStatement ->
                 IfThenElseStatement(
                     location,
                     stmt.test,
-                    BlockStatement(location, listOf(rewriteContinues(location, stmt.thenBlock, iterators))),
-                    BlockStatement(location, listOf(rewriteContinues(location, stmt.elseBlock, iterators))),
+                    toBlockStatement(rewriteContinues(location, stmt.thenBlock, iterators)),
+                    toBlockStatement(rewriteContinues(location, stmt.elseBlock, iterators)),
                 )
+
+            is WhileStatement,
+            is ForStatement,
+            is SwitchStatement,
+            -> stmt
 
             else -> stmt
         }
+    }
+
+    private fun toBlockStatement(statement: Statement): BlockStatement {
+        return statement as? BlockStatement ?: BlockStatement(statement.location, listOf(statement))
     }
 }

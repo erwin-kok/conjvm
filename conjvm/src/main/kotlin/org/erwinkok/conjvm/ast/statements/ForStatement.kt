@@ -5,7 +5,7 @@ import org.erwinkok.conjvm.ast.SourceLocation
 import org.erwinkok.conjvm.ast.expressions.AssignmentExpression
 import org.erwinkok.conjvm.ast.expressions.Expression
 
-abstract class ForInit
+sealed class ForInit
 
 class ForInitAssignmentExpression(val assignments: List<AssignmentExpression>) : ForInit() {
     override fun equals(other: Any?): Boolean {
