@@ -57,7 +57,7 @@ class CodeWriter(val writer: Writer) : AstVisitor<String, DisplayContext> {
     }
 
     override fun visitArrayAccess(expression: ArrayAccessExpression, ctx: DisplayContext): String {
-        val nodeResult = visit(expression.expression, ctx)
+        val nodeResult = visit(expression.index, ctx)
         return "${expression.base}[$nodeResult]"
     }
 

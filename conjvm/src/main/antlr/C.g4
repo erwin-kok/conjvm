@@ -32,6 +32,16 @@ grammar C;
  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+@parser::header {
+import org.erwinkok.conjvm.ast.VariableType;
+}
+
+@parser::members {
+    private Boolean isTypedef(String s) {
+        return VariableType.Companion.isTypedef(s);
+    }
+}
+
 compilationUnit
     :   external_declaration* EOF
     ;
@@ -122,7 +132,7 @@ multiplicative_expression
 	;
 
 cast_expression
-    :   '(' type_name ')' cast_expression                                                           #castExpr
+    :   { isTypedef(_input.LT(2).getText()) }? '(' type_name ')' cast_expression                    #castExpr
     |   unary_expression                                                                            #simpleCast
     ;
 

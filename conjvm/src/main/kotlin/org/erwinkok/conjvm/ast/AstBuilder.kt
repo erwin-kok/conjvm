@@ -471,7 +471,8 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
     }
 
     override fun visitExprStatAssign(ctx: CParser.ExprStatAssignContext): Value {
-        return Value.of(ExpressionStatement(ctx.location, visit(ctx.expression()).cast<Expression>()))
+        val ex = ctx.expression()?.let { ExpressionStatement(ctx.location, visit(it).cast<Expression>()) } ?: BlockStatement(ctx.location, emptyList())
+        return Value.of(ex)
     }
 
     override fun visitIf_then_statement(ctx: CParser.If_then_statementContext): Value {

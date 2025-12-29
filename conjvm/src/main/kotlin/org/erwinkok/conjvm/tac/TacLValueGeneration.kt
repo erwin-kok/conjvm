@@ -31,29 +31,27 @@ data class TacAddressResult(
     val tacValue: TacLValue,
 )
 
-class TacLValueGeneration(
-    private val rValueVisitor: TacRValueGeneration,
-    private val tempFactory: TacTempFactory,
-) : AstExpressionVisitor<TacAddressResult, TacContext> {
+class TacLValueGeneration(private val rValueVisitor: TacRValueGeneration) : AstExpressionVisitor<TacAddressResult, TacContext> {
     fun translate(node: Expression): TacAddressResult = node.accept(this, TacContext())
 
     override fun visitArrayAccess(expression: ArrayAccessExpression, ctx: TacContext): TacAddressResult {
         val (tsb, teb) = translate(expression.base)
-        val (ts, te) = rValueVisitor.translate(expression.expression)
+        requireNotNull(teb)
+        val (ts, te) = rValueVisitor.translate(expression.index)
         requireNotNull(te)
         return TacAddressResult(tsb + ts, ArrayLValue(teb, te))
     }
 
     override fun visitConstantInt(expression: ConstantIntExpression, ctx: TacContext): TacAddressResult {
-        error("cannot generate address of constant")
+        error("expression is not an lvalue: $expression")
     }
 
     override fun visitConstantLong(expression: ConstantLongExpression, ctx: TacContext): TacAddressResult {
-        error("cannot generate address of constant")
+        error("expression is not an lvalue: $expression")
     }
 
     override fun visitConstantString(expression: ConstantStringExpression, ctx: TacContext): TacAddressResult {
-        error("cannot generate address of constant")
+        error("expression is not an lvalue: $expression")
     }
 
     override fun visitFieldAccess(expression: FieldAccessExpression, ctx: TacContext): TacAddressResult {
@@ -71,31 +69,31 @@ class TacLValueGeneration(
     }
 
     override fun visitPostfixDecrement(expression: PostfixDecrementExpression, ctx: TacContext): TacAddressResult {
-        error("cannot generate address of postfix--")
+        error("expression is not an lvalue: $expression")
     }
 
     override fun visitPostfixIncrement(expression: PostfixIncrementExpression, ctx: TacContext): TacAddressResult {
-        error("cannot generate address of postfix++")
+        error("expression is not an lvalue: $expression")
     }
 
     override fun visitAssignment(expression: AssignmentExpression, ctx: TacContext): TacAddressResult {
-        error("cannot generate address of assignment")
+        error("expression is not an lvalue: $expression")
     }
 
     override fun visitBinary(expression: BinaryExpression, ctx: TacContext): TacAddressResult {
-        error("cannot generate address of binary-expression")
+        error("expression is not an lvalue: $expression")
     }
 
     override fun visitCall(expression: CallExpression, ctx: TacContext): TacAddressResult {
-        error("cannot generate address of call-expression")
+        error("expression is not an lvalue: $expression")
     }
 
     override fun visitCast(expression: CastExpression, ctx: TacContext): TacAddressResult {
-        error("cannot generate address of cast-expression")
+        error("expression is not an lvalue: $expression")
     }
 
     override fun visitTernary(expression: TernaryExpression, ctx: TacContext): TacAddressResult {
-        error("cannot generate address of ternary-expression")
+        error("expression is not an lvalue: $expression")
     }
 
     override fun visitUnary(expression: UnaryExpression, ctx: TacContext): TacAddressResult {
@@ -104,7 +102,7 @@ class TacLValueGeneration(
             requireNotNull(te)
             TacAddressResult(ts, IndirectLValue(te))
         } else {
-            error("cannot generate address of unary-${expression.type}-expression")
+            error("expression is not an lvalue: $expression")
         }
     }
 }

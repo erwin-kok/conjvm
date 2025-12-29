@@ -38,7 +38,7 @@ import org.erwinkok.conjvm.ast.statements.WhileStatement
 
 abstract class BaseTranslationVisitor : TranslationVisitor {
     override fun translateArrayAccess(expression: ArrayAccessExpression): TranslationResult {
-        val (ts, te) = translate(expression.expression)
+        val (ts, te) = translate(expression.index)
         requireNotNull(te)
         return TranslationResult(ts, ArrayAccessExpression(expression.location, expression.base, te))
     }

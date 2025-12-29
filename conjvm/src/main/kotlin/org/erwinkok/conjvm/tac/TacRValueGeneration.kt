@@ -37,7 +37,6 @@ import org.erwinkok.conjvm.tac.instructions.TacTernaryInstruction
 import org.erwinkok.conjvm.tac.lvalues.ArrayLValue
 import org.erwinkok.conjvm.tac.lvalues.FieldLValue
 import org.erwinkok.conjvm.tac.lvalues.IndirectLValue
-import org.erwinkok.conjvm.tac.lvalues.TacIdentifier
 import org.erwinkok.conjvm.tac.lvalues.TacLValue
 import org.erwinkok.conjvm.tac.lvalues.VarLValue
 import org.erwinkok.conjvm.tac.values.TacConstantLongValue
@@ -47,7 +46,7 @@ import org.erwinkok.conjvm.tac.values.TacValue
 class TacRValueGeneration(
     private val tempFactory: TacTempFactory,
 ) : AstExpressionVisitor<TacResult, TacContext> {
-    private val lValueVisitor = TacLValueGeneration(this, tempFactory)
+    private val lValueVisitor = TacLValueGeneration(this)
 
     fun translate(node: Expression): TacResult = node.accept(this, TacContext())
 
@@ -78,8 +77,10 @@ class TacRValueGeneration(
     }
 
     override fun visitIdentifier(identifier: Identifier, ctx: TacContext): TacResult {
-        val temp = tempFactory.newTemp()
-        return TacResult(listOf(TacLoadInstruction(temp, TacIdentifier(identifier.id))), temp)
+        val (ts, te) = lValueVisitor.translate(identifier)
+        requireNotNull(te)
+        val (tsl, tel) = generateLoadInstruction(te)
+        return TacResult(ts + tsl, tel)
     }
 
     override fun visitParenthesized(expression: ParenthesizedExpression, ctx: TacContext): TacResult {

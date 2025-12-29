@@ -3,11 +3,11 @@ package org.erwinkok.conjvm.ast.expressions
 import org.erwinkok.conjvm.ast.AstExpressionVisitor
 import org.erwinkok.conjvm.ast.SourceLocation
 
-class ArrayAccessExpression(location: SourceLocation, val base: Expression, val expression: Expression) : Expression(location) {
+class ArrayAccessExpression(location: SourceLocation, val base: Expression, val index: Expression) : Expression(location) {
     override fun <R, C> accept(visitor: AstExpressionVisitor<R, C>, ctx: C): R = visitor.visitArrayAccess(this, ctx)
 
     override fun toString(): String {
-        return "$base[$expression]"
+        return "$base[$index]"
     }
 
     override fun equals(other: Any?): Boolean {
@@ -19,14 +19,14 @@ class ArrayAccessExpression(location: SourceLocation, val base: Expression, val 
         }
 
         if (base != other.base) return false
-        if (expression != other.expression) return false
+        if (index != other.index) return false
 
         return true
     }
 
     override fun hashCode(): Int {
         var result = base.hashCode()
-        result = 31 * result + expression.hashCode()
+        result = 31 * result + index.hashCode()
         return result
     }
 }
