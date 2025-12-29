@@ -2,7 +2,7 @@ package org.erwinkok.conjvm.tac.values
 
 data class TacTemp(private val id: String) : TacValue {
     override fun toString(): String {
-        return "_tmp_$id"
+        return "t$id"
     }
 
     override fun equals(other: Any?): Boolean {

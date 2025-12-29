@@ -35,8 +35,23 @@ class TacLValueGeneration(private val rValueVisitor: TacRValueGeneration) : AstE
     fun translate(node: Expression): TacAddressResult = node.accept(this, TacContext())
 
     override fun visitArrayAccess(expression: ArrayAccessExpression, ctx: TacContext): TacAddressResult {
-        val (tsb, teb) = translate(expression.base)
-        requireNotNull(teb)
+        val (tsb, teb) = when (expression.base) {
+            is Identifier,
+            is FieldAccessExpression,
+            is ArrayAccessExpression,
+            is UnaryExpression,
+            -> {
+                // base already lvalue
+                translate(expression.base)
+            }
+
+            else -> {
+                // Complex expression: calculate pointer and wrap it in IndirectLValue
+                val (rts, rte) = rValueVisitor.translate(expression.base)
+                requireNotNull(rte)
+                TacAddressResult(rts, IndirectLValue(rte))
+            }
+        }
         val (ts, te) = rValueVisitor.translate(expression.index)
         requireNotNull(te)
         return TacAddressResult(tsb + ts, ArrayLValue(teb, te))
