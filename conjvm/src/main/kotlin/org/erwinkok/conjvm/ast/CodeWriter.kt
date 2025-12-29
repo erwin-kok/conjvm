@@ -174,7 +174,7 @@ class CodeWriter(val writer: Writer) : AstVisitor<String, DisplayContext> {
 
     override fun visitFor(statement: ForStatement, ctx: DisplayContext): String {
         val initResult = statement.init?.let { visitForInit(it, ctx) } ?: ""
-        val testResult = statement.test?.let { visit(it, ctx) } ?: ""
+        val testResult = statement.condition?.let { visit(it, ctx) } ?: ""
         val iteratorResult = statement.iterators?.joinToString(";") { visit(it, ctx) } ?: ""
         appendIndent(ctx)
         writer.appendLine("for ($initResult; $testResult; $iteratorResult)")
@@ -255,7 +255,7 @@ class CodeWriter(val writer: Writer) : AstVisitor<String, DisplayContext> {
     }
 
     override fun visitWhile(statement: WhileStatement, ctx: DisplayContext): String {
-        val testResult = statement.test?.let { visit(it, ctx) } ?: ""
+        val testResult = statement.condition?.let { visit(it, ctx) } ?: ""
         appendIndent(ctx)
         writer.appendLine("while ($testResult)")
         writer.appendLine(visit(statement.statements, ctx))

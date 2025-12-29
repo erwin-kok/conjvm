@@ -6,7 +6,7 @@ import org.erwinkok.conjvm.ast.expressions.Expression
 
 class WhileStatement(
     location: SourceLocation,
-    val test: Expression,
+    val condition: Expression,
     val statements: BlockStatement,
 ) : Statement(location) {
     override fun <R, C> accept(visitor: AstStatementVisitor<R, C>, ctx: C): R = visitor.visitWhile(this, ctx)
@@ -19,14 +19,14 @@ class WhileStatement(
             return false
         }
 
-        if (test != other.test) return false
+        if (condition != other.condition) return false
         if (statements != other.statements) return false
 
         return true
     }
 
     override fun hashCode(): Int {
-        var result = test.hashCode()
+        var result = condition.hashCode()
         result = 31 * result + statements.hashCode()
         return result
     }

@@ -48,7 +48,7 @@ class ForInitVariableDeclaration(val variableDeclaration: VariableDeclarationSta
 class ForStatement(
     location: SourceLocation,
     val init: ForInit?,
-    val test: Expression?,
+    val condition: Expression?,
     val iterators: List<Expression>?,
     val statements: BlockStatement,
 ) : Statement(location) {
@@ -63,7 +63,7 @@ class ForStatement(
         }
 
         if (init != other.init) return false
-        if (test != other.test) return false
+        if (condition != other.condition) return false
         if (iterators != other.iterators) return false
         if (statements != other.statements) return false
 
@@ -72,7 +72,7 @@ class ForStatement(
 
     override fun hashCode(): Int {
         var result = init?.hashCode() ?: 0
-        result = 31 * result + test.hashCode()
+        result = 31 * result + condition.hashCode()
         result = 31 * result + (iterators?.hashCode() ?: 0)
         result = 31 * result + statements.hashCode()
         return result

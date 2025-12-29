@@ -204,7 +204,7 @@ class TacTranslation : AstStatementVisitor<TacResult, TacContext> {
 
     override fun visitWhile(statement: WhileStatement, ctx: TacContext): TacResult {
         val allStatements = mutableListOf<TacInstruction>()
-        val (ts, te) = translateExpression(statement.test)
+        val (ts, te) = translateExpression(statement.condition)
         requireNotNull(te)
         val translatedBlock = translateBlockStatement(statement.statements)
         val whileLabel = labelFactory.new()

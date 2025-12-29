@@ -180,7 +180,7 @@ abstract class BaseTranslationVisitor : TranslationVisitor {
     override fun translateFor(statement: ForStatement): TranslationResult {
         val translatedBlock = translateBlockStatement(statement.statements)
         return TranslationResult(
-            listOf(ForStatement(statement.location, statement.init, statement.test, statement.iterators, translatedBlock)),
+            listOf(ForStatement(statement.location, statement.init, statement.condition, statement.iterators, translatedBlock)),
             null,
         )
     }
@@ -244,7 +244,7 @@ abstract class BaseTranslationVisitor : TranslationVisitor {
     override fun translateWhile(statement: WhileStatement): TranslationResult {
         val translatedBlock = translateBlockStatement(statement.statements)
         return TranslationResult(
-            listOf(WhileStatement(statement.location, statement.test, translatedBlock)),
+            listOf(WhileStatement(statement.location, statement.condition, translatedBlock)),
             null,
         )
     }
