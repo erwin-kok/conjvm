@@ -246,7 +246,11 @@ abstract class BaseTranslationVisitor : TranslationVisitor {
         val varDecls = statement.variableDeclarators.map {
             translateVariableDeclarator(allStatements, it)
         }
-        return TranslationResult(allStatements + VariableDeclarationStatement(statement.location, statement.type, varDecls), null)
+        return TranslationResult(
+            allStatements +
+                VariableDeclarationStatement(statement.location, statement.type, varDecls),
+            null,
+        )
     }
 
     override fun translateWhile(statement: WhileStatement): TranslationResult {

@@ -27,6 +27,8 @@ import org.erwinkok.conjvm.ast.statements.IfThenElseStatement
 import org.erwinkok.conjvm.ast.statements.IfThenStatement
 import org.erwinkok.conjvm.ast.statements.LabeledStatement
 import org.erwinkok.conjvm.ast.statements.ReturnStatement
+import org.erwinkok.conjvm.ast.statements.SwitchCaseStatement
+import org.erwinkok.conjvm.ast.statements.SwitchDefaultStatement
 import org.erwinkok.conjvm.ast.statements.SwitchStatement
 import org.erwinkok.conjvm.ast.statements.VariableDeclarationStatement
 import org.erwinkok.conjvm.ast.statements.WhileStatement
@@ -81,7 +83,9 @@ class TypeVisitor :
     }
 
     override fun visitFor(statement: ForStatement, ctx: TypeContext) {
-        // Nothing
+        statement.condition?.let { visit(it, ctx) }
+        statement.iterators?.let { it.forEach { ex -> visit(ex, ctx) } }
+        visit(statement.statements, ctx)
     }
 
     override fun visitGoto(statement: GotoStatement, ctx: TypeContext) {
@@ -89,15 +93,18 @@ class TypeVisitor :
     }
 
     override fun visitIfThenElse(statement: IfThenElseStatement, ctx: TypeContext) {
-        // Nothing
+        visit(statement.test, ctx)
+        visit(statement.thenBlock, ctx)
+        visit(statement.elseBlock, ctx)
     }
 
     override fun visitIfThen(statement: IfThenStatement, ctx: TypeContext) {
-        // Nothing
+        visit(statement.test, ctx)
+        visit(statement.thenBlock, ctx)
     }
 
     override fun visitLabeled(statement: LabeledStatement, ctx: TypeContext) {
-        // Nothing
+        visit(statement.statement, ctx)
     }
 
     override fun visitReturn(statement: ReturnStatement, ctx: TypeContext) {
@@ -114,7 +121,9 @@ class TypeVisitor :
     }
 
     override fun visitSwitch(statement: SwitchStatement, ctx: TypeContext) {
-        // Nothing
+        visit(statement.test, ctx)
+        statement.sections.forEach { visitSwitchCase(it, ctx) }
+        statement.defaultSection?.let { visitDefaultCase(it, ctx) }
     }
 
     override fun visitVariableDeclaration(statement: VariableDeclarationStatement, ctx: TypeContext) {
@@ -122,7 +131,8 @@ class TypeVisitor :
     }
 
     override fun visitWhile(statement: WhileStatement, ctx: TypeContext) {
-        // Nothing
+        visit(statement.condition, ctx)
+        visit(statement.statements, ctx)
     }
 
     override fun visitArrayAccess(expression: ArrayAccessExpression, ctx: TypeContext): Type {
@@ -146,23 +156,22 @@ class TypeVisitor :
     }
 
     override fun visitCast(expression: CastExpression, ctx: TypeContext): Type {
-        // TODO("Not yet implemented")
-        return Type.Error
+        return visit(expression.expression, ctx)
     }
 
     override fun visitConstantInt(expression: ConstantIntExpression, ctx: TypeContext): Type {
-        // TODO("Not yet implemented")
-        return Type.Error
+        expression.expressionType = Type.Int
+        return Type.Int
     }
 
     override fun visitConstantLong(expression: ConstantLongExpression, ctx: TypeContext): Type {
-        // TODO("Not yet implemented")
-        return Type.Error
+        expression.expressionType = Type.Long
+        return Type.Long
     }
 
     override fun visitConstantString(expression: ConstantStringExpression, ctx: TypeContext): Type {
-        // TODO("Not yet implemented")
-        return Type.Error
+        expression.expressionType = Type.String
+        return Type.String
     }
 
     override fun visitFieldAccess(expression: FieldAccessExpression, ctx: TypeContext): Type {
@@ -171,23 +180,26 @@ class TypeVisitor :
     }
 
     override fun visitIdentifier(identifier: Identifier, ctx: TypeContext): Type {
-        // TODO("Not yet implemented")
-        return Type.Error
+        val symbol = Scope.current.lookup(identifier.name)
+        return if (symbol == null) {
+//            error("undeclared variable ${identifier.name}")
+            Type.Error
+        } else {
+            identifier.expressionType = symbol.type
+            symbol.type
+        }
     }
 
     override fun visitParenthesized(expression: ParenthesizedExpression, ctx: TypeContext): Type {
-        // TODO("Not yet implemented")
-        return Type.Error
+        return visit(expression.expression, ctx)
     }
 
     override fun visitPostfixDecrement(expression: PostfixDecrementExpression, ctx: TypeContext): Type {
-        // TODO("Not yet implemented")
-        return Type.Error
+        return visit(expression.expression, ctx)
     }
 
     override fun visitPostfixIncrement(expression: PostfixIncrementExpression, ctx: TypeContext): Type {
-        // TODO("Not yet implemented")
-        return Type.Error
+        return visit(expression.expression, ctx)
     }
 
     override fun visitTernary(expression: TernaryExpression, ctx: TypeContext): Type {
@@ -202,5 +214,14 @@ class TypeVisitor :
 
     private fun declareFunction(function: FunctionDefinitionStatement) {
         Scope.current.define(Symbol(function.name, Type.Func(function.returnType, function.params.map { it.type })))
+    }
+
+    private fun visitSwitchCase(case: SwitchCaseStatement, ctx: TypeContext) {
+        visit(case.test, ctx)
+        visit(case.blockStatement, ctx)
+    }
+
+    private fun visitDefaultCase(default: SwitchDefaultStatement, ctx: TypeContext) {
+        visit(default.blockStatement, ctx)
     }
 }

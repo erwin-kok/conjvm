@@ -85,14 +85,26 @@ class AssignmentTranslation : BaseTranslationVisitor() {
                     declarator = variableDeclarator.declarator,
                     init = expression,
                 )
-                allStatements.add(VariableDeclarationStatement(location = statement.location, type = statement.type, variableDeclarators = listOf(variableDeclarator)))
+                allStatements.add(
+                    VariableDeclarationStatement(
+                        location = statement.location,
+                        type = statement.type,
+                        variableDeclarators = listOf(variableDeclarator),
+                    ),
+                )
             } else {
                 val variableDeclarator = VariableDeclarator(
                     location = variableDeclarator.location,
                     declarator = variableDeclarator.declarator,
                     init = null,
                 )
-                allStatements.add(VariableDeclarationStatement(location = statement.location, type = statement.type, variableDeclarators = listOf(variableDeclarator)))
+                allStatements.add(
+                    VariableDeclarationStatement(
+                        location = statement.location,
+                        type = statement.type,
+                        variableDeclarators = listOf(variableDeclarator),
+                    ),
+                )
             }
         }
         return TranslationResult(allStatements, null)

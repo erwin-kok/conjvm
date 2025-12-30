@@ -2,6 +2,8 @@ package org.erwinkok.conjvm.ast
 
 sealed class Type {
     object Int : Type()
+    object Long : Type()
+    object String : Type()
     object Void : Type()
     object Error : Type()
 
@@ -9,8 +11,8 @@ sealed class Type {
     data class Func(val returnType: Type, val params: List<Type>) : Type()
 }
 
-fun sameType(a: Type, b: Type): Boolean =
-    when {
+fun sameType(a: Type, b: Type): Boolean {
+    return when {
         a === b -> true
         a is Type.Ptr && b is Type.Ptr ->
             sameType(a.base, b.base)
@@ -22,3 +24,4 @@ fun sameType(a: Type, b: Type): Boolean =
 
         else -> false
     }
+}
