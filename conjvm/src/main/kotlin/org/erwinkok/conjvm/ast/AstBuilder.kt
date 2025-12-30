@@ -402,16 +402,20 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
         return visit(ctx.labeled_statement())
     }
 
-    override fun visitStatementVarDecl(ctx: CParser.StatementVarDeclContext): Value {
-        return visit(ctx.variable_declaration())
-    }
-
     override fun visitStatementEmbedded(ctx: CParser.StatementEmbeddedContext): Value {
         return visit(ctx.embedded_statement())
     }
 
     override fun visitStatementBlock(ctx: CParser.StatementBlockContext): Value {
         return visit(ctx.block_statement())
+    }
+
+    override fun visitBlockItemStatement(ctx: CParser.BlockItemStatementContext): Value {
+        return visit(ctx.statement())
+    }
+
+    override fun visitBlockItemVarDecl(ctx: CParser.BlockItemVarDeclContext): Value {
+        return visit(ctx.variable_declaration())
     }
 
     override fun visitStatementExpression(ctx: CParser.StatementExpressionContext): Value {
@@ -458,7 +462,7 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
         return Value.of(
             BlockStatement(
                 ctx.location,
-                ctx.statement().map { visit(it).cast<Statement>() },
+                ctx.block_item().map { visit(it).cast<Statement>() },
             ),
         )
     }

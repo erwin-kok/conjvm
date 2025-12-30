@@ -1,15 +1,15 @@
 package org.erwinkok.conjvm.ast
 
-import org.erwinkok.conjvm.ast.expressions.Identifier
+class Symbol(val name: String, val type: Type)
 
 class Scope private constructor(val parent: Scope? = null) {
-    private val symbols = mutableMapOf<String, Identifier>()
+    private val symbols = mutableMapOf<String, Symbol>()
 
-    fun define(identifier: Identifier) {
-        symbols[identifier.name] = identifier
+    fun define(symbol: Symbol) {
+        symbols[symbol.name] = symbol
     }
 
-    fun lookup(name: String): Identifier? {
+    fun lookup(name: String): Symbol? {
         return symbols[name] ?: parent?.lookup(name)
     }
 

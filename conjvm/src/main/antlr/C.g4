@@ -193,7 +193,6 @@ argument_list
 //
 statement
     :   labeled_statement                                                                           #statementLabel
-    |   variable_declaration                                                                        #statementVarDecl
     |   embedded_statement                                                                          #statementEmbedded
     ;
 
@@ -212,7 +211,12 @@ embedded_statement
     ;
 
 block_statement
-    :   '{' statement* '}'
+    :   '{' block_item* '}'
+    ;
+
+block_item
+    :   statement                                                                                   #blockItemStatement
+    |   variable_declaration                                                                        #blockItemVarDecl
     ;
 
 labeled_statement
