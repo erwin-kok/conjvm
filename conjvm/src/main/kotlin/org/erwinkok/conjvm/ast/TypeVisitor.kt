@@ -36,135 +36,171 @@ class TypeContext
 class TypeVisitor :
     AstStatementVisitor<Unit, TypeContext>,
     AstExpressionVisitor<Type, TypeContext> {
-    private var currentReturn = Type.Void
+    private var currentReturn: Type = Type.Void
 
-    fun check(compilationUnitStatement: CompilationUnitStatement) {
-        compilationUnitStatement.functionDefinitions.forEach {
+    override fun visitCompilationUnit(statement: CompilationUnitStatement, ctx: TypeContext) {
+        statement.functionDefinitions.forEach {
             declareFunction(it)
+        }
+        statement.functionDefinitions.forEach {
+            visit(it, ctx)
         }
     }
 
-    private fun declareFunction(function: FunctionDefinitionStatement) {
-//        Scope.current.define(Symbol(function.name, Type.Func()))
+    override fun visitFunctionDefinition(definition: FunctionDefinitionStatement, ctx: TypeContext) {
+        val oldReturn = currentReturn
+        currentReturn = definition.returnType
+
+        Scope.enter()
+        definition.params.forEach {
+            Scope.current.define(Symbol(it.name, it.type))
+        }
+
+        visit(definition.statements, ctx)
+        Scope.leave()
+
+        currentReturn = oldReturn
     }
 
     override fun visitBlock(statement: BlockStatement, ctx: TypeContext) {
-        TODO("Not yet implemented")
+        Scope.enter()
+        statement.statements.forEach { visit(it, ctx) }
+        Scope.leave()
     }
 
     override fun visitBreak(statement: BreakStatement, ctx: TypeContext) {
-        TODO("Not yet implemented")
-    }
-
-    override fun visitCompilationUnit(statement: CompilationUnitStatement, ctx: TypeContext) {
-        TODO("Not yet implemented")
+        // Nothing
     }
 
     override fun visitContinue(statement: ContinueStatement, ctx: TypeContext) {
-        TODO("Not yet implemented")
+        // Nothing
     }
 
     override fun visitExpression(statement: ExpressionStatement, ctx: TypeContext) {
-        TODO("Not yet implemented")
+        visit(statement.expression, ctx)
     }
 
     override fun visitFor(statement: ForStatement, ctx: TypeContext) {
-        TODO("Not yet implemented")
-    }
-
-    override fun visitFunctionDefinition(definition: FunctionDefinitionStatement, ctx: TypeContext) {
-        TODO("Not yet implemented")
+        // Nothing
     }
 
     override fun visitGoto(statement: GotoStatement, ctx: TypeContext) {
-        TODO("Not yet implemented")
+        // Nothing
     }
 
     override fun visitIfThenElse(statement: IfThenElseStatement, ctx: TypeContext) {
-        TODO("Not yet implemented")
+        // Nothing
     }
 
     override fun visitIfThen(statement: IfThenStatement, ctx: TypeContext) {
-        TODO("Not yet implemented")
+        // Nothing
     }
 
     override fun visitLabeled(statement: LabeledStatement, ctx: TypeContext) {
-        TODO("Not yet implemented")
+        // Nothing
     }
 
     override fun visitReturn(statement: ReturnStatement, ctx: TypeContext) {
-        TODO("Not yet implemented")
+        if (statement.value == null) {
+            if (currentReturn != Type.Void) {
+                error("missing return value")
+            }
+        } else {
+            val t = visit(statement.value, ctx)
+            if (!sameType(t, currentReturn)) {
+                error("return type mismatch")
+            }
+        }
     }
 
     override fun visitSwitch(statement: SwitchStatement, ctx: TypeContext) {
-        TODO("Not yet implemented")
+        // Nothing
     }
 
     override fun visitVariableDeclaration(statement: VariableDeclarationStatement, ctx: TypeContext) {
-        TODO("Not yet implemented")
+        // TODO("Not yet implemented")
     }
 
     override fun visitWhile(statement: WhileStatement, ctx: TypeContext) {
-        TODO("Not yet implemented")
+        // Nothing
     }
 
     override fun visitArrayAccess(expression: ArrayAccessExpression, ctx: TypeContext): Type {
-        TODO("Not yet implemented")
+        // TODO("Not yet implemented")
+        return Type.Error
     }
 
     override fun visitAssignment(expression: AssignmentExpression, ctx: TypeContext): Type {
-        TODO("Not yet implemented")
+        // TODO("Not yet implemented")
+        return Type.Error
     }
 
     override fun visitBinary(expression: BinaryExpression, ctx: TypeContext): Type {
-        TODO("Not yet implemented")
+        // TODO("Not yet implemented")
+        return Type.Error
     }
 
     override fun visitCall(expression: CallExpression, ctx: TypeContext): Type {
-        TODO("Not yet implemented")
+        // TODO("Not yet implemented")
+        return Type.Error
     }
 
     override fun visitCast(expression: CastExpression, ctx: TypeContext): Type {
-        TODO("Not yet implemented")
+        // TODO("Not yet implemented")
+        return Type.Error
     }
 
     override fun visitConstantInt(expression: ConstantIntExpression, ctx: TypeContext): Type {
-        TODO("Not yet implemented")
+        // TODO("Not yet implemented")
+        return Type.Error
     }
 
     override fun visitConstantLong(expression: ConstantLongExpression, ctx: TypeContext): Type {
-        TODO("Not yet implemented")
+        // TODO("Not yet implemented")
+        return Type.Error
     }
 
     override fun visitConstantString(expression: ConstantStringExpression, ctx: TypeContext): Type {
-        TODO("Not yet implemented")
+        // TODO("Not yet implemented")
+        return Type.Error
     }
 
     override fun visitFieldAccess(expression: FieldAccessExpression, ctx: TypeContext): Type {
-        TODO("Not yet implemented")
+        // TODO("Not yet implemented")
+        return Type.Error
     }
 
     override fun visitIdentifier(identifier: Identifier, ctx: TypeContext): Type {
-        TODO("Not yet implemented")
+        // TODO("Not yet implemented")
+        return Type.Error
     }
 
     override fun visitParenthesized(expression: ParenthesizedExpression, ctx: TypeContext): Type {
-        TODO("Not yet implemented")
+        // TODO("Not yet implemented")
+        return Type.Error
     }
 
     override fun visitPostfixDecrement(expression: PostfixDecrementExpression, ctx: TypeContext): Type {
-        TODO("Not yet implemented")
+        // TODO("Not yet implemented")
+        return Type.Error
     }
 
     override fun visitPostfixIncrement(expression: PostfixIncrementExpression, ctx: TypeContext): Type {
-        TODO("Not yet implemented")
+        // TODO("Not yet implemented")
+        return Type.Error
     }
 
     override fun visitTernary(expression: TernaryExpression, ctx: TypeContext): Type {
-        TODO("Not yet implemented")
+        // TODO("Not yet implemented")
+        return Type.Error
     }
 
     override fun visitUnary(expression: UnaryExpression, ctx: TypeContext): Type {
-        TODO("Not yet implemented")
+        // TODO("Not yet implemented")
+        return Type.Error
+    }
+
+    private fun declareFunction(function: FunctionDefinitionStatement) {
+        Scope.current.define(Symbol(function.name, Type.Func(function.returnType, function.params.map { it.type })))
     }
 }

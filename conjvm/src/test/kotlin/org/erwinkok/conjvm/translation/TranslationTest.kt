@@ -1,5 +1,7 @@
 package org.erwinkok.conjvm.translation
 
+import org.erwinkok.conjvm.ast.TypeContext
+import org.erwinkok.conjvm.ast.TypeVisitor
 import org.erwinkok.conjvm.parser.Parser
 import org.erwinkok.conjvm.tac.TacCodeWriter
 import org.erwinkok.conjvm.tac.TacTranslation
@@ -16,6 +18,8 @@ class TranslationTest {
         requireNotNull(inputStream)
         GZIPInputStream(inputStream).use { inputGzip ->
             val compilationUnit = Parser.parseStream(inputGzip)
+
+            TypeVisitor().visit(compilationUnit, TypeContext())
 
             var translatedCompilationUnit = Translator.translateStatement(compilationUnit, ConvertForToWhileTranslation())
             translatedCompilationUnit = Translator.translateStatement(translatedCompilationUnit, AssignmentTranslation())

@@ -104,12 +104,14 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
     }
 
     override fun visitFunction_definition(ctx: CParser.Function_definitionContext): Value {
+        // TODO
         val declarationSpecifiers = visit(ctx.declaration_specifiers()).cast<List<DeclarationSpecifier>>()
         return Value.of(
             FunctionDefinitionStatement(
                 ctx.location,
-                declarationSpecifiers,
+                Type.Void,
                 ctx.Identifier().text,
+                emptyList(),
                 visit(ctx.block_statement()).cast<BlockStatement>(),
             ),
         )
@@ -563,6 +565,7 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
     }
 
     override fun visitForInitVarDecl(ctx: CParser.ForInitVarDeclContext): Value {
+        // TODO
         return Value.of(
             ForInitVariableDeclaration(
                 VariableDeclarationStatement(
@@ -603,6 +606,7 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
     // VARIABLE DECLARATION
     //
     override fun visitVariable_declaration(ctx: CParser.Variable_declarationContext): Value {
+        // TODO
         // Currently, only VariableType is supported. Other declaration specifiers are ignored.
         val declarationSpecifiers = visit(ctx.declaration_specifiers()).cast<List<DeclarationSpecifier>>()
         val variableType = declarationSpecifiers.filterIsInstance<VariableType>().firstOrNull()
@@ -620,7 +624,7 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
     }
 
     override fun visitStorageClassSpec(ctx: CParser.StorageClassSpecContext): Value {
-        reporter.reportWarning(ctx.location, "Storage class specifier '${ctx.text}' is not supported.")
+//        reporter.reportWarning(ctx.location, "Storage class specifier '${ctx.text}' is not supported.")
         return Value.of(DeclarationSpecifier.NONE)
     }
 
