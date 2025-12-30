@@ -32,15 +32,18 @@ grammar C;
  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-@parser::header {
+@lexer::header {
 import org.erwinkok.conjvm.ast.VariableType;
 }
 
-@parser::members {
+@lexer::members {
     private Boolean isTypedef(String s) {
         return VariableType.Companion.isTypedef(s);
     }
 }
+
+// virtual token
+tokens { TYPEDEF_NAME }
 
 compilationUnit
     :   external_declaration* EOF
@@ -132,7 +135,7 @@ multiplicative_expression
 	;
 
 cast_expression
-    :   { isTypedef(_input.LT(2).getText()) }? '(' type_name ')' cast_expression                    #castExpr
+    :   '(' type_name ')' cast_expression                                                           #castExpr
     |   unary_expression                                                                            #simpleCast
     ;
 
@@ -281,7 +284,7 @@ return_statement
 // VARIABLE DECLARATION
 //
 variable_declaration
-    :   declaration_specifiers init_declarator_list ';'
+    :   declaration_specifiers init_declarator_list? ';'
     ;
 
 declaration_specifiers
@@ -326,7 +329,7 @@ type_specifier
     ;
 
 typedef_name
-    :   Identifier
+    :   TYPEDEF_NAME
     ;
 
 specifier_qualifier_list
@@ -664,6 +667,11 @@ Ellipsis
 
 Identifier
     : IdentifierNondigit (IdentifierNondigit | Digit)*
+          {
+              if (isTypedef(getText())) {
+                  setType(CParser.TYPEDEF_NAME);
+              }
+          }
     ;
 
 fragment IdentifierNondigit
