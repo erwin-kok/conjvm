@@ -1,6 +1,6 @@
-package org.erwinkok.conjvm.ast
+package org.erwinkok.conjvm.ast.types
 
-enum class VariableType : DeclarationSpecifier {
+enum class VariableType {
     INT,
     INT8,
     INT16,

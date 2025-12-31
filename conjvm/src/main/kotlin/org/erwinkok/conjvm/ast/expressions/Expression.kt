@@ -3,7 +3,7 @@ package org.erwinkok.conjvm.ast.expressions
 import org.erwinkok.conjvm.ast.AstExpressionVisitor
 import org.erwinkok.conjvm.ast.AstNode
 import org.erwinkok.conjvm.ast.SourceLocation
-import org.erwinkok.conjvm.ast.Type
+import org.erwinkok.conjvm.ast.types.Type
 
 sealed class Expression(location: SourceLocation) : AstNode(location) {
     var expressionType: Type? = null

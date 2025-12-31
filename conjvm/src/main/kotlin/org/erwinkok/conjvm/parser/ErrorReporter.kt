@@ -30,6 +30,10 @@ class ErrorReporter {
         writeMessage(message)
     }
 
+    fun reportError(location: SourceLocation, message: String) {
+        writeMessage(message)
+    }
+
     private fun report(message: String, loc: ParserSourceLocation, severity: ErrorSeverity) {
         val line = loc.line
         val path = loc.sourceName

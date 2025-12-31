@@ -46,6 +46,14 @@ import org.erwinkok.conjvm.ast.statements.SwitchStatement
 import org.erwinkok.conjvm.ast.statements.VariableDeclarationStatement
 import org.erwinkok.conjvm.ast.statements.VariableDeclarator
 import org.erwinkok.conjvm.ast.statements.WhileStatement
+import org.erwinkok.conjvm.ast.types.DeclarationSpecifier
+import org.erwinkok.conjvm.ast.types.FunctionSpec
+import org.erwinkok.conjvm.ast.types.StorageClass
+import org.erwinkok.conjvm.ast.types.Type
+import org.erwinkok.conjvm.ast.types.TypeException
+import org.erwinkok.conjvm.ast.types.TypeQualifier
+import org.erwinkok.conjvm.ast.types.TypeSpec
+import org.erwinkok.conjvm.ast.types.VariableType
 import org.erwinkok.conjvm.parser.ErrorReporter
 
 private val ParserRuleContext.location: SourceLocation
@@ -105,11 +113,11 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
 
     override fun visitFunction_definition(ctx: CParser.Function_definitionContext): Value {
         // TODO
-        val declarationSpecifiers = visit(ctx.declaration_specifiers()).cast<List<DeclarationSpecifier>>()
+        val declarationSpecifier = ctx.declaration_specifiers()?.let { visit(it).cast<DeclarationSpecifier>() }
         return Value.of(
             FunctionDefinitionStatement(
                 ctx.location,
-                Type.Void,
+                Type.TVoid,
                 ctx.Identifier().text,
                 emptyList(),
                 visit(ctx.block_statement()).cast<BlockStatement>(),
@@ -334,7 +342,7 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
         )
     }
 
-    override fun visitSizeofUnaryCore(ctx: CParser.SizeofUnaryCoreContext?): Value? {
+    override fun visitSizeofUnaryCore(ctx: CParser.SizeofUnaryCoreContext?): Value {
         error("sizeof(type_name) is currently not supported")
     }
 
@@ -565,12 +573,12 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
     }
 
     override fun visitForInitVarDecl(ctx: CParser.ForInitVarDeclContext): Value {
-        // TODO
+        val declarationSpecifier = visit(ctx.declaration_specifiers()).cast<DeclarationSpecifier>()
         return Value.of(
             ForInitVariableDeclaration(
                 VariableDeclarationStatement(
                     ctx.location,
-                    ctx.declaration_specifiers().text?.let { VariableType.parse(it) },
+                    declarationSpecifier,
                     visit(ctx.init_declarator_list()).cast<List<VariableDeclarator>>(),
                 ),
             ),
@@ -606,40 +614,22 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
     // VARIABLE DECLARATION
     //
     override fun visitVariable_declaration(ctx: CParser.Variable_declarationContext): Value {
-        // TODO
-        // Currently, only VariableType is supported. Other declaration specifiers are ignored.
-        val declarationSpecifiers = visit(ctx.declaration_specifiers()).cast<List<DeclarationSpecifier>>()
-        val variableType = declarationSpecifiers.filterIsInstance<VariableType>().firstOrNull()
+        val declarationSpecifier = visit(ctx.declaration_specifiers()).cast<DeclarationSpecifier>()
         return Value.of(
             VariableDeclarationStatement(
                 ctx.location,
-                variableType,
+                declarationSpecifier,
                 visit(ctx.init_declarator_list()).cast<List<VariableDeclarator>>(),
             ),
         )
     }
 
     override fun visitDeclaration_specifiers(ctx: CParser.Declaration_specifiersContext): Value {
-        return Value.of(ctx.declaration_specifier().map { visit(it).cast<DeclarationSpecifier>() })
-    }
-
-    override fun visitStorageClassSpec(ctx: CParser.StorageClassSpecContext): Value {
-//        reporter.reportWarning(ctx.location, "Storage class specifier '${ctx.text}' is not supported.")
-        return Value.of(DeclarationSpecifier.NONE)
-    }
-
-    override fun visitDeclSpecTypeSpec(ctx: CParser.DeclSpecTypeSpecContext): Value {
-        return Value.of(VariableType.parse(ctx.text))
-    }
-
-    override fun visitDeclSpecTypeQual(ctx: CParser.DeclSpecTypeQualContext): Value {
-        reporter.reportWarning(ctx.location, "Type qualifier '${ctx.text}' is not supported.")
-        return Value.of(DeclarationSpecifier.NONE)
-    }
-
-    override fun visitDeclSpecFuncSpec(ctx: CParser.DeclSpecFuncSpecContext): Value {
-        reporter.reportWarning(ctx.location, "Function specifier '${ctx.text}' is not supported.")
-        return Value.of(DeclarationSpecifier.NONE)
+        val declSpec = DeclarationSpecifier()
+        ctx.declaration_specifier().forEach {
+            collectDeclSpecifier(it, declSpec)
+        }
+        return Value.of(declSpec)
     }
 
     override fun visitInit_declarator_list(ctx: CParser.Init_declarator_listContext): Value {
@@ -694,5 +684,59 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
         input.toIntOrNull()?.let { return ConstantIntExpression(location, it) }
         input.toLongOrNull()?.let { return ConstantLongExpression(location, it) }
         error("Could not parse constant: $input")
+    }
+
+    private fun collectDeclSpecifier(ctx: CParser.Declaration_specifierContext, declSpec: DeclarationSpecifier) {
+        when (ctx) {
+            is CParser.StorageClassSpecContext -> declSpec.storage += parseStorageClassSpec(ctx.storage_class_specifier())
+            is CParser.DeclSpecTypeSpecContext -> declSpec.typeSpecs += parseTypeSpec(ctx.type_specifier())
+            is CParser.DeclSpecTypeQualContext -> declSpec.qualifiers += parseTypeQualifier(ctx.type_qualifier())
+            is CParser.DeclSpecFuncSpecContext -> declSpec.functionSpecs += parseFunctionSpec(ctx.function_specifier())
+        }
+    }
+
+    private fun parseStorageClassSpec(ctx: CParser.Storage_class_specifierContext): StorageClass {
+        return when {
+            ctx.Typedef() != null -> StorageClass.TYPEDEF
+            ctx.Extern() != null -> StorageClass.EXTERN
+            ctx.Static() != null -> StorageClass.STATIC
+            ctx.Auto() != null -> StorageClass.AUTO
+            ctx.Register() != null -> StorageClass.REGISTER
+            else -> throw TypeException("Invalid storage class spec: ${ctx.text}")
+        }
+    }
+
+    private fun parseTypeSpec(ctx: CParser.Type_specifierContext): TypeSpec {
+        if (ctx.typedef_name() != null) {
+            return TypeSpec.TypedefName(ctx.typedef_name().text)
+        }
+        return when {
+            ctx.Void() != null -> TypeSpec.VOID
+            ctx.Char() != null -> TypeSpec.CHAR
+            ctx.Short() != null -> TypeSpec.SHORT
+            ctx.Int() != null -> TypeSpec.INT
+            ctx.Long() != null -> TypeSpec.LONG
+            ctx.Float() != null -> TypeSpec.FLOAT
+            ctx.Double() != null -> TypeSpec.DOUBLE
+            ctx.Signed() != null -> TypeSpec.SIGNED
+            ctx.Unsigned() != null -> TypeSpec.UNSIGNED
+            else -> throw TypeException("Invalid type spec: ${ctx.text}")
+        }
+    }
+
+    private fun parseTypeQualifier(ctx: CParser.Type_qualifierContext): TypeQualifier {
+        return when {
+            ctx.Const() != null -> TypeQualifier.CONST
+            ctx.Volatile() != null -> TypeQualifier.VOLATILE
+            ctx.Restrict() != null -> TypeQualifier.RESTRICT
+            else -> throw TypeException("Invalid type spec: ${ctx.text}")
+        }
+    }
+
+    private fun parseFunctionSpec(ctx: CParser.Function_specifierContext): FunctionSpec {
+        return when {
+            ctx.Inline() != null -> FunctionSpec.INLINE
+            else -> throw TypeException("Invalid function spec: ${ctx.text}")
+        }
     }
 }

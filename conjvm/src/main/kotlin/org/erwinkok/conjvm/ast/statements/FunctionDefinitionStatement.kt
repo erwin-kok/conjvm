@@ -2,8 +2,8 @@ package org.erwinkok.conjvm.ast.statements
 
 import org.erwinkok.conjvm.ast.AstStatementVisitor
 import org.erwinkok.conjvm.ast.SourceLocation
-import org.erwinkok.conjvm.ast.Symbol
-import org.erwinkok.conjvm.ast.Type
+import org.erwinkok.conjvm.ast.types.Symbol
+import org.erwinkok.conjvm.ast.types.Type
 
 class FunctionDefinitionStatement(
     location: SourceLocation,

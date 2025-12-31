@@ -33,7 +33,7 @@ grammar C;
 */
 
 @lexer::header {
-import org.erwinkok.conjvm.ast.VariableType;
+import org.erwinkok.conjvm.ast.types.VariableType;
 }
 
 @lexer::members {
@@ -307,11 +307,11 @@ init_declarator
     ;
 
 storage_class_specifier
-    :   'typedef'
-    |   'extern'
-    |   'static'
-    |   'auto'
-    |   'register'
+    :   Typedef
+    |   Extern
+    |   Static
+    |   Auto
+    |   Register
     ;
 
 // struct, union and enum are not supported
@@ -337,13 +337,13 @@ specifier_qualifier_list
     ;
 
 type_qualifier
-    :   'const'
-    |   'restrict'
-    |   'volatile'
+    :   Const
+    |   Restrict
+    |   Volatile
     ;
 
 function_specifier
-    :   'inline'
+    :   Inline
     ;
 
 // Not all direct declarator types are supported, only Identifier
@@ -378,6 +378,10 @@ Char
 
 Const
     : 'const'
+    ;
+
+Restrict
+    : 'restrict'
     ;
 
 Continue
@@ -448,6 +452,14 @@ Static
     : 'static'
     ;
 
+Auto
+    : 'auto'
+    ;
+
+Register
+    : 'register'
+    ;
+
 Struct
     : 'struct'
     ;
@@ -458,6 +470,10 @@ Switch
 
 Typedef
     : 'typedef'
+    ;
+
+Extern
+    : 'extern'
     ;
 
 Union
@@ -474,6 +490,10 @@ Void
 
 Volatile
     : 'volatile'
+    ;
+
+Inline
+    : 'inline'
     ;
 
 While

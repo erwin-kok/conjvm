@@ -1,6 +1,6 @@
 package org.erwinkok.conjvm.tac.instructions
 
-import org.erwinkok.conjvm.ast.VariableType
+import org.erwinkok.conjvm.ast.types.VariableType
 import org.erwinkok.conjvm.tac.values.TacTemp
 import org.erwinkok.conjvm.tac.values.TacValue
 

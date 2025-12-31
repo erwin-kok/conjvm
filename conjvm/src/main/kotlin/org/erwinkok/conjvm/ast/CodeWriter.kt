@@ -250,7 +250,7 @@ class CodeWriter(val writer: Writer) : AstVisitor<String, DisplayContext> {
         val nodeResult = statement.variableDeclarators.joinToString {
             writeVariableDeclarator(it, ctx)
         }
-        writer.appendLine("${statement.type} $nodeResult;")
+        writer.appendLine("${statement.declarationSpecifier} $nodeResult;")
         return ""
     }
 
@@ -296,11 +296,7 @@ class CodeWriter(val writer: Writer) : AstVisitor<String, DisplayContext> {
     private fun visitForInit(statement: ForInit, ctx: DisplayContext): String {
         if (statement is ForInitVariableDeclaration) {
             val nodeResult = statement.variableDeclaration.variableDeclarators.joinToString { writeVariableDeclarator(it, ctx) }
-            return if (statement.variableDeclaration.type != null) {
-                "${statement.variableDeclaration.type} $nodeResult"
-            } else {
-                nodeResult
-            }
+            return "${statement.variableDeclaration.declarationSpecifier} $nodeResult"
         } else {
             require(statement is ForInitAssignmentExpression)
             return statement.assignments.joinToString(", ") { visit(it, ctx) }

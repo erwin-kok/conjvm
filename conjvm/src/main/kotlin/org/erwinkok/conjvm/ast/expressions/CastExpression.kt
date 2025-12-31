@@ -2,7 +2,7 @@ package org.erwinkok.conjvm.ast.expressions
 
 import org.erwinkok.conjvm.ast.AstExpressionVisitor
 import org.erwinkok.conjvm.ast.SourceLocation
-import org.erwinkok.conjvm.ast.VariableType
+import org.erwinkok.conjvm.ast.types.VariableType
 
 class CastExpression(location: SourceLocation, val type: VariableType, val expression: Expression) : Expression(location) {
     override fun <R, C> accept(visitor: AstExpressionVisitor<R, C>, ctx: C): R = visitor.visitCast(this, ctx)

@@ -88,7 +88,7 @@ class AssignmentTranslation : BaseTranslationVisitor() {
                 allStatements.add(
                     VariableDeclarationStatement(
                         location = statement.location,
-                        type = statement.type,
+                        declarationSpecifier = statement.declarationSpecifier,
                         variableDeclarators = listOf(variableDeclarator),
                     ),
                 )
@@ -101,7 +101,7 @@ class AssignmentTranslation : BaseTranslationVisitor() {
                 allStatements.add(
                     VariableDeclarationStatement(
                         location = statement.location,
-                        type = statement.type,
+                        declarationSpecifier = statement.declarationSpecifier,
                         variableDeclarators = listOf(variableDeclarator),
                     ),
                 )

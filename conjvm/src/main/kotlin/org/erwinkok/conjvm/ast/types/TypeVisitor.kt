@@ -1,4 +1,4 @@
-package org.erwinkok.conjvm.ast
+package org.erwinkok.conjvm.ast.types
 
 import org.erwinkok.conjvm.ast.expressions.ArrayAccessExpression
 import org.erwinkok.conjvm.ast.expressions.AssignmentExpression
@@ -36,9 +36,25 @@ import org.erwinkok.conjvm.ast.statements.WhileStatement
 class TypeContext
 
 class TypeVisitor :
-    AstStatementVisitor<Unit, TypeContext>,
-    AstExpressionVisitor<Type, TypeContext> {
-    private var currentReturn: Type = Type.Void
+    org.erwinkok.conjvm.ast.AstStatementVisitor<Unit, TypeContext>,
+    org.erwinkok.conjvm.ast.AstExpressionVisitor<Type, TypeContext> {
+    private var currentReturn: Type = Type.TVoid
+
+    private val typedefTable = mutableMapOf<String, QualType>()
+
+    init {
+        typedefTable["uint"] = QualType(Type.Builtin.TInt(false, 32))
+        typedefTable["uint16"] = QualType(Type.Builtin.TInt(false, 16))
+        typedefTable["uint32"] = QualType(Type.Builtin.TInt(false, 32))
+        typedefTable["uint64"] = QualType(Type.Builtin.TInt(false, 64))
+
+        typedefTable["sint"] = QualType(Type.Builtin.TInt(true, 32))
+        typedefTable["sint16"] = QualType(Type.Builtin.TInt(true, 16))
+        typedefTable["sint32"] = QualType(Type.Builtin.TInt(true, 32))
+        typedefTable["sint64"] = QualType(Type.Builtin.TInt(true, 64))
+
+        typedefTable["m68ki_bitfield_t"] = QualType(Type.XXX())
+    }
 
     override fun visitCompilationUnit(statement: CompilationUnitStatement, ctx: TypeContext) {
         statement.functionDefinitions.forEach {
@@ -109,7 +125,7 @@ class TypeVisitor :
 
     override fun visitReturn(statement: ReturnStatement, ctx: TypeContext) {
         if (statement.value == null) {
-            if (currentReturn != Type.Void) {
+            if (currentReturn != Type.TVoid) {
                 error("missing return value")
             }
         } else {
@@ -137,22 +153,22 @@ class TypeVisitor :
 
     override fun visitArrayAccess(expression: ArrayAccessExpression, ctx: TypeContext): Type {
         // TODO("Not yet implemented")
-        return Type.Error
+        return Type.TError
     }
 
     override fun visitAssignment(expression: AssignmentExpression, ctx: TypeContext): Type {
         // TODO("Not yet implemented")
-        return Type.Error
+        return Type.TError
     }
 
     override fun visitBinary(expression: BinaryExpression, ctx: TypeContext): Type {
         // TODO("Not yet implemented")
-        return Type.Error
+        return Type.TError
     }
 
     override fun visitCall(expression: CallExpression, ctx: TypeContext): Type {
         // TODO("Not yet implemented")
-        return Type.Error
+        return Type.TError
     }
 
     override fun visitCast(expression: CastExpression, ctx: TypeContext): Type {
@@ -160,30 +176,30 @@ class TypeVisitor :
     }
 
     override fun visitConstantInt(expression: ConstantIntExpression, ctx: TypeContext): Type {
-        expression.expressionType = Type.Int
-        return Type.Int
+        expression.expressionType = Type.TInt
+        return Type.TInt
     }
 
     override fun visitConstantLong(expression: ConstantLongExpression, ctx: TypeContext): Type {
-        expression.expressionType = Type.Long
-        return Type.Long
+        expression.expressionType = Type.TLong
+        return Type.TLong
     }
 
     override fun visitConstantString(expression: ConstantStringExpression, ctx: TypeContext): Type {
-        expression.expressionType = Type.String
-        return Type.String
+        expression.expressionType = Type.TString
+        return Type.TString
     }
 
     override fun visitFieldAccess(expression: FieldAccessExpression, ctx: TypeContext): Type {
         // TODO("Not yet implemented")
-        return Type.Error
+        return Type.TError
     }
 
     override fun visitIdentifier(identifier: Identifier, ctx: TypeContext): Type {
         val symbol = Scope.current.lookup(identifier.name)
         return if (symbol == null) {
 //            error("undeclared variable ${identifier.name}")
-            Type.Error
+            Type.TError
         } else {
             identifier.expressionType = symbol.type
             symbol.type
@@ -204,16 +220,16 @@ class TypeVisitor :
 
     override fun visitTernary(expression: TernaryExpression, ctx: TypeContext): Type {
         // TODO("Not yet implemented")
-        return Type.Error
+        return Type.TError
     }
 
     override fun visitUnary(expression: UnaryExpression, ctx: TypeContext): Type {
         // TODO("Not yet implemented")
-        return Type.Error
+        return Type.TError
     }
 
     private fun declareFunction(function: FunctionDefinitionStatement) {
-        Scope.current.define(Symbol(function.name, Type.Func(function.returnType, function.params.map { it.type })))
+        Scope.current.define(Symbol(function.name, Type.TFunc(function.returnType, function.params.map { it.type })))
     }
 
     private fun visitSwitchCase(case: SwitchCaseStatement, ctx: TypeContext) {
@@ -223,5 +239,37 @@ class TypeVisitor :
 
     private fun visitDefaultCase(default: SwitchDefaultStatement, ctx: TypeContext) {
         visit(default.blockStatement, ctx)
+    }
+
+    private fun buildBaseType(declSpec: DeclarationSpecifier): QualType {
+        val typedefs = declSpec.typeSpecs.filterIsInstance<TypeSpec.TypedefName>()
+        if (typedefs.isNotEmpty()) {
+            if (typedefs.size != 1) {
+                throw TypeException("multiple typedef names in declaration")
+            }
+            if (declSpec.typeSpecs.size > 1) {
+                throw TypeException("typedef name mixed with type specifiers")
+            }
+            val name = typedefs.single().name
+            val qt = typedefTable[name] ?: throw TypeException("unknown typedef '$name'")
+            return qt.copy(qualifiers = declSpec.qualifiers)
+        }
+        val signed = !declSpec.typeSpecs.contains(TypeSpec.UNSIGNED)
+        val base = when {
+            declSpec.typeSpecs.contains(TypeSpec.VOID) -> Type.Builtin.TVoid
+            declSpec.typeSpecs.contains(TypeSpec.FLOAT) -> Type.Builtin.TFloat
+            declSpec.typeSpecs.contains(TypeSpec.DOUBLE) -> Type.Builtin.TDouble
+            else -> {
+                val longCount = declSpec.typeSpecs.count { it == TypeSpec.LONG }
+                val width = when (longCount) {
+                    0 -> 32
+                    1 -> 32
+                    2 -> 64
+                    else -> throw TypeException("too many longs in declaration specifier")
+                }
+                Type.Builtin.TInt(signed, width)
+            }
+        }
+        return QualType(base, declSpec.qualifiers)
     }
 }

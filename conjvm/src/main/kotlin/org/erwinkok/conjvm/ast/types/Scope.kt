@@ -1,4 +1,4 @@
-package org.erwinkok.conjvm.ast
+package org.erwinkok.conjvm.ast.types
 
 class Symbol(val name: String, val type: Type)
 

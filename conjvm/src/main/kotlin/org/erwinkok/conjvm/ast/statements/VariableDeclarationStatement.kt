@@ -2,8 +2,8 @@ package org.erwinkok.conjvm.ast.statements
 
 import org.erwinkok.conjvm.ast.AstStatementVisitor
 import org.erwinkok.conjvm.ast.SourceLocation
-import org.erwinkok.conjvm.ast.VariableType
 import org.erwinkok.conjvm.ast.expressions.Expression
+import org.erwinkok.conjvm.ast.types.DeclarationSpecifier
 
 class Declarator(val location: SourceLocation, val pointer: Boolean, val name: String) {
     override fun equals(other: Any?): Boolean {
@@ -50,7 +50,7 @@ data class VariableDeclarator(val location: SourceLocation, val declarator: Decl
 
 class VariableDeclarationStatement(
     location: SourceLocation,
-    val type: VariableType?,
+    val declarationSpecifier: DeclarationSpecifier,
     val variableDeclarators: List<VariableDeclarator>,
 ) : Statement(location) {
     override fun <R, C> accept(visitor: AstStatementVisitor<R, C>, ctx: C): R = visitor.visitVariableDeclaration(this, ctx)
@@ -63,14 +63,14 @@ class VariableDeclarationStatement(
             return false
         }
 
-        if (type != other.type) return false
+        if (declarationSpecifier != other.declarationSpecifier) return false
         if (variableDeclarators != other.variableDeclarators) return false
 
         return true
     }
 
     override fun hashCode(): Int {
-        var result = type?.hashCode() ?: 0
+        var result = declarationSpecifier.hashCode()
         result = 31 * result + variableDeclarators.hashCode()
         return result
     }

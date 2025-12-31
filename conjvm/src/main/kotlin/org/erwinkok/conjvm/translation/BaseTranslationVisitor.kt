@@ -248,7 +248,7 @@ abstract class BaseTranslationVisitor : TranslationVisitor {
         }
         return TranslationResult(
             allStatements +
-                VariableDeclarationStatement(statement.location, statement.type, varDecls),
+                VariableDeclarationStatement(statement.location, statement.declarationSpecifier, varDecls),
             null,
         )
     }
