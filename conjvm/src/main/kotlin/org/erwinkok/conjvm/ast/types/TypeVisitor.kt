@@ -1,5 +1,7 @@
 package org.erwinkok.conjvm.ast.types
 
+import org.erwinkok.conjvm.ast.AstExpressionVisitor
+import org.erwinkok.conjvm.ast.AstStatementVisitor
 import org.erwinkok.conjvm.ast.expressions.ArrayAccessExpression
 import org.erwinkok.conjvm.ast.expressions.AssignmentExpression
 import org.erwinkok.conjvm.ast.expressions.BinaryExpression
@@ -36,8 +38,8 @@ import org.erwinkok.conjvm.ast.statements.WhileStatement
 class TypeContext
 
 class TypeVisitor :
-    org.erwinkok.conjvm.ast.AstStatementVisitor<Unit, TypeContext>,
-    org.erwinkok.conjvm.ast.AstExpressionVisitor<Type, TypeContext> {
+    AstStatementVisitor<Unit, TypeContext>,
+    AstExpressionVisitor<Type, TypeContext> {
     private var currentReturn: Type = Type.TVoid
 
     private val typedefTable = mutableMapOf<String, QualType>()

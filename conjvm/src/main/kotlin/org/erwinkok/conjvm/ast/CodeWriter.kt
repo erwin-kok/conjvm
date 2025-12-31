@@ -34,7 +34,6 @@ import org.erwinkok.conjvm.ast.statements.SwitchCaseStatement
 import org.erwinkok.conjvm.ast.statements.SwitchDefaultStatement
 import org.erwinkok.conjvm.ast.statements.SwitchStatement
 import org.erwinkok.conjvm.ast.statements.VariableDeclarationStatement
-import org.erwinkok.conjvm.ast.statements.VariableDeclarator
 import org.erwinkok.conjvm.ast.statements.WhileStatement
 import java.io.Writer
 
@@ -248,7 +247,7 @@ class CodeWriter(val writer: Writer) : AstVisitor<String, DisplayContext> {
     override fun visitVariableDeclaration(statement: VariableDeclarationStatement, ctx: DisplayContext): String {
         appendIndent(ctx)
         val nodeResult = statement.variableDeclarators.joinToString {
-            writeVariableDeclarator(it, ctx)
+            it.toString()
         }
         writer.appendLine("${statement.declarationSpecifier} $nodeResult;")
         return ""
@@ -260,16 +259,6 @@ class CodeWriter(val writer: Writer) : AstVisitor<String, DisplayContext> {
         writer.appendLine("while ($testResult)")
         writer.appendLine(visit(statement.statements, ctx))
         return ""
-    }
-
-    private fun writeVariableDeclarator(declarator: VariableDeclarator, ctx: DisplayContext): String {
-        val pointer = if (declarator.declarator.pointer) "*" else ""
-        val init = declarator.init?.let { visit(it, ctx) }
-        return if (init != null) {
-            "$pointer${declarator.declarator.name} = $init"
-        } else {
-            "$pointer${declarator.declarator.name}"
-        }
     }
 
     private fun visitSwitchCase(statement: SwitchCaseStatement, ctx: DisplayContext): String {
@@ -295,7 +284,7 @@ class CodeWriter(val writer: Writer) : AstVisitor<String, DisplayContext> {
 
     private fun visitForInit(statement: ForInit, ctx: DisplayContext): String {
         if (statement is ForInitVariableDeclaration) {
-            val nodeResult = statement.variableDeclaration.variableDeclarators.joinToString { writeVariableDeclarator(it, ctx) }
+            val nodeResult = statement.variableDeclaration.variableDeclarators.joinToString { it.toString() }
             return "${statement.variableDeclaration.declarationSpecifier} $nodeResult"
         } else {
             require(statement is ForInitAssignmentExpression)

@@ -114,11 +114,12 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
     override fun visitFunction_definition(ctx: CParser.Function_definitionContext): Value {
         // TODO
         val declarationSpecifier = ctx.declaration_specifiers()?.let { visit(it).cast<DeclarationSpecifier>() }
+//        val declarator = ctx.declarator()?.let { visit(it).cast<Declarator>() }
         return Value.of(
             FunctionDefinitionStatement(
                 ctx.location,
                 Type.TVoid,
-                ctx.Identifier().text,
+                ctx.declarator2().Identifier().text,
                 emptyList(),
                 visit(ctx.block_statement()).cast<BlockStatement>(),
             ),
