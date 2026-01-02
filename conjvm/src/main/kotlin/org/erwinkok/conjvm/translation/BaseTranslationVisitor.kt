@@ -74,7 +74,7 @@ abstract class BaseTranslationVisitor : TranslationVisitor {
     override fun translateCast(expression: CastExpression): TranslationResult {
         val (ts, te) = translate(expression.expression)
         requireNotNull(te)
-        return TranslationResult(ts, CastExpression(expression.location, expression.type, te))
+        return TranslationResult(ts, CastExpression(expression.location, expression.typeName, te))
     }
 
     override fun translateConstantInt(expression: ConstantIntExpression): TranslationResult {
@@ -191,9 +191,8 @@ abstract class BaseTranslationVisitor : TranslationVisitor {
             listOf(
                 FunctionDefinitionStatement(
                     definition.location,
-                    definition.returnType,
-                    definition.name,
-                    definition.params,
+                    definition.declarationSpecifier,
+                    definition.declarator,
                     translatedBlock,
                 ),
             ),

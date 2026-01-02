@@ -57,7 +57,7 @@ class TacTranslation : AstStatementVisitor<TacResult, TacContext> {
         tempFactory.clear()
         labelFactory.clear()
         val translatedBlock = translateBlockStatement(definition.statements)
-        return TacResult(listOf(TacFunctionDefinition(definition.name, translatedBlock)), null)
+        return TacResult(listOf(TacFunctionDefinition(definition.declarator.name(), translatedBlock)), null)
     }
 
     override fun visitBlock(statement: BlockStatement, ctx: TacContext): TacResult {
@@ -208,7 +208,7 @@ class TacTranslation : AstStatementVisitor<TacResult, TacContext> {
                 val (ts, te) = translateExpression(vd)
                 requireNotNull(te)
                 allStatements.addAll(ts)
-                allStatements.add(TacStoreInstruction(TacIdentifier(it.declarator.name), te))
+                allStatements.add(TacStoreInstruction(TacIdentifier(it.declarator.name()), te))
             }
         }
         return TacResult(allStatements, null)

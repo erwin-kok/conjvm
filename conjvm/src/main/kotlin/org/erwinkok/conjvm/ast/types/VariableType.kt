@@ -43,29 +43,6 @@ enum class VariableType {
     }
 
     companion object {
-        fun parse(type: String): VariableType {
-            return when (type) {
-                "int" -> INT
-                "int8" -> INT8
-                "int16" -> INT16
-                "int32" -> INT32
-                "int64" -> INT64
-                "uint" -> UINT
-                "uint8" -> UINT8
-                "uint16" -> UINT16
-                "uint32" -> UINT32
-                "uint64" -> UINT64
-                "sint" -> SINT
-                "sint8" -> SINT8
-                "sint16" -> SINT16
-                "sint32" -> SINT32
-                "sint64" -> SINT64
-                "m68ki_bitfield_t" -> BITFIELD
-                "void" -> VOID
-                else -> error("Invalid variable type: $type")
-            }
-        }
-
         fun isTypedef(s: String): Boolean {
             return s == "int" ||
                 s == "int8" ||

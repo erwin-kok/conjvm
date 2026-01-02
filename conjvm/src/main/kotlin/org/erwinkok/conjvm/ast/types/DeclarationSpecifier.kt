@@ -1,7 +1,5 @@
 package org.erwinkok.conjvm.ast.types
 
-typealias Qualifiers = Set<TypeQualifier>
-
 enum class StorageClass {
     TYPEDEF,
     EXTERN,
@@ -35,8 +33,8 @@ enum class FunctionSpec {
 }
 
 data class DeclarationSpecifier(
-    val storage: MutableSet<StorageClass> = mutableSetOf(),
-    val typeSpecs: MutableList<TypeSpec> = mutableListOf(),
-    val qualifiers: MutableSet<TypeQualifier> = mutableSetOf(),
-    val functionSpecs: MutableSet<FunctionSpec> = mutableSetOf(),
+    val storage: Set<StorageClass>,
+    val typeSpecs: List<TypeSpec>,
+    val qualifiers: Set<TypeQualifier>,
+    val functionSpecs: Set<FunctionSpec>,
 )

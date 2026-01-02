@@ -3,6 +3,10 @@ package org.erwinkok.conjvm.ast
 import org.antlr.v4.runtime.ParserRuleContext
 import org.erwinkok.conjvm.CBaseVisitor
 import org.erwinkok.conjvm.CParser
+import org.erwinkok.conjvm.CParser.DeclSpecFuncSpecContext
+import org.erwinkok.conjvm.CParser.DeclSpecTypeQualContext
+import org.erwinkok.conjvm.CParser.DeclSpecTypeSpecContext
+import org.erwinkok.conjvm.CParser.StorageClassSpecContext
 import org.erwinkok.conjvm.ast.expressions.ArrayAccessExpression
 import org.erwinkok.conjvm.ast.expressions.AssignmentExpression
 import org.erwinkok.conjvm.ast.expressions.AssignmentExpressionType
@@ -27,7 +31,6 @@ import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.BreakStatement
 import org.erwinkok.conjvm.ast.statements.CompilationUnitStatement
 import org.erwinkok.conjvm.ast.statements.ContinueStatement
-import org.erwinkok.conjvm.ast.statements.Declarator
 import org.erwinkok.conjvm.ast.statements.ExpressionStatement
 import org.erwinkok.conjvm.ast.statements.ForInit
 import org.erwinkok.conjvm.ast.statements.ForInitAssignmentExpression
@@ -47,13 +50,14 @@ import org.erwinkok.conjvm.ast.statements.VariableDeclarationStatement
 import org.erwinkok.conjvm.ast.statements.VariableDeclarator
 import org.erwinkok.conjvm.ast.statements.WhileStatement
 import org.erwinkok.conjvm.ast.types.DeclarationSpecifier
+import org.erwinkok.conjvm.ast.types.Declarator
 import org.erwinkok.conjvm.ast.types.FunctionSpec
+import org.erwinkok.conjvm.ast.types.Parameter
 import org.erwinkok.conjvm.ast.types.StorageClass
-import org.erwinkok.conjvm.ast.types.Type
 import org.erwinkok.conjvm.ast.types.TypeException
+import org.erwinkok.conjvm.ast.types.TypeName
 import org.erwinkok.conjvm.ast.types.TypeQualifier
 import org.erwinkok.conjvm.ast.types.TypeSpec
-import org.erwinkok.conjvm.ast.types.VariableType
 import org.erwinkok.conjvm.parser.ErrorReporter
 
 private val ParserRuleContext.location: SourceLocation
@@ -112,15 +116,13 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
     }
 
     override fun visitFunction_definition(ctx: CParser.Function_definitionContext): Value {
-        // TODO
         val declarationSpecifier = ctx.declaration_specifiers()?.let { visit(it).cast<DeclarationSpecifier>() }
-//        val declarator = ctx.declarator()?.let { visit(it).cast<Declarator>() }
+        val declarator = visit(ctx.declarator()).cast<Declarator>()
         return Value.of(
             FunctionDefinitionStatement(
                 ctx.location,
-                Type.TVoid,
-                ctx.declarator2().Identifier().text,
-                emptyList(),
+                declarationSpecifier,
+                declarator,
                 visit(ctx.block_statement()).cast<BlockStatement>(),
             ),
         )
@@ -311,11 +313,9 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
     }
 
     override fun visitCastExpr(ctx: CParser.CastExprContext): Value {
-        val typeName = visit(ctx.type_name()).cast<List<String>>()
-        val variableType = typeName.firstOrNull()
-        requireNotNull(variableType) { "Variable type $typeName must be set for cast" }
+        val typeName = visit(ctx.type_name()).cast<TypeName>()
         val nodeResult = visit(ctx.cast_expression()).cast<Expression>()
-        return Value.of(CastExpression(ctx.location, VariableType.parse(variableType), nodeResult))
+        return Value.of(CastExpression(ctx.location, typeName, nodeResult))
     }
 
     override fun visitUnary_expression(ctx: CParser.Unary_expressionContext): Value {
@@ -616,21 +616,30 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
     //
     override fun visitVariable_declaration(ctx: CParser.Variable_declarationContext): Value {
         val declarationSpecifier = visit(ctx.declaration_specifiers()).cast<DeclarationSpecifier>()
+        val variableDeclarators = visit(ctx.init_declarator_list()).cast<List<VariableDeclarator>>()
         return Value.of(
             VariableDeclarationStatement(
                 ctx.location,
                 declarationSpecifier,
-                visit(ctx.init_declarator_list()).cast<List<VariableDeclarator>>(),
+                variableDeclarators,
             ),
         )
     }
 
     override fun visitDeclaration_specifiers(ctx: CParser.Declaration_specifiersContext): Value {
-        val declSpec = DeclarationSpecifier()
+        val storage = mutableSetOf<StorageClass>()
+        val typeSpecs = mutableListOf<TypeSpec>()
+        val qualifiers = mutableSetOf<TypeQualifier>()
+        val functionSpecs = mutableSetOf<FunctionSpec>()
         ctx.declaration_specifier().forEach {
-            collectDeclSpecifier(it, declSpec)
+            when (it) {
+                is StorageClassSpecContext -> storage += parseStorageClassSpec(it.storage_class_specifier())
+                is DeclSpecTypeSpecContext -> typeSpecs += parseTypeSpec(it.type_specifier())
+                is DeclSpecTypeQualContext -> qualifiers += parseTypeQualifier(it.type_qualifier())
+                is DeclSpecFuncSpecContext -> functionSpecs += parseFunctionSpec(it.function_specifier())
+            }
         }
-        return Value.of(declSpec)
+        return Value.of(DeclarationSpecifier(storage, typeSpecs, qualifiers, functionSpecs))
     }
 
     override fun visitInit_declarator_list(ctx: CParser.Init_declarator_listContext): Value {
@@ -648,24 +657,69 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
     }
 
     override fun visitSpecifier_qualifier_list(ctx: CParser.Specifier_qualifier_listContext): Value {
-        val result = ArrayList<String>()
-        if (ctx.type_specifier() != null) {
-            result.add(ctx.type_specifier().text)
-        } else {
-            result.add(ctx.type_qualifier().text)
-        }
-        if (ctx.specifier_qualifier_list() != null) {
-            result.addAll(visit(ctx.specifier_qualifier_list()).cast<List<String>>())
-        }
-        return Value.of(result)
+        val typeSpecs = mutableListOf<TypeSpec>()
+        val qualifiers = mutableSetOf<TypeQualifier>()
+        ctx.type_specifier().map { typeSpecs += parseTypeSpec(it) }
+        ctx.type_qualifier().map { qualifiers += parseTypeQualifier(it) }
+        return Value.of(DeclarationSpecifier(emptySet(), typeSpecs, qualifiers, emptySet()))
     }
 
     override fun visitDeclarator(ctx: CParser.DeclaratorContext): Value {
-        return Value.of(Declarator(ctx.location, ctx.pointer() != null, ctx.Identifier().text))
+        val base = visit(ctx.direct_declarator()).cast<Declarator>()
+        val pointerQualifiers = ctx.pointer()?.let { visit(it).cast<List<List<TypeQualifier>>>() } ?: emptyList()
+        val declarator = pointerQualifiers.foldRight(base) { qualifiers, inner ->
+            Declarator.PointerDeclarator(ctx.location, qualifiers, inner)
+        }
+        return Value.of(declarator)
+    }
+
+    override fun visitDirectDeclIdentifier(ctx: CParser.DirectDeclIdentifierContext): Value {
+        return Value.of(Declarator.IdentifierDeclarator(ctx.location, ctx.Identifier().text))
+    }
+
+    override fun visitDirectDeclParenthesized(ctx: CParser.DirectDeclParenthesizedContext): Value {
+        return visit(ctx.declarator())
+    }
+
+    override fun visitDirectDeclFunction(ctx: CParser.DirectDeclFunctionContext): Value {
+        val inner = visit(ctx.direct_declarator()).cast<Declarator>()
+        val params = visit(ctx.parameter_type_list()).cast<List<Parameter>>()
+        return Value.of(Declarator.FunctionDeclarator(ctx.location, inner, params))
+    }
+
+    override fun visitDirectDeclArray(ctx: CParser.DirectDeclArrayContext): Value {
+        val inner = visit(ctx.direct_declarator()).cast<Declarator>()
+        val size = ctx.assignment_expression()?.let { visit(it).cast<Expression>() }
+        return Value.of(Declarator.ArrayDeclarator(ctx.location, size, inner))
+    }
+
+    override fun visitPointer(ctx: CParser.PointerContext): Value {
+        val pointer = ctx.pointer_part().map { visit(it).cast<List<TypeQualifier>>() }
+        return Value.of(pointer)
+    }
+
+    override fun visitPointer_part(ctx: CParser.Pointer_partContext): Value {
+        return Value.of(ctx.type_qualifier().map { parseTypeQualifier(it) })
+    }
+
+    override fun visitParamListNoParams(ctx: CParser.ParamListNoParamsContext): Value {
+        return Value.of(emptyList<Parameter>())
+    }
+
+    override fun visitParamList(ctx: CParser.ParamListContext): Value {
+        val params = ctx.parameter_list().parameter_declaration().map { visit(it).cast<Parameter>() }
+        return Value.of(params)
+    }
+
+    override fun visitParameter_declaration(ctx: CParser.Parameter_declarationContext): Value {
+        val declarationSpecifier = visit(ctx.declaration_specifiers()).cast<DeclarationSpecifier>()
+        val declarator = visit(ctx.declarator()).cast<Declarator>()
+        return Value.of(Parameter(declarationSpecifier, declarator))
     }
 
     override fun visitType_name(ctx: CParser.Type_nameContext): Value {
-        return visit(ctx.specifier_qualifier_list())
+        val declarationSpecifier = visit(ctx.specifier_qualifier_list()).cast<DeclarationSpecifier>()
+        return Value.of(TypeName(declarationSpecifier, null))
     }
 
     override fun visitInitializer(ctx: CParser.InitializerContext): Value {
@@ -685,15 +739,6 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
         input.toIntOrNull()?.let { return ConstantIntExpression(location, it) }
         input.toLongOrNull()?.let { return ConstantLongExpression(location, it) }
         error("Could not parse constant: $input")
-    }
-
-    private fun collectDeclSpecifier(ctx: CParser.Declaration_specifierContext, declSpec: DeclarationSpecifier) {
-        when (ctx) {
-            is CParser.StorageClassSpecContext -> declSpec.storage += parseStorageClassSpec(ctx.storage_class_specifier())
-            is CParser.DeclSpecTypeSpecContext -> declSpec.typeSpecs += parseTypeSpec(ctx.type_specifier())
-            is CParser.DeclSpecTypeQualContext -> declSpec.qualifiers += parseTypeQualifier(ctx.type_qualifier())
-            is CParser.DeclSpecFuncSpecContext -> declSpec.functionSpecs += parseFunctionSpec(ctx.function_specifier())
-        }
     }
 
     private fun parseStorageClassSpec(ctx: CParser.Storage_class_specifierContext): StorageClass {

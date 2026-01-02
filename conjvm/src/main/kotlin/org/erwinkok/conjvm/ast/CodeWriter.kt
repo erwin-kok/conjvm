@@ -79,7 +79,7 @@ class CodeWriter(val writer: Writer) : AstVisitor<String, DisplayContext> {
 
     override fun visitCast(expression: CastExpression, ctx: DisplayContext): String {
         val nodeResult = visit(expression.expression, ctx)
-        return "(${expression.type})$nodeResult"
+        return "(${expression.typeName})$nodeResult"
     }
 
     override fun visitConstantInt(expression: ConstantIntExpression, ctx: DisplayContext): String {
@@ -182,7 +182,7 @@ class CodeWriter(val writer: Writer) : AstVisitor<String, DisplayContext> {
     }
 
     override fun visitFunctionDefinition(definition: FunctionDefinitionStatement, ctx: DisplayContext): String {
-        writer.appendLine("void ${definition.name}(void)")
+        writer.appendLine(definition.toString())
         visit(definition.statements, ctx)
         writer.appendLine()
         writer.appendLine()

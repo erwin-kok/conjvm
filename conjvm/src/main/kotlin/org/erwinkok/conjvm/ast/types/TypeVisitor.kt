@@ -10,6 +10,7 @@ import org.erwinkok.conjvm.ast.expressions.CastExpression
 import org.erwinkok.conjvm.ast.expressions.ConstantIntExpression
 import org.erwinkok.conjvm.ast.expressions.ConstantLongExpression
 import org.erwinkok.conjvm.ast.expressions.ConstantStringExpression
+import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.ast.expressions.FieldAccessExpression
 import org.erwinkok.conjvm.ast.expressions.Identifier
 import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
@@ -40,27 +41,30 @@ class TypeContext
 class TypeVisitor :
     AstStatementVisitor<Unit, TypeContext>,
     AstExpressionVisitor<Type, TypeContext> {
-    private var currentReturn: Type = Type.TVoid
-
+    private var currentReturn: Type = Type.Void
     private val typedefTable = mutableMapOf<String, QualType>()
+    private var scope = Scope()
 
     init {
-        typedefTable["uint"] = QualType(Type.Builtin.TInt(false, 32))
-        typedefTable["uint16"] = QualType(Type.Builtin.TInt(false, 16))
-        typedefTable["uint32"] = QualType(Type.Builtin.TInt(false, 32))
-        typedefTable["uint64"] = QualType(Type.Builtin.TInt(false, 64))
+        typedefTable["uint"] = QualType(Type.Int(false))
+        typedefTable["uint16"] = QualType(Type.Short(false))
+        typedefTable["uint32"] = QualType(Type.Int(false))
+        typedefTable["uint64"] = QualType(Type.Long(false))
 
-        typedefTable["sint"] = QualType(Type.Builtin.TInt(true, 32))
-        typedefTable["sint16"] = QualType(Type.Builtin.TInt(true, 16))
-        typedefTable["sint32"] = QualType(Type.Builtin.TInt(true, 32))
-        typedefTable["sint64"] = QualType(Type.Builtin.TInt(true, 64))
+        typedefTable["sint"] = QualType(Type.Int(true))
+        typedefTable["sint16"] = QualType(Type.Short(true))
+        typedefTable["sint32"] = QualType(Type.Int(true))
+        typedefTable["sint64"] = QualType(Type.Long(true))
 
-        typedefTable["m68ki_bitfield_t"] = QualType(Type.XXX())
+        typedefTable["m68ki_bitfield_t"] = QualType(Type.Struct("m68ki_bitfield_t", emptyList()))
     }
 
     override fun visitCompilationUnit(statement: CompilationUnitStatement, ctx: TypeContext) {
+        statement.variableDeclarations.forEach {
+            defineVariableDeclaration(it)
+        }
         statement.functionDefinitions.forEach {
-            declareFunction(it)
+            defineFunctionDefinition(it)
         }
         statement.functionDefinitions.forEach {
             visit(it, ctx)
@@ -69,23 +73,23 @@ class TypeVisitor :
 
     override fun visitFunctionDefinition(definition: FunctionDefinitionStatement, ctx: TypeContext) {
         val oldReturn = currentReturn
-        currentReturn = definition.returnType
-
-        Scope.enter()
-        definition.params.forEach {
-            Scope.current.define(Symbol(it.name, it.type))
-        }
+//        currentReturn = definition.returnType
+//
+        enterScope()
+//        definition.params.forEach {
+//            Scope.current.define(Symbol(it.name, it.type))
+//        }
 
         visit(definition.statements, ctx)
-        Scope.leave()
+        leaveScope()
 
-        currentReturn = oldReturn
+//        currentReturn = oldReturn
     }
 
     override fun visitBlock(statement: BlockStatement, ctx: TypeContext) {
-        Scope.enter()
+        enterScope()
         statement.statements.forEach { visit(it, ctx) }
-        Scope.leave()
+        leaveScope()
     }
 
     override fun visitBreak(statement: BreakStatement, ctx: TypeContext) {
@@ -127,14 +131,14 @@ class TypeVisitor :
 
     override fun visitReturn(statement: ReturnStatement, ctx: TypeContext) {
         if (statement.value == null) {
-            if (currentReturn != Type.TVoid) {
+            if (currentReturn != Type.Void) {
                 error("missing return value")
             }
         } else {
-            val t = visit(statement.value, ctx)
-            if (!sameType(t, currentReturn)) {
-                error("return type mismatch")
-            }
+//            val t = visit(statement.value, ctx)
+//            if (!sameType(t, currentReturn)) {
+//                error("return type mismatch")
+//            }
         }
     }
 
@@ -145,7 +149,7 @@ class TypeVisitor :
     }
 
     override fun visitVariableDeclaration(statement: VariableDeclarationStatement, ctx: TypeContext) {
-        // TODO("Not yet implemented")
+        defineVariableDeclaration(statement)
     }
 
     override fun visitWhile(statement: WhileStatement, ctx: TypeContext) {
@@ -155,22 +159,22 @@ class TypeVisitor :
 
     override fun visitArrayAccess(expression: ArrayAccessExpression, ctx: TypeContext): Type {
         // TODO("Not yet implemented")
-        return Type.TError
+        return Type.Error
     }
 
     override fun visitAssignment(expression: AssignmentExpression, ctx: TypeContext): Type {
         // TODO("Not yet implemented")
-        return Type.TError
+        return Type.Error
     }
 
     override fun visitBinary(expression: BinaryExpression, ctx: TypeContext): Type {
         // TODO("Not yet implemented")
-        return Type.TError
+        return Type.Error
     }
 
     override fun visitCall(expression: CallExpression, ctx: TypeContext): Type {
         // TODO("Not yet implemented")
-        return Type.TError
+        return Type.Error
     }
 
     override fun visitCast(expression: CastExpression, ctx: TypeContext): Type {
@@ -178,34 +182,37 @@ class TypeVisitor :
     }
 
     override fun visitConstantInt(expression: ConstantIntExpression, ctx: TypeContext): Type {
-        expression.expressionType = Type.TInt
-        return Type.TInt
+        val type = Type.Int(true)
+        expression.expressionType = type
+        return type
     }
 
     override fun visitConstantLong(expression: ConstantLongExpression, ctx: TypeContext): Type {
-        expression.expressionType = Type.TLong
-        return Type.TLong
+        val type = Type.Int(true)
+        expression.expressionType = type
+        return type
     }
 
     override fun visitConstantString(expression: ConstantStringExpression, ctx: TypeContext): Type {
-        expression.expressionType = Type.TString
-        return Type.TString
+        // TODO("Not yet implemented")
+        return Type.Error
     }
 
     override fun visitFieldAccess(expression: FieldAccessExpression, ctx: TypeContext): Type {
         // TODO("Not yet implemented")
-        return Type.TError
+        return Type.Error
     }
 
     override fun visitIdentifier(identifier: Identifier, ctx: TypeContext): Type {
-        val symbol = Scope.current.lookup(identifier.name)
-        return if (symbol == null) {
-//            error("undeclared variable ${identifier.name}")
-            Type.TError
-        } else {
-            identifier.expressionType = symbol.type
-            symbol.type
-        }
+//        val symbol = Scope.current.lookup(identifier.name)
+//        return if (symbol == null) {
+//        error("undeclared variable ${identifier.name}")
+//            Type.Error
+//        } else {
+//            identifier.expressionType = symbol.type
+//            symbol.type
+//        }
+        return Type.Error
     }
 
     override fun visitParenthesized(expression: ParenthesizedExpression, ctx: TypeContext): Type {
@@ -222,16 +229,12 @@ class TypeVisitor :
 
     override fun visitTernary(expression: TernaryExpression, ctx: TypeContext): Type {
         // TODO("Not yet implemented")
-        return Type.TError
+        return Type.Error
     }
 
     override fun visitUnary(expression: UnaryExpression, ctx: TypeContext): Type {
         // TODO("Not yet implemented")
-        return Type.TError
-    }
-
-    private fun declareFunction(function: FunctionDefinitionStatement) {
-        Scope.current.define(Symbol(function.name, Type.TFunc(function.returnType, function.params.map { it.type })))
+        return Type.Error
     }
 
     private fun visitSwitchCase(case: SwitchCaseStatement, ctx: TypeContext) {
@@ -241,6 +244,69 @@ class TypeVisitor :
 
     private fun visitDefaultCase(default: SwitchDefaultStatement, ctx: TypeContext) {
         visit(default.blockStatement, ctx)
+    }
+
+    private fun enterScope() {
+        scope = Scope(scope)
+    }
+
+    private fun leaveScope() {
+        val parent = scope.parent
+        requireNotNull(parent)
+        scope = parent
+    }
+
+    private fun assignable(left: QualType, right: QualType): Boolean {
+        return left.canonical.isCompatibleWith(right.canonical)
+    }
+
+    private fun lookupVariable(name: String): VariableSymbol {
+        val sym = scope.resolve(name)
+        return sym as? VariableSymbol ?: throw TypeException("unknown variable '$name'")
+    }
+
+    private fun lookupFunction(name: String): FunctionSymbol {
+        val sym = scope.resolve(name)
+        return sym as? FunctionSymbol ?: throw TypeException("unknown function '$name'")
+    }
+
+    private fun defineVariableDeclaration(stmt: VariableDeclarationStatement) {
+        for (varDecl in stmt.variableDeclarators) {
+            val qt = resolveType(stmt.declarationSpecifier, varDecl.declarator)
+            val variableSymbol = VariableSymbol(
+                varDecl.declarator.name(),
+                qt,
+                stmt.declarationSpecifier.storage,
+            )
+            val oldSym = scope.resolve(variableSymbol.name)
+            if (oldSym != null && oldSym != variableSymbol) {
+                throw TypeException("variable re-definition of ${oldSym.name} is different from ${variableSymbol.name}")
+            }
+            scope.define(variableSymbol)
+        }
+    }
+
+    private fun defineFunctionDefinition(stmt: FunctionDefinitionStatement) {
+        require(stmt.declarationSpecifier != null)
+        val qt = resolveType(stmt.declarationSpecifier, stmt.declarator)
+        val functionSymbol = FunctionSymbol(
+            stmt.declarator.name(),
+            qt,
+            stmt.declarationSpecifier.storage,
+            stmt.statements,
+        )
+        val oldSym = scope.resolve(functionSymbol.name)
+        if (oldSym != null && oldSym != functionSymbol) {
+            throw TypeException("function re-definition of ${oldSym.name} is different from ${functionSymbol.name}")
+        }
+        scope.define(functionSymbol)
+    }
+
+    private fun resolveType(declSpec: DeclarationSpecifier, declarator: Declarator?): QualType {
+        val base = buildBaseType(declSpec)
+        val fullType = declarator?.let { applyDeclarator(base, it) } ?: base
+        validateType(fullType)
+        return fullType
     }
 
     private fun buildBaseType(declSpec: DeclarationSpecifier): QualType {
@@ -254,24 +320,100 @@ class TypeVisitor :
             }
             val name = typedefs.single().name
             val qt = typedefTable[name] ?: throw TypeException("unknown typedef '$name'")
-            return qt.copy(qualifiers = declSpec.qualifiers)
+            return qt.copy(qualifiers = qt.qualifiers + declSpec.qualifiers)
         }
         val signed = !declSpec.typeSpecs.contains(TypeSpec.UNSIGNED)
         val base = when {
-            declSpec.typeSpecs.contains(TypeSpec.VOID) -> Type.Builtin.TVoid
-            declSpec.typeSpecs.contains(TypeSpec.FLOAT) -> Type.Builtin.TFloat
-            declSpec.typeSpecs.contains(TypeSpec.DOUBLE) -> Type.Builtin.TDouble
+            declSpec.typeSpecs.contains(TypeSpec.VOID) -> Type.Void
+            declSpec.typeSpecs.contains(TypeSpec.CHAR) -> Type.Char(signed)
+            declSpec.typeSpecs.contains(TypeSpec.SHORT) -> Type.Short(signed)
+            declSpec.typeSpecs.contains(TypeSpec.INT) -> Type.Int(signed)
+            declSpec.typeSpecs.contains(TypeSpec.FLOAT) -> Type.Float
+            declSpec.typeSpecs.contains(TypeSpec.DOUBLE) -> Type.Double
             else -> {
                 val longCount = declSpec.typeSpecs.count { it == TypeSpec.LONG }
-                val width = when (longCount) {
-                    0 -> 32
-                    1 -> 32
-                    2 -> 64
+                when (longCount) {
+                    0 -> Type.Int(signed)
+                    1 -> Type.Long(signed)
+                    2 -> Type.LongLong(signed)
                     else -> throw TypeException("too many longs in declaration specifier")
                 }
-                Type.Builtin.TInt(signed, width)
             }
         }
         return QualType(base, declSpec.qualifiers)
+    }
+
+    private fun applyDeclarator(baseType: QualType, declarator: Declarator): QualType {
+        return when (declarator) {
+            is Declarator.IdentifierDeclarator -> {
+                baseType
+            }
+
+            is Declarator.PointerDeclarator -> {
+                QualType(Type.Pointer(applyDeclarator(baseType, declarator.pointee)))
+            }
+
+            is Declarator.ArrayDeclarator -> {
+                val inner = applyDeclarator(baseType, declarator.elementType)
+                QualType(Type.Array(inner, evalSize(declarator.size)))
+            }
+
+            is Declarator.FunctionDeclarator -> {
+                val returnType = applyDeclarator(baseType, declarator.declarator)
+                val params = declarator.parameters.map { p ->
+                    val qt = resolveType(p.declarationSpecifier, p.declarator)
+                    when (qt.type) {
+                        is Type.Array -> QualType(Type.Pointer(qt.type.elementType))
+                        is Type.Function -> QualType(Type.Pointer(qt))
+                        else -> qt
+                    }
+                }
+                QualType(Type.Function(returnType, params))
+            }
+        }
+    }
+
+    private fun evalSize(size: Expression?): Long? {
+        if (size == null) return null
+        if (size is ConstantIntExpression) return size.value.toLong()
+        if (size is ConstantLongExpression) return size.value
+        throw TypeException("array size must be a compile time constant")
+    }
+
+    private fun validateType(qt: QualType) {
+        if (TypeQualifier.RESTRICT in qt.qualifiers && qt.type !is Type.Pointer) {
+            throw TypeException("restrict qualifier requires pointer type")
+        }
+        if (qt.type is Type.Function && qt.qualifiers.isNotEmpty()) {
+            throw TypeException("function type may not be qualified")
+        }
+        if (qt.type is Type.Void) {
+            throw TypeException("object declared with type void")
+        }
+        validateRecursive(qt.type)
+    }
+
+    private fun validateRecursive(type: Type) {
+        when (type) {
+            is Type.Pointer -> {
+                validateRecursive(type.pointee.type)
+            }
+
+            is Type.Array -> {
+                if (type.elementType.type is Type.Function) {
+                    throw TypeException("array of functions is illegal")
+                }
+                validateRecursive(type.elementType.type)
+            }
+
+            is Type.Function -> {
+                if (type.returnType.type is Type.Array) {
+                    throw TypeException("function returning array is illegal")
+                }
+                validateRecursive(type.returnType.type)
+            }
+
+            else -> {}
+        }
     }
 }

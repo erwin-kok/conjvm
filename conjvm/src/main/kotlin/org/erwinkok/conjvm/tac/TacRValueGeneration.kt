@@ -20,6 +20,7 @@ import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryType
+import org.erwinkok.conjvm.ast.types.VariableType
 import org.erwinkok.conjvm.tac.instructions.TacAddressOfInstruction
 import org.erwinkok.conjvm.tac.instructions.TacBinaryInstruction
 import org.erwinkok.conjvm.tac.instructions.TacCallInstruction
@@ -180,7 +181,7 @@ class TacRValueGeneration(
         requireNotNull(testTr.tacValue)
         allArguments.addAll(testTr.statements)
         val temp = tempFactory.newTemp()
-        allArguments.add(TacCastInstruction(temp, expression.type, testTr.tacValue))
+        allArguments.add(TacCastInstruction(temp, VariableType.INT, testTr.tacValue))  // TODO VariableType
         return TacResult(allArguments, temp)
     }
 

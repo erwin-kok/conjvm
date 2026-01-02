@@ -56,7 +56,7 @@ external_declaration
     ;
 
 function_definition
-    :   declaration_specifiers? declarator2 block_statement
+    :   declaration_specifiers? declarator block_statement
     ;
 
 //
@@ -333,7 +333,7 @@ typedef_name
     ;
 
 specifier_qualifier_list
-    : (type_specifier | type_qualifier) specifier_qualifier_list?
+    :   (type_specifier | type_qualifier)+
     ;
 
 type_qualifier
@@ -347,30 +347,27 @@ function_specifier
     ;
 
 declarator
-    :   pointer? Identifier
+    :   pointer? direct_declarator
     ;
 
-declarator2
-    :   Identifier '(' Void ')'
+direct_declarator
+    :   Identifier                                                                                  #directDeclIdentifier
+    |   '(' declarator ')'                                                                          #directDeclParenthesized
+    |   direct_declarator '(' parameter_type_list ')'                                               #directDeclFunction
+    |   direct_declarator '[' assignment_expression? ']'                                            #directDeclArray
     ;
-
-//direct_declarator
-//    :   Identifier
-//    |   '(' declarator ')'
-//    |   direct_declarator '(' parameter_type_list ')'
-//    ;
 
 pointer
-//    :   ('*' type_qualifier_list)+
-    :   '*'
+    :   pointer_part+
     ;
 
-type_qualifier_list
-    :   type_qualifier+
+pointer_part
+    :   '*' type_qualifier*
     ;
 
 parameter_type_list
-    :   parameter_list (',' '...')?
+    :   Void                                                                                        #paramListNoParams
+    |   parameter_list                                                                              #paramList
     ;
 
 parameter_list

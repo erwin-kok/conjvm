@@ -2,13 +2,13 @@ package org.erwinkok.conjvm.ast.expressions
 
 import org.erwinkok.conjvm.ast.AstExpressionVisitor
 import org.erwinkok.conjvm.ast.SourceLocation
-import org.erwinkok.conjvm.ast.types.VariableType
+import org.erwinkok.conjvm.ast.types.TypeName
 
-class CastExpression(location: SourceLocation, val type: VariableType, val expression: Expression) : Expression(location) {
+class CastExpression(location: SourceLocation, val typeName: TypeName, val expression: Expression) : Expression(location) {
     override fun <R, C> accept(visitor: AstExpressionVisitor<R, C>, ctx: C): R = visitor.visitCast(this, ctx)
 
     override fun toString(): String {
-        return "($type)$expression"
+        return "($typeName)$expression"
     }
 
     override fun equals(other: Any?): Boolean {
@@ -19,14 +19,14 @@ class CastExpression(location: SourceLocation, val type: VariableType, val expre
             return false
         }
 
-        if (type != other.type) return false
+        if (typeName != other.typeName) return false
         if (expression != other.expression) return false
 
         return true
     }
 
     override fun hashCode(): Int {
-        var result = type.hashCode()
+        var result = typeName.hashCode()
         result = 31 * result + expression.hashCode()
         return result
     }
