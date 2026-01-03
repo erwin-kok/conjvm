@@ -16,7 +16,7 @@ sealed class Declarator {
     }
 
     data class IdentifierDeclarator(val location: SourceLocation, val name: String) : Declarator()
-    data class PointerDeclarator(val location: SourceLocation, val qualifiers: List<TypeQualifier>, val pointee: Declarator) : Declarator()
+    data class PointerDeclarator(val location: SourceLocation, val qualifiers: Set<TypeQualifier>, val pointee: Declarator) : Declarator()
     data class FunctionDeclarator(val location: SourceLocation, val declarator: Declarator, val parameters: List<Parameter>) : Declarator()
     data class ArrayDeclarator(val location: SourceLocation, val size: Expression?, val elementType: Declarator) : Declarator()
 }

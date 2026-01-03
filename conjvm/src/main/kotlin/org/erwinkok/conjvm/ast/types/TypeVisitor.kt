@@ -310,37 +310,69 @@ class TypeVisitor :
     }
 
     private fun buildBaseType(declSpec: DeclarationSpecifier): QualType {
-        val typedefs = declSpec.typeSpecs.filterIsInstance<TypeSpec.TypedefName>()
+        val specs = declSpec.typeSpecs
+
+        // Typedef handling
+        val typedefs = specs.filterIsInstance<TypeSpec.TypedefName>()
         if (typedefs.isNotEmpty()) {
             if (typedefs.size != 1) {
                 throw TypeException("multiple typedef names in declaration")
             }
-            if (declSpec.typeSpecs.size > 1) {
+            if (specs.size > 1) {
                 throw TypeException("typedef name mixed with type specifiers")
             }
             val name = typedefs.single().name
             val qt = typedefTable[name] ?: throw TypeException("unknown typedef '$name'")
             return qt.copy(qualifiers = qt.qualifiers + declSpec.qualifiers)
         }
-        val signed = !declSpec.typeSpecs.contains(TypeSpec.UNSIGNED)
-        val base = when {
-            declSpec.typeSpecs.contains(TypeSpec.VOID) -> Type.Void
-            declSpec.typeSpecs.contains(TypeSpec.CHAR) -> Type.Char(signed)
-            declSpec.typeSpecs.contains(TypeSpec.SHORT) -> Type.Short(signed)
-            declSpec.typeSpecs.contains(TypeSpec.INT) -> Type.Int(signed)
-            declSpec.typeSpecs.contains(TypeSpec.FLOAT) -> Type.Float
-            declSpec.typeSpecs.contains(TypeSpec.DOUBLE) -> Type.Double
-            else -> {
-                val longCount = declSpec.typeSpecs.count { it == TypeSpec.LONG }
-                when (longCount) {
-                    0 -> Type.Int(signed)
-                    1 -> Type.Long(signed)
-                    2 -> Type.LongLong(signed)
-                    else -> throw TypeException("too many longs in declaration specifier")
+        // Determine signed/unsigned
+        val signed = specs.contains(TypeSpec.SIGNED) || !specs.contains(TypeSpec.UNSIGNED)
+        // Count integer modifiers
+        val longCount = specs.count { it == TypeSpec.LONG }
+        val shortCount = specs.count { it == TypeSpec.SHORT }
+        val baseType = when {
+            specs.contains(TypeSpec.VOID) -> {
+                if (specs.size > 1) {
+                    throw TypeException("invalid type specifier: ${"void cannot be combined"}")
                 }
+                Type.Void
             }
+
+            specs.contains(TypeSpec.FLOAT) -> {
+                if (specs.any { it == TypeSpec.SIGNED || it == TypeSpec.UNSIGNED }) {
+                    throw TypeException("invalid type specifier: ${"float cannot be signed/unsigned"}")
+                }
+                Type.Float
+            }
+
+            specs.contains(TypeSpec.DOUBLE) -> {
+                if (longCount > 0) {
+                    throw TypeException("invalid type specifier: ${"long double not supported yet"}")
+                }
+                Type.Double
+            }
+
+            specs.contains(TypeSpec.CHAR) -> {
+                if (longCount > 0 || shortCount > 0) {
+                    throw TypeException("invalid type specifier: ${"char cannot be long/short"}")
+                }
+                Type.Char(signed)
+            }
+
+            shortCount > 0 -> {
+                if (longCount > 0) {
+                    throw TypeException("invalid type specifier: ${"short and long together"}")
+                }
+                Type.Short(signed)
+            }
+
+            longCount == 1 -> Type.Long(signed)
+            longCount == 2 -> Type.LongLong(signed)
+            longCount > 2 -> throw TypeException("invalid type specifier: ${"too many long specifiers"}")
+
+            else -> Type.Int(signed) // default int
         }
-        return QualType(base, declSpec.qualifiers)
+        return QualType(baseType, declSpec.qualifiers)
     }
 
     private fun applyDeclarator(baseType: QualType, declarator: Declarator): QualType {
@@ -350,7 +382,8 @@ class TypeVisitor :
             }
 
             is Declarator.PointerDeclarator -> {
-                QualType(Type.Pointer(applyDeclarator(baseType, declarator.pointee)))
+                val inner = applyDeclarator(baseType, declarator.pointee)
+                QualType(Type.Pointer(inner), declarator.qualifiers)
             }
 
             is Declarator.ArrayDeclarator -> {

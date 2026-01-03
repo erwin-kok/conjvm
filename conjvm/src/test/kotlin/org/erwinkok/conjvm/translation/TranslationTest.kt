@@ -17,7 +17,7 @@ class TranslationTest {
             void *bladie(float **volatile*const a, int b) {
             
             }
-        """.trimIndent(),
+            """.trimIndent(),
         )
         TypeVisitor().visit(x, TypeContext())
 

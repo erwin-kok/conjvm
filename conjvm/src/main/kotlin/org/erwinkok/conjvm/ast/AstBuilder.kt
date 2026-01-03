@@ -668,7 +668,7 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
         val base = visit(ctx.direct_declarator()).cast<Declarator>()
         val pointerQualifiers = ctx.pointer()?.let { visit(it).cast<List<List<TypeQualifier>>>() } ?: emptyList()
         val declarator = pointerQualifiers.foldRight(base) { qualifiers, inner ->
-            Declarator.PointerDeclarator(ctx.location, qualifiers, inner)
+            Declarator.PointerDeclarator(ctx.location, qualifiers.toSet(), inner)
         }
         return Value.of(declarator)
     }

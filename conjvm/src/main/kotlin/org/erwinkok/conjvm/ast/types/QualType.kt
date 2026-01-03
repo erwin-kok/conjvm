@@ -10,8 +10,29 @@ data class QualType(val type: Type, val qualifiers: Set<TypeQualifier> = emptySe
         val a = this.canonical
         val b = other.canonical
 
-        if (a.qualifiers != b.qualifiers) return false
-        return a.type == b.type
+        // Exact qualifier match only for non-pointers
+        if (a.type !is Type.Pointer && a.qualifiers != b.qualifiers) return false
+
+        return when {
+            a.type is Type.Pointer && b.type is Type.Pointer -> {
+                // Pointer compatibility: right-to-left conversion is allowed if const is added
+                a.type.pointee.isCompatibleWith(b.type.pointee) &&
+                    // qualifiers of the pointer itself must match exactly
+                    a.qualifiers == b.qualifiers
+            }
+
+            else -> a.type == b.type
+        }
+    }
+
+    fun isAssignableFrom(rhs: QualType): Boolean {
+        val lhs = this.canonical
+        val r = rhs.canonical
+        if (lhs.type != r.type) return false
+        if (TypeQualifier.CONST in r.qualifiers && TypeQualifier.CONST !in lhs.qualifiers) {
+            return false
+        }
+        return true
     }
 
     override fun equals(other: Any?): Boolean {
@@ -32,15 +53,25 @@ data class QualType(val type: Type, val qualifiers: Set<TypeQualifier> = emptySe
             if (!seen.add(typedefType)) {
                 throw TypeException("circular typedef detected for '${typedefType.name}'")
             }
-            // Merge qualifiers from typedef with outer qualifiers
-            t = typedefType.underlying.copy(qualifiers = typedefType.underlying.qualifiers + t.qualifiers)
+            // Merge qualifiers: typedef's qualifiers only apply at top level if not pointer
+            t = when (typedefType.underlying.type) {
+                is Type.Pointer -> {
+                    // qualifiers inside pointer remain with pointer
+                    QualType(typedefType.underlying.type, t.qualifiers)
+                }
+
+                else -> {
+                    // merge qualifiers for normal types
+                    typedefType.underlying.copy(qualifiers = typedefType.underlying.qualifiers + t.qualifiers)
+                }
+            }
         }
         return t.copy(type = canonicalInner(t.type))
     }
 
     private fun canonicalInner(type: Type): Type {
         return when (type) {
-            is Type.Pointer -> Type.Pointer(type.pointee.canonical)
+            is Type.Pointer -> Type.Pointer(type.pointee.canonical, type.qualifiers)
             is Type.Array -> Type.Array(type.elementType.canonical, type.size)
             is Type.Function -> Type.Function(type.returnType.canonical, type.parameters.map { it.canonical })
             is Type.Typedef -> throw TypeException("Typedef not unwrapped in QualType.canonical()")

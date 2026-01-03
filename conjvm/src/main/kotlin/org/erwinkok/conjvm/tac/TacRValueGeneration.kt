@@ -181,7 +181,7 @@ class TacRValueGeneration(
         requireNotNull(testTr.tacValue)
         allArguments.addAll(testTr.statements)
         val temp = tempFactory.newTemp()
-        allArguments.add(TacCastInstruction(temp, VariableType.INT, testTr.tacValue))  // TODO VariableType
+        allArguments.add(TacCastInstruction(temp, VariableType.INT, testTr.tacValue)) // TODO VariableType
         return TacResult(allArguments, temp)
     }
 
