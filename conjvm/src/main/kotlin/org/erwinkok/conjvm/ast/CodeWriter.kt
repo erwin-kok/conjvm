@@ -74,12 +74,12 @@ class CodeWriter(val writer: Writer) : AstVisitor<String, DisplayContext> {
 
     override fun visitCall(expression: CallExpression, ctx: DisplayContext): String {
         val arguments = expression.arguments.joinToString(", ") { visit(it, ctx) }
-        return "${expression.name}($arguments)"
+        return "${expression.function}($arguments)"
     }
 
     override fun visitCast(expression: CastExpression, ctx: DisplayContext): String {
         val nodeResult = visit(expression.expression, ctx)
-        return "(${expression.typeName})$nodeResult"
+        return "(${expression.targetType})$nodeResult"
     }
 
     override fun visitConstantInt(expression: ConstantIntExpression, ctx: DisplayContext): String {
@@ -126,14 +126,14 @@ class CodeWriter(val writer: Writer) : AstVisitor<String, DisplayContext> {
     }
 
     override fun visitTernary(expression: TernaryExpression, ctx: DisplayContext): String {
-        val testResult = visit(expression.testExpression, ctx)
+        val testResult = visit(expression.condition, ctx)
         val thenResult = visit(expression.thenExpression, ctx)
         val elseResult = visit(expression.elseExpression, ctx)
         return "$testResult ? $thenResult : $elseResult"
     }
 
     override fun visitUnary(expression: UnaryExpression, ctx: DisplayContext): String {
-        val nodeResult = visit(expression.expression, ctx)
+        val nodeResult = visit(expression.operand, ctx)
         return "${expression.type}$nodeResult"
     }
 

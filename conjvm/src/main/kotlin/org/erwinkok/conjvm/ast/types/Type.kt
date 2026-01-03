@@ -21,7 +21,7 @@ sealed class Type {
         val fields: List<Field>?, // null = incomplete type
     ) : Type()
 
-    data class Pointer(val pointee: QualType, val qualifiers: Set<TypeQualifier> = emptySet()) : Type()
+    data class Pointer(val pointee: QualType) : Type()
     data class Array(val elementType: QualType, val size: kotlin.Long?) : Type()
     data class Function(val returnType: QualType, val parameters: List<QualType>) : Type()
     data class Typedef(val name: String, val underlying: QualType) : Type() {

@@ -1,0 +1,35 @@
+package org.erwinkok.conjvm.ast.types
+
+class SymbolTable {
+    private val typedefTable = mutableMapOf<String, QualType>()
+
+    init {
+        typedefTable["uint"] = QualType(Type.Int(false))
+        typedefTable["uint8"] = QualType(Type.Char(false))
+        typedefTable["uint16"] = QualType(Type.Short(false))
+        typedefTable["uint32"] = QualType(Type.Int(false))
+        typedefTable["uint64"] = QualType(Type.LongLong(false))
+
+        typedefTable["sint"] = QualType(Type.Int(true))
+        typedefTable["sint8"] = QualType(Type.Char(true))
+        typedefTable["sint16"] = QualType(Type.Short(true))
+        typedefTable["sint32"] = QualType(Type.Int(true))
+        typedefTable["sint64"] = QualType(Type.LongLong(true))
+
+        typedefTable["int"] = QualType(Type.Int(true))
+        typedefTable["int8"] = QualType(Type.Char(true))
+        typedefTable["int16"] = QualType(Type.Short(true))
+        typedefTable["int32"] = QualType(Type.Int(true))
+        typedefTable["int64"] = QualType(Type.Long(true))
+
+        typedefTable["m68ki_bitfield_t"] = QualType(Type.Struct("m68ki_bitfield_t", emptyList()))
+    }
+
+    fun defineTypedef(name: String, type: QualType) {
+        typedefTable[name] = type
+    }
+
+    fun resolve(name: String): QualType? {
+        return typedefTable[name]
+    }
+}

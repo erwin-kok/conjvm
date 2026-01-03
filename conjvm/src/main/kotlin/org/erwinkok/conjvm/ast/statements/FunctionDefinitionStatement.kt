@@ -7,7 +7,7 @@ import org.erwinkok.conjvm.ast.types.Declarator
 
 class FunctionDefinitionStatement(
     location: SourceLocation,
-    val declarationSpecifier: DeclarationSpecifier?,
+    val declarationSpecifier: DeclarationSpecifier,
     val declarator: Declarator,
     val statements: BlockStatement,
 ) : Statement(location) {
@@ -28,7 +28,7 @@ class FunctionDefinitionStatement(
     }
 
     override fun hashCode(): Int {
-        var result = declarationSpecifier?.hashCode() ?: 0
+        var result = declarationSpecifier.hashCode()
         result = 31 * result + declarator.hashCode()
         result = 31 * result + statements.hashCode()
         return result

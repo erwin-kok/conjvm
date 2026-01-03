@@ -164,10 +164,10 @@ class TacRValueGeneration(
             te
         }
         val temp = tempFactory.newTemp()
-        if (expression.name is Identifier) {
-            allArguments.add(TacCallInstruction(temp, TacConstantStringValue(expression.name.name), args))
+        if (expression.function is Identifier) {
+            allArguments.add(TacCallInstruction(temp, TacConstantStringValue(expression.function.name), args))
         } else {
-            val (ts, te) = translate(expression.name)
+            val (ts, te) = translate(expression.function)
             requireNotNull(te)
             allArguments.addAll(ts)
             allArguments.add(TacCallInstruction(temp, te, args))
@@ -187,7 +187,7 @@ class TacRValueGeneration(
 
     override fun visitTernary(expression: TernaryExpression, ctx: TacContext): TacResult {
         val allArguments = mutableListOf<TacInstruction>()
-        val testTr = translate(expression.testExpression)
+        val testTr = translate(expression.condition)
         val thenTr = translate(expression.thenExpression)
         val elseTr = translate(expression.elseExpression)
         requireNotNull(testTr.tacValue)
@@ -215,7 +215,7 @@ class TacRValueGeneration(
     }
 
     private fun translateUnaryAddressOf(expression: UnaryExpression): TacResult {
-        val (ts, te) = lValueVisitor.translate(expression.expression)
+        val (ts, te) = lValueVisitor.translate(expression.operand)
         requireNotNull(te)
         val temp = tempFactory.newTemp()
         return TacResult(ts + TacAddressOfInstruction(temp, te), temp)
@@ -229,13 +229,13 @@ class TacRValueGeneration(
     }
 
     private fun translateUnaryPlus(expression: UnaryExpression): TacResult {
-        val (ts, te) = translate(expression.expression)
+        val (ts, te) = translate(expression.operand)
         requireNotNull(te)
         return TacResult(ts, te)
     }
 
     private fun translateUnaryMinus(expression: UnaryExpression): TacResult {
-        val (ts, te) = translate(expression.expression)
+        val (ts, te) = translate(expression.operand)
         requireNotNull(te)
         val allArguments = mutableListOf<TacInstruction>()
         allArguments.addAll(ts)
@@ -245,7 +245,7 @@ class TacRValueGeneration(
     }
 
     private fun translateUnaryBitwiseNot(expression: UnaryExpression): TacResult {
-        val (ts, te) = translate(expression.expression)
+        val (ts, te) = translate(expression.operand)
         requireNotNull(te)
         val allArguments = mutableListOf<TacInstruction>()
         allArguments.addAll(ts)
@@ -255,7 +255,7 @@ class TacRValueGeneration(
     }
 
     private fun translateUnaryLogicalNot(expression: UnaryExpression): TacResult {
-        val (ts, te) = translate(expression.expression)
+        val (ts, te) = translate(expression.operand)
         requireNotNull(te)
         val allArguments = mutableListOf<TacInstruction>()
         allArguments.addAll(ts)
@@ -265,7 +265,7 @@ class TacRValueGeneration(
     }
 
     private fun translateUnaryIncrement(expression: UnaryExpression): TacResult {
-        val (addrInstrs, addr) = lValueVisitor.translate(expression.expression)
+        val (addrInstrs, addr) = lValueVisitor.translate(expression.operand)
         val instructions = mutableListOf<TacInstruction>()
         instructions.addAll(addrInstrs)
         val (lts, lte) = generateLoadInstruction(addr)
@@ -286,7 +286,7 @@ class TacRValueGeneration(
     }
 
     private fun translateUnaryDecrement(expression: UnaryExpression): TacResult {
-        val (addrInstrs, addr) = lValueVisitor.translate(expression.expression)
+        val (addrInstrs, addr) = lValueVisitor.translate(expression.operand)
         val instructions = mutableListOf<TacInstruction>()
         instructions.addAll(addrInstrs)
         val (lts, lte) = generateLoadInstruction(addr)

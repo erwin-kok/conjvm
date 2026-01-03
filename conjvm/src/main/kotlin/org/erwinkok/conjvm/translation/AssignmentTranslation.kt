@@ -50,7 +50,7 @@ class AssignmentTranslation : BaseTranslationVisitor() {
         }
         return TranslationResult(
             allStatements,
-            CallExpression(expression.location, expression.name, arguments),
+            CallExpression(expression.location, expression.function, arguments),
         )
     }
 

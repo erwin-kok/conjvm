@@ -68,13 +68,13 @@ abstract class BaseTranslationVisitor : TranslationVisitor {
             allStatements.addAll(ts)
             allArguments.add(te)
         }
-        return TranslationResult(allStatements, CallExpression(expression.location, expression.name, allArguments))
+        return TranslationResult(allStatements, CallExpression(expression.location, expression.function, allArguments))
     }
 
     override fun translateCast(expression: CastExpression): TranslationResult {
         val (ts, te) = translate(expression.expression)
         requireNotNull(te)
-        return TranslationResult(ts, CastExpression(expression.location, expression.typeName, te))
+        return TranslationResult(ts, CastExpression(expression.location, expression.targetType, te))
     }
 
     override fun translateConstantInt(expression: ConstantIntExpression): TranslationResult {
@@ -116,7 +116,7 @@ abstract class BaseTranslationVisitor : TranslationVisitor {
     }
 
     override fun translateTernary(expression: TernaryExpression): TranslationResult {
-        val (testTs, testTe) = translate(expression.testExpression)
+        val (testTs, testTe) = translate(expression.condition)
         val (thenTs, thenTe) = translate(expression.thenExpression)
         val (elseTs, elseTe) = translate(expression.elseExpression)
         requireNotNull(testTe)
@@ -126,7 +126,7 @@ abstract class BaseTranslationVisitor : TranslationVisitor {
     }
 
     override fun translateUnary(expression: UnaryExpression): TranslationResult {
-        val (ts, te) = translate(expression.expression)
+        val (ts, te) = translate(expression.operand)
         requireNotNull(te)
         return TranslationResult(ts, UnaryExpression(expression.location, expression.type, te))
     }

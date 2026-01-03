@@ -56,7 +56,7 @@ external_declaration
     ;
 
 function_definition
-    :   declaration_specifiers? declarator block_statement
+    :   declaration_specifiers declarator block_statement
     ;
 
 //

@@ -113,7 +113,7 @@ class TacLValueGeneration(private val rValueVisitor: TacRValueGeneration) : AstE
 
     override fun visitUnary(expression: UnaryExpression, ctx: TacContext): TacAddressResult {
         return if (expression.type == UnaryType.Indirection) {
-            val (ts, te) = rValueVisitor.translate(expression.expression)
+            val (ts, te) = rValueVisitor.translate(expression.operand)
             requireNotNull(te)
             TacAddressResult(ts, IndirectLValue(te))
         } else {

@@ -116,7 +116,7 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
     }
 
     override fun visitFunction_definition(ctx: CParser.Function_definitionContext): Value {
-        val declarationSpecifier = ctx.declaration_specifiers()?.let { visit(it).cast<DeclarationSpecifier>() }
+        val declarationSpecifier = visit(ctx.declaration_specifiers()).cast<DeclarationSpecifier>()
         val declarator = visit(ctx.declarator()).cast<Declarator>()
         return Value.of(
             FunctionDefinitionStatement(

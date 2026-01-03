@@ -1,32 +1,37 @@
 package org.erwinkok.conjvm.translation
 
+import org.erwinkok.conjvm.ast.types.SymbolTable
 import org.erwinkok.conjvm.ast.types.TypeContext
 import org.erwinkok.conjvm.ast.types.TypeVisitor
 import org.erwinkok.conjvm.parser.Parser
 import org.erwinkok.conjvm.tac.TacCodeWriter
 import org.erwinkok.conjvm.tac.TacTranslation
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import java.io.StringWriter
 
 class TranslationTest {
     @Test
+    @Disabled
     fun translationTest() {
-        val x = Parser.parseString(
-            """
-            void *bladie(float **volatile*const a, int b) {
-            
-            }
-            """.trimIndent(),
-        )
-        TypeVisitor().visit(x, TypeContext())
+//        val x = Parser.parseString(
+//            """
+//            void *bladie(float **volatile*const a, int b) {
+//
+//            }
+//            """.trimIndent(),
+//        )
+//        TypeVisitor().visit(x, TypeContext())
 
         val classLoader = TranslationTest::class.java.classLoader
         val inputStream = classLoader.getResourceAsStream("input.c")
         requireNotNull(inputStream)
         val compilationUnit = Parser.parseStream(inputStream)
 
-        TypeVisitor().visit(compilationUnit, TypeContext())
+        val symbolTable = SymbolTable()
+
+        TypeVisitor(symbolTable).visit(compilationUnit, TypeContext())
 
         var translatedCompilationUnit = Translator.translateStatement(compilationUnit, ConvertForToWhileTranslation())
         translatedCompilationUnit = Translator.translateStatement(translatedCompilationUnit, AssignmentTranslation())

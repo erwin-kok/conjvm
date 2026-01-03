@@ -1,25 +1,23 @@
 package org.erwinkok.conjvm.ast.types
 
 data class QualType(val type: Type, val qualifiers: Set<TypeQualifier> = emptySet()) {
+    companion object {
+        val ErrorType = QualType(Type.Error, emptySet())
+    }
 
     val canonical: QualType by lazy { computeCanonical() }
 
     fun with(q: TypeQualifier) = copy(qualifiers = qualifiers + q)
 
+    fun withoutQualifiers() = QualType(type, emptySet())
+
     fun isCompatibleWith(other: QualType): Boolean {
-        val a = this.canonical
+        val a = canonical
         val b = other.canonical
 
-        // Exact qualifier match only for non-pointers
-        if (a.type !is Type.Pointer && a.qualifiers != b.qualifiers) return false
-
         return when {
-            a.type is Type.Pointer && b.type is Type.Pointer -> {
-                // Pointer compatibility: right-to-left conversion is allowed if const is added
-                a.type.pointee.isCompatibleWith(b.type.pointee) &&
-                    // qualifiers of the pointer itself must match exactly
-                    a.qualifiers == b.qualifiers
-            }
+            a.type is Type.Pointer && b.type is Type.Pointer ->
+                a.type.pointee.isCompatibleWith(b.type.pointee)
 
             else -> a.type == b.type
         }
@@ -71,7 +69,7 @@ data class QualType(val type: Type, val qualifiers: Set<TypeQualifier> = emptySe
 
     private fun canonicalInner(type: Type): Type {
         return when (type) {
-            is Type.Pointer -> Type.Pointer(type.pointee.canonical, type.qualifiers)
+            is Type.Pointer -> Type.Pointer(type.pointee.canonical)
             is Type.Array -> Type.Array(type.elementType.canonical, type.size)
             is Type.Function -> Type.Function(type.returnType.canonical, type.parameters.map { it.canonical })
             is Type.Typedef -> throw TypeException("Typedef not unwrapped in QualType.canonical()")
