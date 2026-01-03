@@ -24,12 +24,12 @@ class TranslationTest {
 //        )
 //        TypeVisitor().visit(x, TypeContext())
 
+        val symbolTable = SymbolTable()
+
         val classLoader = TranslationTest::class.java.classLoader
         val inputStream = classLoader.getResourceAsStream("input.c")
         requireNotNull(inputStream)
-        val compilationUnit = Parser.parseStream(inputStream)
-
-        val symbolTable = SymbolTable()
+        val compilationUnit = Parser.parseStream(inputStream, symbolTable)
 
         TypeVisitor(symbolTable).visit(compilationUnit, TypeContext())
 

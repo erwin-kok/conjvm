@@ -33,12 +33,19 @@ grammar C;
 */
 
 @lexer::header {
-import org.erwinkok.conjvm.ast.types.VariableType;
+import org.erwinkok.conjvm.ast.types.SymbolTable;
 }
 
 @lexer::members {
+    private SymbolTable symbolTable;
+
+    public CLexer(CharStream input, SymbolTable symbolTable) {
+        this(input);
+        this.symbolTable = symbolTable;
+    }
+
     private Boolean isTypedef(String s) {
-        return VariableType.Companion.isTypedef(s);
+        return symbolTable.isTypedef(s);
     }
 }
 

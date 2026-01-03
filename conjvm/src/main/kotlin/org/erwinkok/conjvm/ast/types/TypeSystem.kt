@@ -1,5 +1,12 @@
 package org.erwinkok.conjvm.ast.types
 
+enum class TypeUse {
+    OBJECT,
+    CAST,
+    FUNCTION_RETURN,
+    PARAMETER,
+}
+
 object TypeSystem {
     /* ============================================================
      * Builtin canonical types
@@ -9,15 +16,21 @@ object TypeSystem {
     val longType = QualType(Type.Long(signed = true))
     val voidType = QualType(Type.Void)
 
-    fun validateType(qt: QualType) {
+    fun validateType(qt: QualType, use: TypeUse) {
         if (TypeQualifier.RESTRICT in qt.qualifiers && qt.type !is Type.Pointer) {
             throw TypeException("restrict qualifier requires pointer type")
         }
         if (qt.type is Type.Function && qt.qualifiers.isNotEmpty()) {
             throw TypeException("function type may not be qualified")
         }
-        if (qt.type is Type.Void) {
+        if (qt.type is Type.Void && use == TypeUse.OBJECT) {
             throw TypeException("object declared with type void")
+        }
+        if (qt.type is Type.Array && qt.type.elementType.canonical.type is Type.Void) {
+            throw TypeException("array of void is illegal")
+        }
+        if (qt.type is Type.Function && qt.type.returnType.type is Type.Function) {
+            throw TypeException("function returning function is illegal")
         }
         validateRecursive(qt.type)
     }

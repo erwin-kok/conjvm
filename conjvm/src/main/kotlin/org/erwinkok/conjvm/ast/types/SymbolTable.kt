@@ -32,4 +32,8 @@ class SymbolTable {
     fun resolve(name: String): QualType? {
         return typedefTable[name]
     }
+
+    fun isTypedef(name: String): Boolean {
+        return typedefTable.containsKey(name)
+    }
 }

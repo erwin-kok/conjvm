@@ -64,6 +64,7 @@ class TypeVisitor(
 
         // Resolve the function's full type (including parameters)
         val funcType = resolveType(definition.declarationSpecifier, definition.declarator)
+        TypeSystem.validateType(funcType, TypeUse.FUNCTION_RETURN)
 
         // Extract return type from the function type
         val returnType = when (val t = funcType.type) {
@@ -246,6 +247,7 @@ class TypeVisitor(
 
     override fun visitCast(expression: CastExpression, ctx: TypeContext): ExpressionType {
         val target = resolveType(expression.targetType.declarationSpecifier, expression.targetType.abstractDeclarator).canonical
+        TypeSystem.validateType(target, TypeUse.CAST)
         val exprType = typeOf(expression.expression).type.canonical
 
         // If target is void, any type can be cast
@@ -448,6 +450,7 @@ class TypeVisitor(
     private fun defineGlobalVariable(statement: VariableDeclarationStatement) {
         for (varDecl in statement.variableDeclarators) {
             val qt = resolveType(statement.declarationSpecifier, varDecl.declarator)
+            TypeSystem.validateType(qt, TypeUse.OBJECT)
             val variableSymbol = VariableSymbol(
                 varDecl.declarator.name(),
                 qt,
@@ -463,6 +466,7 @@ class TypeVisitor(
 
     private fun defineGlobalFunction(statement: FunctionDefinitionStatement) {
         val qt = resolveType(statement.declarationSpecifier, statement.declarator)
+        TypeSystem.validateType(qt, TypeUse.OBJECT)
         val functionSymbol = FunctionSymbol(
             statement.declarator.name(),
             qt,
@@ -479,6 +483,7 @@ class TypeVisitor(
     private fun defineVariableDeclaration(statement: VariableDeclarationStatement) {
         for (varDecl in statement.variableDeclarators) {
             val qt = resolveType(statement.declarationSpecifier, varDecl.declarator)
+            TypeSystem.validateType(qt, TypeUse.OBJECT)
             val variableSymbol = VariableSymbol(
                 varDecl.declarator.name(),
                 qt,
@@ -494,9 +499,7 @@ class TypeVisitor(
 
     private fun resolveType(declSpec: DeclarationSpecifier, declarator: Declarator?): QualType {
         val base = buildBaseType(declSpec)
-        val fullType = declarator?.let { applyDeclarator(base, it) } ?: base
-        TypeSystem.validateType(fullType)
-        return fullType
+        return declarator?.let { applyDeclarator(base, it) } ?: base
     }
 
     private fun buildBaseType(declSpec: DeclarationSpecifier): QualType {
@@ -585,6 +588,7 @@ class TypeVisitor(
                 val returnType = applyDeclarator(baseType, declarator.declarator)
                 val params = declarator.parameters.map { p ->
                     val qt = resolveType(p.declarationSpecifier, p.declarator)
+                    TypeSystem.validateType(qt, TypeUse.FUNCTION_RETURN)
                     when (qt.type) {
                         is Type.Array -> QualType(Type.Pointer(qt.type.elementType))
                         is Type.Function -> QualType(Type.Pointer(qt))
