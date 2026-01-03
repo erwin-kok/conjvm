@@ -43,9 +43,10 @@ class TypeVisitor(
     private val symbols: SymbolTable,
 ) : AstStatementVisitor<Unit, TypeContext>,
     AstExpressionVisitor<ExpressionType, TypeContext> {
-    private var currentReturn: Type = Type.Void
+    private var currentReturn: QualType = TypeSystem.voidType
     private var scope = Scope()
-    private val globalScope = scope
+
+    val globalScope = scope
 
     val expressionTypeSystem = ExpressionTypeSystem(this)
 
@@ -71,7 +72,7 @@ class TypeVisitor(
             is Type.Function -> t.returnType
             else -> error("Function declarator did not produce a function type")
         }
-        currentReturn = returnType.type
+        currentReturn = returnType
 
         // Enter a new scope for the function body
         enterScope()
@@ -86,13 +87,7 @@ class TypeVisitor(
         for ((paramDecl, paramType) in paramDeclarators.zip(parameters)) {
             // Some parameters may be unnamed (like `int f(int, int)`), skip defining them
             val paramName = paramDecl.declarator.name()
-            scope.define(
-                VariableSymbol(
-                    name = paramName,
-                    type = paramType,
-                    storage = paramDecl.declarationSpecifier.storage,
-                ),
-            )
+            scope.defineVariable(paramName, paramType, paramDecl.declarationSpecifier.storage)
         }
 
         // Visit the function body (block statement)
@@ -149,12 +144,12 @@ class TypeVisitor(
     override fun visitReturn(statement: ReturnStatement, ctx: TypeContext) {
         val value = statement.value
         if (value == null) {
-            if (currentReturn != Type.Void) {
+            if (currentReturn != TypeSystem.voidType) {
                 error("missing return value")
             }
         } else {
             val valueType = visit(value, ctx)
-            if (!QualType(currentReturn).isAssignableFrom(valueType.type)) {
+            if (!currentReturn.isAssignableFrom(valueType.type)) {
                 error("return type mismatch")
             }
         }
@@ -188,7 +183,6 @@ class TypeVisitor(
         // Base must be pointer or array
         val elementType = when (val bt = baseType.type) {
             is Type.Pointer -> bt.pointee
-            is Type.Array -> bt.elementType
             else -> return ExpressionType(QualType.ErrorType, false)
         }
 
@@ -219,6 +213,9 @@ class TypeVisitor(
             TypeSystem.isPointer(rhs.type) && TypeSystem.isInteger(lhs.type) ->
                 TypeSystem.pointerArithmetic(rhs.type, lhs.type)
 
+            TypeSystem.isPointer(lhs.type) && TypeSystem.isPointer(rhs.type) ->
+                TypeSystem.pointerDifference(lhs.type, rhs.type)
+
             else ->
                 TypeSystem.usualArithmeticConversion(lhs.type, rhs.type)
         }
@@ -237,7 +234,8 @@ class TypeVisitor(
         // Check assignability for each argument
         for ((argExpr, paramType) in expression.arguments.zip(funcType.parameters)) {
             val argType = typeOf(argExpr).type
-            if (!paramType.isAssignableFrom(argType)) {
+            val promotedArg = TypeSystem.integerPromote(TypeSystem.decay(argType))
+            if (!paramType.isAssignableFrom(promotedArg)) {
                 return ExpressionType(QualType.ErrorType, false)
             }
         }
@@ -274,7 +272,8 @@ class TypeVisitor(
         }
 
         // Integer → pointer or pointer → integer
-        if ((TypeSystem.isPointer(target) && TypeSystem.isInteger(exprType)) ||
+        if (
+            (TypeSystem.isPointer(target) && TypeSystem.isInteger(exprType)) ||
             (TypeSystem.isInteger(target) && TypeSystem.isPointer(exprType))
         ) {
             return ExpressionType(target, isLValue = false)
@@ -321,12 +320,15 @@ class TypeVisitor(
     }
 
     override fun visitIdentifier(identifier: Identifier, ctx: TypeContext): ExpressionType {
-        val symbol = scope.resolve(identifier.name)
-        if (symbol == null) {
-//            error("undeclared variable ${identifier.name}")
-            return ExpressionType(QualType.ErrorType, false)
+        val localVar = scope.resolveVariable(identifier.name)
+        if (localVar != null) {
+            return ExpressionType(localVar.type, isLValue = true)
         }
-        return ExpressionType(symbol.type, isLValue = true)
+        val globalFunc = globalScope.resolveFunction(identifier.name)
+        if (globalFunc != null) {
+            return ExpressionType(globalFunc.type, isLValue = false)
+        }
+        error("undeclared identifier: ${identifier.name}")
     }
 
     override fun visitParenthesized(expression: ParenthesizedExpression, ctx: TypeContext): ExpressionType {
@@ -390,7 +392,14 @@ class TypeVisitor(
         val t = operand.type
         return when (expression.type) {
             UnaryType.Address -> ExpressionType(TypeSystem.addressOf(t, operand.isLValue), isLValue = false)
-            UnaryType.Indirection -> ExpressionType(TypeSystem.dereference(t), isLValue = true)
+            UnaryType.Indirection -> {
+                val deref = TypeSystem.dereference(t)
+                ExpressionType(
+                    deref,
+                    isLValue = deref.type !is Type.Void && deref.type !is Type.Function,
+                )
+            }
+
             UnaryType.Minus,
             UnaryType.Plus,
             UnaryType.LogicalNot,
@@ -451,49 +460,21 @@ class TypeVisitor(
         for (varDecl in statement.variableDeclarators) {
             val qt = resolveType(statement.declarationSpecifier, varDecl.declarator)
             TypeSystem.validateType(qt, TypeUse.OBJECT)
-            val variableSymbol = VariableSymbol(
-                varDecl.declarator.name(),
-                qt,
-                statement.declarationSpecifier.storage,
-            )
-            val oldSym = scope.resolve(variableSymbol.name)
-            if (oldSym != null && oldSym != variableSymbol) {
-                throw TypeException("variable re-definition of ${oldSym.name} is different from ${variableSymbol.name}")
-            }
-            globalScope.define(variableSymbol)
+            globalScope.defineVariable(varDecl.declarator.name(), qt, statement.declarationSpecifier.storage)
         }
     }
 
     private fun defineGlobalFunction(statement: FunctionDefinitionStatement) {
         val qt = resolveType(statement.declarationSpecifier, statement.declarator)
         TypeSystem.validateType(qt, TypeUse.OBJECT)
-        val functionSymbol = FunctionSymbol(
-            statement.declarator.name(),
-            qt,
-            statement.declarationSpecifier.storage,
-            statement.statements,
-        )
-        val oldSym = scope.resolve(functionSymbol.name)
-        if (oldSym != null && oldSym != functionSymbol) {
-            throw TypeException("function re-definition of ${oldSym.name} is different from ${functionSymbol.name}")
-        }
-        globalScope.define(functionSymbol)
+        globalScope.defineFunction(statement.declarator.name(), qt, statement.declarationSpecifier.storage)
     }
 
     private fun defineVariableDeclaration(statement: VariableDeclarationStatement) {
         for (varDecl in statement.variableDeclarators) {
             val qt = resolveType(statement.declarationSpecifier, varDecl.declarator)
             TypeSystem.validateType(qt, TypeUse.OBJECT)
-            val variableSymbol = VariableSymbol(
-                varDecl.declarator.name(),
-                qt,
-                statement.declarationSpecifier.storage,
-            )
-            val oldSym = scope.resolve(variableSymbol.name)
-            if (oldSym != null && oldSym != variableSymbol) {
-                throw TypeException("variable re-definition of ${oldSym.name} is different from ${variableSymbol.name}")
-            }
-            scope.define(variableSymbol)
+            scope.defineVariable(varDecl.declarator.name(), qt, statement.declarationSpecifier.storage)
         }
     }
 
@@ -588,7 +569,7 @@ class TypeVisitor(
                 val returnType = applyDeclarator(baseType, declarator.declarator)
                 val params = declarator.parameters.map { p ->
                     val qt = resolveType(p.declarationSpecifier, p.declarator)
-                    TypeSystem.validateType(qt, TypeUse.FUNCTION_RETURN)
+                    TypeSystem.validateType(qt, TypeUse.PARAMETER)
                     when (qt.type) {
                         is Type.Array -> QualType(Type.Pointer(qt.type.elementType))
                         is Type.Function -> QualType(Type.Pointer(qt))

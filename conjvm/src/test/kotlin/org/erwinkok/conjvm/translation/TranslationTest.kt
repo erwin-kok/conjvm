@@ -31,7 +31,11 @@ class TranslationTest {
         requireNotNull(inputStream)
         val compilationUnit = Parser.parseStream(inputStream, symbolTable)
 
-        TypeVisitor(symbolTable).visit(compilationUnit, TypeContext())
+        val typeVisitor = TypeVisitor(symbolTable)
+        typeVisitor.globalScope.defineFunction("m68ki_exception_1010", TypeSystem.voidType, emptySet())
+        typeVisitor.globalScope.defineFunction("m68ki_exception_1111", TypeSystem.voidType, emptySet())
+        typeVisitor.globalScope.defineVariable("m68ki_cpu", TypeSystem.voidType, emptySet())
+        typeVisitor.visit(compilationUnit, TypeContext())
 
         var translatedCompilationUnit = Translator.translateStatement(compilationUnit, ConvertForToWhileTranslation())
         translatedCompilationUnit = Translator.translateStatement(translatedCompilationUnit, AssignmentTranslation())
