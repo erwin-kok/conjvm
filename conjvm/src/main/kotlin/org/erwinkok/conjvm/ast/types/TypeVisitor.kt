@@ -159,6 +159,9 @@ class TypeVisitor(
             }
         } else {
             val valueType = visit(value)
+            if (valueType.isError()) {
+                return
+            }
             if (!currentReturn.isAssignableFrom(valueType.type)) {
                 reporter.reportError(statement.location, "return type mismatch")
             }
@@ -252,6 +255,10 @@ class TypeVisitor(
             else ->
                 TypeSystem.usualArithmeticConversion(lhs.type, rhs.type)
         }
+        if (resultType.isError()) {
+            reporter.reportError(expression.location, "invalid operands to binary operator '$expression'")
+            return ExpressionType(QualType.ErrorType, false)
+        }
         return ExpressionType(resultType, false)
     }
 
@@ -272,8 +279,11 @@ class TypeVisitor(
 
         // Check assignability for each argument
         for ((argExpr, paramType) in expression.arguments.zip(funcType.parameters)) {
-            val argType = typeOf(argExpr).type
-            val promotedArg = TypeSystem.integerPromote(TypeSystem.decay(argType))
+            val arg = typeOf(argExpr)
+            if (arg.isError()) {
+                return ExpressionType(QualType.ErrorType, false)
+            }
+            val promotedArg = TypeSystem.integerPromote(TypeSystem.decay(arg.type))
             if (!paramType.isAssignableFrom(promotedArg)) {
                 reporter.reportError(expression.location, "parameter $paramType is not assignable from $promotedArg")
                 return ExpressionType(QualType.ErrorType, false)
@@ -284,6 +294,11 @@ class TypeVisitor(
     }
 
     override fun visitCast(expression: CastExpression): ExpressionType {
+        val operand = typeOf(expression.expression)
+        if (operand.isError()) {
+            return ExpressionType(QualType.ErrorType, isLValue = false)
+        }
+
         val target = try {
             val target = resolveType(expression.targetType.declarationSpecifier, expression.targetType.abstractDeclarator).canonical
             TypeSystem.validateType(target, TypeUse.CAST)
@@ -295,7 +310,7 @@ class TypeVisitor(
 
         expression.targetQualType = target
 
-        val exprType = typeOf(expression.expression).type.canonical
+        val exprType = operand.type.canonical
 
         // If target is void, any type can be cast
         if (target.type == Type.Void) {
@@ -389,8 +404,7 @@ class TypeVisitor(
         if (globalFunc != null) {
             return ExpressionType(globalFunc.type, isLValue = false)
         }
-        // TODO
-//        reporter.reportError(identifier.location, "undeclared identifier: ${identifier.name}")
+        reporter.reportError(identifier.location, "undeclared identifier: '${identifier.name}'")
         return ExpressionType(QualType.ErrorType, isLValue = false)
     }
 
@@ -418,7 +432,7 @@ class TypeVisitor(
         val t1 = TypeSystem.decay(thenType.type)
         val t2 = TypeSystem.decay(elseType.type)
 
-        // Case 1: both arithmetic → usual arithmetic conversions
+        // both arithmetic → usual arithmetic conversions
         if (TypeSystem.isArithmetic(t1) && TypeSystem.isArithmetic(t2)) {
             return ExpressionType(
                 TypeSystem.usualArithmeticConversion(t1, t2),
@@ -426,28 +440,37 @@ class TypeVisitor(
             )
         }
 
-        // Case 2: both pointers → pointer compatibility
+        if (!TypeSystem.isArithmetic(condType.type) && !TypeSystem.isPointer(condType.type)) {
+            reporter.reportError(expression.location, "condition of ?: must be scalar in '$expression'")
+            return ExpressionType(QualType.ErrorType, false)
+        }
+
+        if (t1.type == Type.Void && t2.type == Type.Void) {
+            return ExpressionType(TypeSystem.voidType, false)
+        }
+
+        // both pointers → pointer compatibility
         if (TypeSystem.isPointer(t1) && TypeSystem.isPointer(t2)) {
             val resultPointee: QualType = if (t1.isCompatibleWith(t2)) {
                 // Result qualifiers = intersection of qualifiers of both
                 val combinedQuals = t1.qualifiers intersect t2.qualifiers
                 QualType((t1.type as Type.Pointer).pointee.type, combinedQuals)
             } else {
-                reporter.reportError(expression.location, "pointers '${t1.type}' and '${t2.type}' are not compatible")
+                reporter.reportError(expression.location, "pointers '${t1.type}' and '${t2.type}' are not compatible in '$expression'")
                 return ExpressionType(QualType.ErrorType, isLValue = false)
             }
             return ExpressionType(QualType(Type.Pointer(resultPointee)), isLValue = false)
         }
 
-        // Case 3: mixed pointer vs arithmetic → error
+        // mixed pointer vs arithmetic → error
         if ((TypeSystem.isPointer(t1) && TypeSystem.isArithmetic(t2)) ||
             (TypeSystem.isArithmetic(t1) && TypeSystem.isPointer(t2))
         ) {
-            reporter.reportError(expression.location, "pointers '${t1.type}' and '${t2.type}' are not compatible")
+            reporter.reportError(expression.location, "pointers '${t1.type}' and '${t2.type}' are not compatible in '$expression'")
             return ExpressionType(QualType.ErrorType, isLValue = false)
         }
 
-        // Case 4: lvalue propagation (rare)
+        // lvalue propagation (rare)
         if (thenType.isLValue && elseType.isLValue && t1 == t2) {
             return ExpressionType(t1, isLValue = true)
         }
@@ -464,13 +487,27 @@ class TypeVisitor(
 
         val t = operand.type
         return when (expression.type) {
-            UnaryType.Address -> ExpressionType(TypeSystem.addressOf(t, operand.isLValue), isLValue = false)
+            UnaryType.Address -> {
+                val address = TypeSystem.addressOf(t, operand.isLValue)
+                if (address.isError()) {
+                    reporter.reportError(expression.location, "cannot take address of '$expression'")
+                    ExpressionType(QualType.ErrorType, false)
+                } else {
+                    ExpressionType(address, false)
+                }
+            }
+
             UnaryType.Indirection -> {
                 val deref = TypeSystem.dereference(t)
-                ExpressionType(
-                    deref,
-                    isLValue = deref.type !is Type.Void && deref.type !is Type.Function,
-                )
+                if (deref.isError()) {
+                    reporter.reportError(expression.location, "cannot dereference '$expression'")
+                    ExpressionType(QualType.ErrorType, false)
+                } else {
+                    ExpressionType(
+                        deref,
+                        isLValue = deref.type !is Type.Void && deref.type !is Type.Function,
+                    )
+                }
             }
 
             UnaryType.Minus,
@@ -482,7 +519,7 @@ class TypeVisitor(
                 if (TypeSystem.isArithmetic(t)) {
                     ExpressionType(t, isLValue = false)
                 } else {
-                    reporter.reportError(expression.location, "'${t.type}' is not arithmetic")
+                    reporter.reportError(expression.location, "'${t.type}' is not arithmetic in '$expression'")
                     ExpressionType(QualType.ErrorType, isLValue = false)
                 }
             }
@@ -494,7 +531,7 @@ class TypeVisitor(
                 if (operand.isLValue && TypeSystem.isArithmetic(t)) {
                     ExpressionType(t, isLValue = false)
                 } else {
-                    reporter.reportError(expression.location, "'${t.type}' must be a lvalue and an arithmetic")
+                    reporter.reportError(expression.location, "'${t.type}' must be a lvalue and an arithmetic in '$expression'")
                     ExpressionType(QualType.ErrorType, isLValue = false)
                 }
             }
