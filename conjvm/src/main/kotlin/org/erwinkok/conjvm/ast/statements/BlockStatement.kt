@@ -4,7 +4,7 @@ import org.erwinkok.conjvm.ast.AstStatementVisitor
 import org.erwinkok.conjvm.ast.SourceLocation
 
 class BlockStatement(location: SourceLocation, val statements: List<Statement>) : Statement(location) {
-    override fun <R, C> accept(visitor: AstStatementVisitor<R, C>, ctx: C): R = visitor.visitBlock(this, ctx)
+    override fun <R> accept(visitor: AstStatementVisitor<R>): R = visitor.visitBlock(this)
 
     override fun equals(other: Any?): Boolean {
         if (other === this) {

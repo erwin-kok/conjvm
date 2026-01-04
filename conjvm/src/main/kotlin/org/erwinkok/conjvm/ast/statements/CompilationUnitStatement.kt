@@ -8,7 +8,7 @@ class CompilationUnitStatement(
     val variableDeclarations: List<VariableDeclarationStatement>,
     val functionDefinitions: List<FunctionDefinitionStatement>,
 ) : Statement(location) {
-    override fun <R, C> accept(visitor: AstStatementVisitor<R, C>, ctx: C): R = visitor.visitCompilationUnit(this, ctx)
+    override fun <R> accept(visitor: AstStatementVisitor<R>): R = visitor.visitCompilationUnit(this)
 
     override fun equals(other: Any?): Boolean {
         if (other === this) {

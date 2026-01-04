@@ -4,7 +4,7 @@ import org.erwinkok.conjvm.ast.AstStatementVisitor
 import org.erwinkok.conjvm.ast.SourceLocation
 
 class LabeledStatement(location: SourceLocation, val id: String, val statement: Statement) : Statement(location) {
-    override fun <R, C> accept(visitor: AstStatementVisitor<R, C>, ctx: C): R = visitor.visitLabeled(this, ctx)
+    override fun <R> accept(visitor: AstStatementVisitor<R>): R = visitor.visitLabeled(this)
 
     override fun equals(other: Any?): Boolean {
         if (other === this) {

@@ -4,7 +4,7 @@ import org.erwinkok.conjvm.ast.AstExpressionVisitor
 import org.erwinkok.conjvm.ast.SourceLocation
 
 class BinaryExpression(location: SourceLocation, val type: BinaryExpressionType, val leftExpression: Expression, val rightExpression: Expression) : Expression(location) {
-    override fun <R, C> accept(visitor: AstExpressionVisitor<R, C>, ctx: C): R = visitor.visitBinary(this, ctx)
+    override fun <R> accept(visitor: AstExpressionVisitor<R>): R = visitor.visitBinary(this)
 
     override fun toString(): String {
         return "$leftExpression $type $rightExpression"

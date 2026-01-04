@@ -20,7 +20,6 @@ import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryType
-import org.erwinkok.conjvm.ast.types.VariableType
 import org.erwinkok.conjvm.tac.instructions.TacAddressOfInstruction
 import org.erwinkok.conjvm.tac.instructions.TacBinaryInstruction
 import org.erwinkok.conjvm.tac.instructions.TacCallInstruction
@@ -46,51 +45,51 @@ import org.erwinkok.conjvm.tac.values.TacValue
 
 class TacRValueGeneration(
     private val tempFactory: TacTempFactory,
-) : AstExpressionVisitor<TacResult, TacContext> {
+) : AstExpressionVisitor<TacResult> {
     private val lValueVisitor = TacLValueGeneration(this)
 
-    fun translate(node: Expression): TacResult = node.accept(this, TacContext())
+    fun translate(node: Expression): TacResult = node.accept(this)
 
-    override fun visitArrayAccess(expression: ArrayAccessExpression, ctx: TacContext): TacResult {
+    override fun visitArrayAccess(expression: ArrayAccessExpression): TacResult {
         val (ts, te) = lValueVisitor.translate(expression)
         requireNotNull(te)
         val (tsl, tel) = generateLoadInstruction(te)
         return TacResult(ts + tsl, tel)
     }
 
-    override fun visitConstantInt(expression: ConstantIntExpression, ctx: TacContext): TacResult {
+    override fun visitConstantInt(expression: ConstantIntExpression): TacResult {
         return TacResult(emptyList(), TacConstantLongValue(expression.value.toLong()))
     }
 
-    override fun visitConstantLong(expression: ConstantLongExpression, ctx: TacContext): TacResult {
+    override fun visitConstantLong(expression: ConstantLongExpression): TacResult {
         return TacResult(emptyList(), TacConstantLongValue(expression.value))
     }
 
-    override fun visitConstantString(expression: ConstantStringExpression, ctx: TacContext): TacResult {
+    override fun visitConstantString(expression: ConstantStringExpression): TacResult {
         return TacResult(emptyList(), TacConstantStringValue(expression.value))
     }
 
-    override fun visitFieldAccess(expression: FieldAccessExpression, ctx: TacContext): TacResult {
+    override fun visitFieldAccess(expression: FieldAccessExpression): TacResult {
         val (ts, te) = lValueVisitor.translate(expression)
         requireNotNull(te)
         val (tsl, tel) = generateLoadInstruction(te)
         return TacResult(ts + tsl, tel)
     }
 
-    override fun visitIdentifier(identifier: Identifier, ctx: TacContext): TacResult {
+    override fun visitIdentifier(identifier: Identifier): TacResult {
         val (ts, te) = lValueVisitor.translate(identifier)
         requireNotNull(te)
         val (tsl, tel) = generateLoadInstruction(te)
         return TacResult(ts + tsl, tel)
     }
 
-    override fun visitParenthesized(expression: ParenthesizedExpression, ctx: TacContext): TacResult {
+    override fun visitParenthesized(expression: ParenthesizedExpression): TacResult {
         val (ts, te) = translate(expression.expression)
         requireNotNull(te)
         return TacResult(ts, te)
     }
 
-    override fun visitPostfixDecrement(expression: PostfixDecrementExpression, ctx: TacContext): TacResult {
+    override fun visitPostfixDecrement(expression: PostfixDecrementExpression): TacResult {
         val (addrInstrs, addr) = lValueVisitor.translate(expression.expression)
         val instructions = mutableListOf<TacInstruction>()
         instructions.addAll(addrInstrs)
@@ -111,7 +110,7 @@ class TacRValueGeneration(
         return TacResult(instructions, lte)
     }
 
-    override fun visitPostfixIncrement(expression: PostfixIncrementExpression, ctx: TacContext): TacResult {
+    override fun visitPostfixIncrement(expression: PostfixIncrementExpression): TacResult {
         val (addrInstrs, addr) = lValueVisitor.translate(expression.expression)
         val instructions = mutableListOf<TacInstruction>()
         instructions.addAll(addrInstrs)
@@ -132,7 +131,7 @@ class TacRValueGeneration(
         return TacResult(instructions, lte)
     }
 
-    override fun visitAssignment(expression: AssignmentExpression, ctx: TacContext): TacResult {
+    override fun visitAssignment(expression: AssignmentExpression): TacResult {
         val (lts, lte) = lValueVisitor.translate(expression.leftExpression)
         val (rts, rte) = translate(expression.rightExpression)
         requireNotNull(lte)
@@ -142,7 +141,7 @@ class TacRValueGeneration(
         return TacResult(lts + rts + tsl, tel)
     }
 
-    override fun visitBinary(expression: BinaryExpression, ctx: TacContext): TacResult {
+    override fun visitBinary(expression: BinaryExpression): TacResult {
         val allArguments = mutableListOf<TacInstruction>()
         val lte = translate(expression.leftExpression)
         val rte = translate(expression.rightExpression)
@@ -155,7 +154,7 @@ class TacRValueGeneration(
         return TacResult(allArguments, temp)
     }
 
-    override fun visitCall(expression: CallExpression, ctx: TacContext): TacResult {
+    override fun visitCall(expression: CallExpression): TacResult {
         val allArguments = mutableListOf<TacInstruction>()
         val args = expression.arguments.map {
             val (ts, te) = translate(it)
@@ -175,17 +174,19 @@ class TacRValueGeneration(
         return TacResult(allArguments, temp)
     }
 
-    override fun visitCast(expression: CastExpression, ctx: TacContext): TacResult {
+    override fun visitCast(expression: CastExpression): TacResult {
         val allArguments = mutableListOf<TacInstruction>()
         val testTr = translate(expression.expression)
         requireNotNull(testTr.tacValue)
         allArguments.addAll(testTr.statements)
         val temp = tempFactory.newTemp()
-        allArguments.add(TacCastInstruction(temp, VariableType.INT, testTr.tacValue)) // TODO VariableType
+        val targetQualType = expression.targetQualType
+        requireNotNull(targetQualType)
+        allArguments.add(TacCastInstruction(temp, targetQualType, testTr.tacValue))
         return TacResult(allArguments, temp)
     }
 
-    override fun visitTernary(expression: TernaryExpression, ctx: TacContext): TacResult {
+    override fun visitTernary(expression: TernaryExpression): TacResult {
         val allArguments = mutableListOf<TacInstruction>()
         val testTr = translate(expression.condition)
         val thenTr = translate(expression.thenExpression)
@@ -201,7 +202,7 @@ class TacRValueGeneration(
         return TacResult(allArguments, temp)
     }
 
-    override fun visitUnary(expression: UnaryExpression, ctx: TacContext): TacResult {
+    override fun visitUnary(expression: UnaryExpression): TacResult {
         return when (expression.type) {
             UnaryType.Address -> translateUnaryAddressOf(expression)
             UnaryType.Indirection -> translateUnaryIndirection(expression)

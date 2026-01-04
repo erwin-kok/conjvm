@@ -2,10 +2,13 @@ package org.erwinkok.conjvm.ast.expressions
 
 import org.erwinkok.conjvm.ast.AstExpressionVisitor
 import org.erwinkok.conjvm.ast.SourceLocation
+import org.erwinkok.conjvm.ast.types.QualType
 import org.erwinkok.conjvm.ast.types.TypeName
 
 class CastExpression(location: SourceLocation, val targetType: TypeName, val expression: Expression) : Expression(location) {
-    override fun <R, C> accept(visitor: AstExpressionVisitor<R, C>, ctx: C): R = visitor.visitCast(this, ctx)
+    var targetQualType: QualType? = null
+
+    override fun <R> accept(visitor: AstExpressionVisitor<R>): R = visitor.visitCast(this)
 
     override fun toString(): String {
         return "($targetType)$expression"

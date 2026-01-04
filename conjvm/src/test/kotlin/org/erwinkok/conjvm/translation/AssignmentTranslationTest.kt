@@ -1,7 +1,6 @@
 package org.erwinkok.conjvm.translation
 
 import org.erwinkok.conjvm.ast.CodeWriter
-import org.erwinkok.conjvm.ast.DisplayContext
 import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.parser.Parser
 import org.junit.jupiter.api.DynamicTest
@@ -29,7 +28,7 @@ class AssignmentTranslationTest {
         val statement = Parser.parseStatement<BlockStatement>("{ uint A = 5, B = 7; }")
         val translatedStatement = Translator.translateStatement<BlockStatement>(statement, AssignmentTranslation())
         val sw = StringWriter()
-        CodeWriter(sw).visitBlock(translatedStatement, DisplayContext())
+        CodeWriter(sw).visitBlock(translatedStatement)
         val x = sw.toString()
         println(x)
     }

@@ -5,7 +5,7 @@ import org.erwinkok.conjvm.ast.SourceLocation
 import org.erwinkok.conjvm.ast.expressions.Expression
 
 class IfThenElseStatement(location: SourceLocation, val test: Expression, val thenBlock: BlockStatement, val elseBlock: BlockStatement) : Statement(location) {
-    override fun <R, C> accept(visitor: AstStatementVisitor<R, C>, ctx: C): R = visitor.visitIfThenElse(this, ctx)
+    override fun <R> accept(visitor: AstStatementVisitor<R>): R = visitor.visitIfThenElse(this)
 
     override fun equals(other: Any?): Boolean {
         if (other === this) {

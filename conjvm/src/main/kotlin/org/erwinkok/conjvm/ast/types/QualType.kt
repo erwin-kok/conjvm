@@ -9,6 +9,8 @@ data class QualType(val type: Type, val qualifiers: Set<TypeQualifier> = emptySe
 
     fun with(q: TypeQualifier) = copy(qualifiers = qualifiers + q)
 
+    fun isError(): Boolean = this.type == Type.Error
+
     fun withoutQualifiers() = QualType(type, emptySet())
 
     fun isCompatibleWith(other: QualType): Boolean {
@@ -26,11 +28,17 @@ data class QualType(val type: Type, val qualifiers: Set<TypeQualifier> = emptySe
     fun isAssignableFrom(rhs: QualType): Boolean {
         val lhs = this.canonical
         val r = rhs.canonical
-        if (lhs.type != r.type) return false
+        if (lhs.type != r.type) {
+            return false
+        }
         if (TypeQualifier.CONST in r.qualifiers && TypeQualifier.CONST !in lhs.qualifiers) {
             return false
         }
         return true
+    }
+
+    override fun toString(): String {
+        return "$type"
     }
 
     override fun equals(other: Any?): Boolean {

@@ -31,10 +31,10 @@ data class TacAddressResult(
     val tacValue: TacLValue,
 )
 
-class TacLValueGeneration(private val rValueVisitor: TacRValueGeneration) : AstExpressionVisitor<TacAddressResult, TacContext> {
-    fun translate(node: Expression): TacAddressResult = node.accept(this, TacContext())
+class TacLValueGeneration(private val rValueVisitor: TacRValueGeneration) : AstExpressionVisitor<TacAddressResult> {
+    fun translate(node: Expression): TacAddressResult = node.accept(this)
 
-    override fun visitArrayAccess(expression: ArrayAccessExpression, ctx: TacContext): TacAddressResult {
+    override fun visitArrayAccess(expression: ArrayAccessExpression): TacAddressResult {
         val (tsb, teb) = when (expression.base) {
             is Identifier,
             is FieldAccessExpression,
@@ -57,61 +57,61 @@ class TacLValueGeneration(private val rValueVisitor: TacRValueGeneration) : AstE
         return TacAddressResult(tsb + ts, ArrayLValue(teb, te))
     }
 
-    override fun visitConstantInt(expression: ConstantIntExpression, ctx: TacContext): TacAddressResult {
+    override fun visitConstantInt(expression: ConstantIntExpression): TacAddressResult {
         error("expression is not an lvalue: $expression")
     }
 
-    override fun visitConstantLong(expression: ConstantLongExpression, ctx: TacContext): TacAddressResult {
+    override fun visitConstantLong(expression: ConstantLongExpression): TacAddressResult {
         error("expression is not an lvalue: $expression")
     }
 
-    override fun visitConstantString(expression: ConstantStringExpression, ctx: TacContext): TacAddressResult {
+    override fun visitConstantString(expression: ConstantStringExpression): TacAddressResult {
         error("expression is not an lvalue: $expression")
     }
 
-    override fun visitFieldAccess(expression: FieldAccessExpression, ctx: TacContext): TacAddressResult {
+    override fun visitFieldAccess(expression: FieldAccessExpression): TacAddressResult {
         val (ts, te) = translate(expression.base)
         requireNotNull(te)
         return TacAddressResult(ts, FieldLValue(te, expression.field))
     }
 
-    override fun visitIdentifier(identifier: Identifier, ctx: TacContext): TacAddressResult {
+    override fun visitIdentifier(identifier: Identifier): TacAddressResult {
         return TacAddressResult(emptyList(), VarLValue(TacIdentifier(identifier.name)))
     }
 
-    override fun visitParenthesized(expression: ParenthesizedExpression, ctx: TacContext): TacAddressResult {
+    override fun visitParenthesized(expression: ParenthesizedExpression): TacAddressResult {
         return translate(expression.expression)
     }
 
-    override fun visitPostfixDecrement(expression: PostfixDecrementExpression, ctx: TacContext): TacAddressResult {
+    override fun visitPostfixDecrement(expression: PostfixDecrementExpression): TacAddressResult {
         error("expression is not an lvalue: $expression")
     }
 
-    override fun visitPostfixIncrement(expression: PostfixIncrementExpression, ctx: TacContext): TacAddressResult {
+    override fun visitPostfixIncrement(expression: PostfixIncrementExpression): TacAddressResult {
         error("expression is not an lvalue: $expression")
     }
 
-    override fun visitAssignment(expression: AssignmentExpression, ctx: TacContext): TacAddressResult {
+    override fun visitAssignment(expression: AssignmentExpression): TacAddressResult {
         error("expression is not an lvalue: $expression")
     }
 
-    override fun visitBinary(expression: BinaryExpression, ctx: TacContext): TacAddressResult {
+    override fun visitBinary(expression: BinaryExpression): TacAddressResult {
         error("expression is not an lvalue: $expression")
     }
 
-    override fun visitCall(expression: CallExpression, ctx: TacContext): TacAddressResult {
+    override fun visitCall(expression: CallExpression): TacAddressResult {
         error("expression is not an lvalue: $expression")
     }
 
-    override fun visitCast(expression: CastExpression, ctx: TacContext): TacAddressResult {
+    override fun visitCast(expression: CastExpression): TacAddressResult {
         error("expression is not an lvalue: $expression")
     }
 
-    override fun visitTernary(expression: TernaryExpression, ctx: TacContext): TacAddressResult {
+    override fun visitTernary(expression: TernaryExpression): TacAddressResult {
         error("expression is not an lvalue: $expression")
     }
 
-    override fun visitUnary(expression: UnaryExpression, ctx: TacContext): TacAddressResult {
+    override fun visitUnary(expression: UnaryExpression): TacAddressResult {
         return if (expression.type == UnaryType.Indirection) {
             val (ts, te) = rValueVisitor.translate(expression.operand)
             requireNotNull(te)

@@ -4,7 +4,7 @@ import org.erwinkok.conjvm.ast.AstExpressionVisitor
 import org.erwinkok.conjvm.ast.SourceLocation
 
 class PostfixIncrementExpression(location: SourceLocation, val expression: Expression) : Expression(location) {
-    override fun <R, C> accept(visitor: AstExpressionVisitor<R, C>, ctx: C): R = visitor.visitPostfixIncrement(this, ctx)
+    override fun <R> accept(visitor: AstExpressionVisitor<R>): R = visitor.visitPostfixIncrement(this)
 
     override fun toString(): String {
         return "$expression++"

@@ -4,7 +4,7 @@ import org.erwinkok.conjvm.ast.AstExpressionVisitor
 import org.erwinkok.conjvm.ast.SourceLocation
 
 class TernaryExpression(location: SourceLocation, val condition: Expression, val thenExpression: Expression, val elseExpression: Expression) : Expression(location) {
-    override fun <R, C> accept(visitor: AstExpressionVisitor<R, C>, ctx: C): R = visitor.visitTernary(this, ctx)
+    override fun <R> accept(visitor: AstExpressionVisitor<R>): R = visitor.visitTernary(this)
 
     override fun equals(other: Any?): Boolean {
         if (other === this) {

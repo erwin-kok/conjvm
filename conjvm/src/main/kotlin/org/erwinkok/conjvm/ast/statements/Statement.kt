@@ -5,7 +5,7 @@ import org.erwinkok.conjvm.ast.AstStatementVisitor
 import org.erwinkok.conjvm.ast.SourceLocation
 
 sealed class Statement(location: SourceLocation) : AstNode(location) {
-    abstract fun <R, C> accept(visitor: AstStatementVisitor<R, C>, ctx: C): R
+    abstract fun <R> accept(visitor: AstStatementVisitor<R>): R
 
     abstract override fun equals(other: Any?): Boolean
     abstract override fun hashCode(): Int

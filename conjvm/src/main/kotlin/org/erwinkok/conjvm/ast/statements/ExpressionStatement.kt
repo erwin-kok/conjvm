@@ -5,7 +5,7 @@ import org.erwinkok.conjvm.ast.SourceLocation
 import org.erwinkok.conjvm.ast.expressions.Expression
 
 class ExpressionStatement(location: SourceLocation, val expression: Expression) : Statement(location) {
-    override fun <R, C> accept(visitor: AstStatementVisitor<R, C>, ctx: C): R = visitor.visitExpression(this, ctx)
+    override fun <R> accept(visitor: AstStatementVisitor<R>): R = visitor.visitExpression(this)
 
     override fun equals(other: Any?): Boolean {
         if (other === this) {

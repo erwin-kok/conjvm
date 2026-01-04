@@ -33,46 +33,46 @@ import org.erwinkok.conjvm.ast.statements.SwitchStatement
 import org.erwinkok.conjvm.ast.statements.VariableDeclarationStatement
 import org.erwinkok.conjvm.ast.statements.WhileStatement
 
-interface AstExpressionVisitor<out R, in C> {
-    fun visit(node: Expression, ctx: C): R = node.accept(this, ctx)
+interface AstExpressionVisitor<out R> {
+    fun visit(node: Expression): R = node.accept(this)
 
-    fun visitArrayAccess(expression: ArrayAccessExpression, ctx: C): R
-    fun visitAssignment(expression: AssignmentExpression, ctx: C): R
-    fun visitBinary(expression: BinaryExpression, ctx: C): R
-    fun visitCall(expression: CallExpression, ctx: C): R
-    fun visitCast(expression: CastExpression, ctx: C): R
-    fun visitConstantInt(expression: ConstantIntExpression, ctx: C): R
-    fun visitConstantLong(expression: ConstantLongExpression, ctx: C): R
-    fun visitConstantString(expression: ConstantStringExpression, ctx: C): R
-    fun visitFieldAccess(expression: FieldAccessExpression, ctx: C): R
-    fun visitIdentifier(identifier: Identifier, ctx: C): R
-    fun visitParenthesized(expression: ParenthesizedExpression, ctx: C): R
-    fun visitPostfixDecrement(expression: PostfixDecrementExpression, ctx: C): R
-    fun visitPostfixIncrement(expression: PostfixIncrementExpression, ctx: C): R
-    fun visitTernary(expression: TernaryExpression, ctx: C): R
-    fun visitUnary(expression: UnaryExpression, ctx: C): R
+    fun visitArrayAccess(expression: ArrayAccessExpression): R
+    fun visitAssignment(expression: AssignmentExpression): R
+    fun visitBinary(expression: BinaryExpression): R
+    fun visitCall(expression: CallExpression): R
+    fun visitCast(expression: CastExpression): R
+    fun visitConstantInt(expression: ConstantIntExpression): R
+    fun visitConstantLong(expression: ConstantLongExpression): R
+    fun visitConstantString(expression: ConstantStringExpression): R
+    fun visitFieldAccess(expression: FieldAccessExpression): R
+    fun visitIdentifier(identifier: Identifier): R
+    fun visitParenthesized(expression: ParenthesizedExpression): R
+    fun visitPostfixDecrement(expression: PostfixDecrementExpression): R
+    fun visitPostfixIncrement(expression: PostfixIncrementExpression): R
+    fun visitTernary(expression: TernaryExpression): R
+    fun visitUnary(expression: UnaryExpression): R
 }
 
-interface AstStatementVisitor<out R, in C> {
-    fun visit(node: Statement, ctx: C): R = node.accept(this, ctx)
+interface AstStatementVisitor<out R> {
+    fun visit(node: Statement): R = node.accept(this)
 
-    fun visitBlock(statement: BlockStatement, ctx: C): R
-    fun visitBreak(statement: BreakStatement, ctx: C): R
-    fun visitCompilationUnit(statement: CompilationUnitStatement, ctx: C): R
-    fun visitContinue(statement: ContinueStatement, ctx: C): R
-    fun visitExpression(statement: ExpressionStatement, ctx: C): R
-    fun visitFor(statement: ForStatement, ctx: C): R
-    fun visitFunctionDefinition(definition: FunctionDefinitionStatement, ctx: C): R
-    fun visitGoto(statement: GotoStatement, ctx: C): R
-    fun visitIfThenElse(statement: IfThenElseStatement, ctx: C): R
-    fun visitIfThen(statement: IfThenStatement, ctx: C): R
-    fun visitLabeled(statement: LabeledStatement, ctx: C): R
-    fun visitReturn(statement: ReturnStatement, ctx: C): R
-    fun visitSwitch(statement: SwitchStatement, ctx: C): R
-    fun visitVariableDeclaration(statement: VariableDeclarationStatement, ctx: C): R
-    fun visitWhile(statement: WhileStatement, ctx: C): R
+    fun visitBlock(statement: BlockStatement): R
+    fun visitBreak(statement: BreakStatement): R
+    fun visitCompilationUnit(statement: CompilationUnitStatement): R
+    fun visitContinue(statement: ContinueStatement): R
+    fun visitExpression(statement: ExpressionStatement): R
+    fun visitFor(statement: ForStatement): R
+    fun visitFunctionDefinition(definition: FunctionDefinitionStatement): R
+    fun visitGoto(statement: GotoStatement): R
+    fun visitIfThenElse(statement: IfThenElseStatement): R
+    fun visitIfThen(statement: IfThenStatement): R
+    fun visitLabeled(statement: LabeledStatement): R
+    fun visitReturn(statement: ReturnStatement): R
+    fun visitSwitch(statement: SwitchStatement): R
+    fun visitVariableDeclaration(statement: VariableDeclarationStatement): R
+    fun visitWhile(statement: WhileStatement): R
 }
 
-interface AstVisitor<out R, in C> :
-    AstExpressionVisitor<R, C>,
-    AstStatementVisitor<R, C>
+interface AstVisitor<out R> :
+    AstExpressionVisitor<R>,
+    AstStatementVisitor<R>

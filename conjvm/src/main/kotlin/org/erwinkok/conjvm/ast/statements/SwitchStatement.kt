@@ -49,7 +49,7 @@ data class SwitchDefaultStatement(val location: SourceLocation, val blockStateme
 }
 
 class SwitchStatement(location: SourceLocation, val test: Expression, val sections: List<SwitchCaseStatement>, val defaultSection: SwitchDefaultStatement?) : Statement(location) {
-    override fun <R, C> accept(visitor: AstStatementVisitor<R, C>, ctx: C): R = visitor.visitSwitch(this, ctx)
+    override fun <R> accept(visitor: AstStatementVisitor<R>): R = visitor.visitSwitch(this)
 
     override fun equals(other: Any?): Boolean {
         if (other === this) {

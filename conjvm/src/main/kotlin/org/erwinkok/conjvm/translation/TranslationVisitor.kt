@@ -40,10 +40,8 @@ data class TranslationResult(
     val expression: Expression?,
 )
 
-class TranslationContext
-
-interface ExpressionTranslationVisitor : AstExpressionVisitor<TranslationResult, TranslationContext> {
-    fun translate(node: Expression): TranslationResult = node.accept(this, TranslationContext())
+interface ExpressionTranslationVisitor : AstExpressionVisitor<TranslationResult> {
+    fun translate(node: Expression): TranslationResult = node.accept(this)
 
     fun translateArrayAccess(expression: ArrayAccessExpression): TranslationResult
     fun translateAssignment(expression: AssignmentExpression): TranslationResult
@@ -61,69 +59,69 @@ interface ExpressionTranslationVisitor : AstExpressionVisitor<TranslationResult,
     fun translateTernary(expression: TernaryExpression): TranslationResult
     fun translateUnary(expression: UnaryExpression): TranslationResult
 
-    override fun visitArrayAccess(expression: ArrayAccessExpression, ctx: TranslationContext): TranslationResult {
+    override fun visitArrayAccess(expression: ArrayAccessExpression): TranslationResult {
         return translateArrayAccess(expression)
     }
 
-    override fun visitAssignment(expression: AssignmentExpression, ctx: TranslationContext): TranslationResult {
+    override fun visitAssignment(expression: AssignmentExpression): TranslationResult {
         return translateAssignment(expression)
     }
 
-    override fun visitBinary(expression: BinaryExpression, ctx: TranslationContext): TranslationResult {
+    override fun visitBinary(expression: BinaryExpression): TranslationResult {
         return translateBinary(expression)
     }
 
-    override fun visitCall(expression: CallExpression, ctx: TranslationContext): TranslationResult {
+    override fun visitCall(expression: CallExpression): TranslationResult {
         return translateCall(expression)
     }
 
-    override fun visitCast(expression: CastExpression, ctx: TranslationContext): TranslationResult {
+    override fun visitCast(expression: CastExpression): TranslationResult {
         return translateCast(expression)
     }
 
-    override fun visitConstantInt(expression: ConstantIntExpression, ctx: TranslationContext): TranslationResult {
+    override fun visitConstantInt(expression: ConstantIntExpression): TranslationResult {
         return translateConstantInt(expression)
     }
 
-    override fun visitConstantLong(expression: ConstantLongExpression, ctx: TranslationContext): TranslationResult {
+    override fun visitConstantLong(expression: ConstantLongExpression): TranslationResult {
         return translateConstantLong(expression)
     }
 
-    override fun visitConstantString(expression: ConstantStringExpression, ctx: TranslationContext): TranslationResult {
+    override fun visitConstantString(expression: ConstantStringExpression): TranslationResult {
         return translateConstantString(expression)
     }
 
-    override fun visitFieldAccess(expression: FieldAccessExpression, ctx: TranslationContext): TranslationResult {
+    override fun visitFieldAccess(expression: FieldAccessExpression): TranslationResult {
         return translateFieldAccess(expression)
     }
 
-    override fun visitIdentifier(identifier: Identifier, ctx: TranslationContext): TranslationResult {
+    override fun visitIdentifier(identifier: Identifier): TranslationResult {
         return translateIdentifier(identifier)
     }
 
-    override fun visitParenthesized(expression: ParenthesizedExpression, ctx: TranslationContext): TranslationResult {
+    override fun visitParenthesized(expression: ParenthesizedExpression): TranslationResult {
         return translateParenthesized(expression)
     }
 
-    override fun visitPostfixDecrement(expression: PostfixDecrementExpression, ctx: TranslationContext): TranslationResult {
+    override fun visitPostfixDecrement(expression: PostfixDecrementExpression): TranslationResult {
         return translatePostfixDecrement(expression)
     }
 
-    override fun visitPostfixIncrement(expression: PostfixIncrementExpression, ctx: TranslationContext): TranslationResult {
+    override fun visitPostfixIncrement(expression: PostfixIncrementExpression): TranslationResult {
         return translatePostfixIncrement(expression)
     }
 
-    override fun visitTernary(expression: TernaryExpression, ctx: TranslationContext): TranslationResult {
+    override fun visitTernary(expression: TernaryExpression): TranslationResult {
         return translateTernary(expression)
     }
 
-    override fun visitUnary(expression: UnaryExpression, ctx: TranslationContext): TranslationResult {
+    override fun visitUnary(expression: UnaryExpression): TranslationResult {
         return translateUnary(expression)
     }
 }
 
-interface StatementTranslationVisitor : AstStatementVisitor<TranslationResult, TranslationContext> {
-    fun translate(node: Statement): TranslationResult = node.accept(this, TranslationContext())
+interface StatementTranslationVisitor : AstStatementVisitor<TranslationResult> {
+    fun translate(node: Statement): TranslationResult = node.accept(this)
 
     fun translateBlock(statement: BlockStatement): TranslationResult
     fun translateBreak(statement: BreakStatement): TranslationResult
@@ -141,63 +139,63 @@ interface StatementTranslationVisitor : AstStatementVisitor<TranslationResult, T
     fun translateVariableDeclaration(statement: VariableDeclarationStatement): TranslationResult
     fun translateWhile(statement: WhileStatement): TranslationResult
 
-    override fun visitBlock(statement: BlockStatement, ctx: TranslationContext): TranslationResult {
+    override fun visitBlock(statement: BlockStatement): TranslationResult {
         return translateBlock(statement)
     }
 
-    override fun visitBreak(statement: BreakStatement, ctx: TranslationContext): TranslationResult {
+    override fun visitBreak(statement: BreakStatement): TranslationResult {
         return translateBreak(statement)
     }
 
-    override fun visitCompilationUnit(statement: CompilationUnitStatement, ctx: TranslationContext): TranslationResult {
+    override fun visitCompilationUnit(statement: CompilationUnitStatement): TranslationResult {
         return translateCompilationUnit(statement)
     }
 
-    override fun visitContinue(statement: ContinueStatement, ctx: TranslationContext): TranslationResult {
+    override fun visitContinue(statement: ContinueStatement): TranslationResult {
         return translateContinue(statement)
     }
 
-    override fun visitExpression(statement: ExpressionStatement, ctx: TranslationContext): TranslationResult {
+    override fun visitExpression(statement: ExpressionStatement): TranslationResult {
         return translateExpression(statement)
     }
 
-    override fun visitFor(statement: ForStatement, ctx: TranslationContext): TranslationResult {
+    override fun visitFor(statement: ForStatement): TranslationResult {
         return translateFor(statement)
     }
 
-    override fun visitFunctionDefinition(definition: FunctionDefinitionStatement, ctx: TranslationContext): TranslationResult {
+    override fun visitFunctionDefinition(definition: FunctionDefinitionStatement): TranslationResult {
         return translateFunctionDefinition(definition)
     }
 
-    override fun visitGoto(statement: GotoStatement, ctx: TranslationContext): TranslationResult {
+    override fun visitGoto(statement: GotoStatement): TranslationResult {
         return translateGoto(statement)
     }
 
-    override fun visitIfThenElse(statement: IfThenElseStatement, ctx: TranslationContext): TranslationResult {
+    override fun visitIfThenElse(statement: IfThenElseStatement): TranslationResult {
         return translateIfThenElse(statement)
     }
 
-    override fun visitIfThen(statement: IfThenStatement, ctx: TranslationContext): TranslationResult {
+    override fun visitIfThen(statement: IfThenStatement): TranslationResult {
         return translateIfThen(statement)
     }
 
-    override fun visitLabeled(statement: LabeledStatement, ctx: TranslationContext): TranslationResult {
+    override fun visitLabeled(statement: LabeledStatement): TranslationResult {
         return translateLabeled(statement)
     }
 
-    override fun visitReturn(statement: ReturnStatement, ctx: TranslationContext): TranslationResult {
+    override fun visitReturn(statement: ReturnStatement): TranslationResult {
         return translateReturn(statement)
     }
 
-    override fun visitSwitch(statement: SwitchStatement, ctx: TranslationContext): TranslationResult {
+    override fun visitSwitch(statement: SwitchStatement): TranslationResult {
         return translateSwitch(statement)
     }
 
-    override fun visitVariableDeclaration(statement: VariableDeclarationStatement, ctx: TranslationContext): TranslationResult {
+    override fun visitVariableDeclaration(statement: VariableDeclarationStatement): TranslationResult {
         return translateVariableDeclaration(statement)
     }
 
-    override fun visitWhile(statement: WhileStatement, ctx: TranslationContext): TranslationResult {
+    override fun visitWhile(statement: WhileStatement): TranslationResult {
         return translateWhile(statement)
     }
 }

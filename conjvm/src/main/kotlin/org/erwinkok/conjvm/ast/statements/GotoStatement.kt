@@ -4,7 +4,7 @@ import org.erwinkok.conjvm.ast.AstStatementVisitor
 import org.erwinkok.conjvm.ast.SourceLocation
 
 class GotoStatement(location: SourceLocation, val label: String) : Statement(location) {
-    override fun <R, C> accept(visitor: AstStatementVisitor<R, C>, ctx: C): R = visitor.visitGoto(this, ctx)
+    override fun <R> accept(visitor: AstStatementVisitor<R>): R = visitor.visitGoto(this)
 
     override fun equals(other: Any?): Boolean {
         if (other === this) {

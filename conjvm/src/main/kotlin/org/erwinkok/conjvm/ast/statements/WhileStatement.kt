@@ -9,7 +9,7 @@ class WhileStatement(
     val condition: Expression,
     val statements: BlockStatement,
 ) : Statement(location) {
-    override fun <R, C> accept(visitor: AstStatementVisitor<R, C>, ctx: C): R = visitor.visitWhile(this, ctx)
+    override fun <R> accept(visitor: AstStatementVisitor<R>): R = visitor.visitWhile(this)
 
     override fun equals(other: Any?): Boolean {
         if (other === this) {

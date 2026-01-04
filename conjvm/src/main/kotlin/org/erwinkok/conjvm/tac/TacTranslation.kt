@@ -29,7 +29,7 @@ import org.erwinkok.conjvm.tac.instructions.TacReturnInstruction
 import org.erwinkok.conjvm.tac.instructions.TacStoreInstruction
 import org.erwinkok.conjvm.tac.lvalues.TacIdentifier
 
-class TacTranslation : AstStatementVisitor<TacResult, TacContext> {
+class TacTranslation : AstStatementVisitor<TacResult> {
     private val tempFactory = TacTempFactory()
     private val labelFactory = TacLabelFactory()
     private val functionMap = mutableMapOf<String, TacFunctionDefinition>()
@@ -38,10 +38,10 @@ class TacTranslation : AstStatementVisitor<TacResult, TacContext> {
     val functions: Map<String, TacFunctionDefinition>
         get() = functionMap
 
-    fun translateStatement(node: Statement): TacResult = node.accept(this, TacContext())
-    fun translateExpression(node: Expression): TacResult = node.accept(rvalueGeneration, TacContext())
+    fun translateStatement(node: Statement): TacResult = node.accept(this)
+    fun translateExpression(node: Expression): TacResult = node.accept(rvalueGeneration)
 
-    override fun visitCompilationUnit(statement: CompilationUnitStatement, ctx: TacContext): TacResult {
+    override fun visitCompilationUnit(statement: CompilationUnitStatement): TacResult {
         statement.functionDefinitions.forEach {
             val (ts, te) = translateStatement(it)
             require(te == null)
@@ -53,39 +53,39 @@ class TacTranslation : AstStatementVisitor<TacResult, TacContext> {
         return TacResult(emptyList(), null)
     }
 
-    override fun visitFunctionDefinition(definition: FunctionDefinitionStatement, ctx: TacContext): TacResult {
+    override fun visitFunctionDefinition(definition: FunctionDefinitionStatement): TacResult {
         tempFactory.clear()
         labelFactory.clear()
         val translatedBlock = translateBlockStatement(definition.statements)
         return TacResult(listOf(TacFunctionDefinition(definition.declarator.name(), translatedBlock)), null)
     }
 
-    override fun visitBlock(statement: BlockStatement, ctx: TacContext): TacResult {
+    override fun visitBlock(statement: BlockStatement): TacResult {
         return TacResult(translateBlockStatement(statement), null)
     }
 
-    override fun visitBreak(statement: BreakStatement, ctx: TacContext): TacResult {
+    override fun visitBreak(statement: BreakStatement): TacResult {
         return TacResult(emptyList(), null)
     }
 
-    override fun visitContinue(statement: ContinueStatement, ctx: TacContext): TacResult {
+    override fun visitContinue(statement: ContinueStatement): TacResult {
         error("continue statement should not be present when transforming to TAC")
     }
 
-    override fun visitExpression(statement: ExpressionStatement, ctx: TacContext): TacResult {
+    override fun visitExpression(statement: ExpressionStatement): TacResult {
         val (ts, _) = translateExpression(statement.expression)
         return TacResult(ts, null)
     }
 
-    override fun visitFor(statement: ForStatement, ctx: TacContext): TacResult {
+    override fun visitFor(statement: ForStatement): TacResult {
         error("for statement should not be present when transforming to TAC")
     }
 
-    override fun visitGoto(statement: GotoStatement, ctx: TacContext): TacResult {
+    override fun visitGoto(statement: GotoStatement): TacResult {
         return TacResult(listOf(TacGotoInstruction(TacLabel(statement.label))), null)
     }
 
-    override fun visitIfThenElse(statement: IfThenElseStatement, ctx: TacContext): TacResult {
+    override fun visitIfThenElse(statement: IfThenElseStatement): TacResult {
         val allStatements = mutableListOf<TacInstruction>()
         val (ts, te) = translateExpression(statement.test)
         allStatements.addAll(ts)
@@ -106,7 +106,7 @@ class TacTranslation : AstStatementVisitor<TacResult, TacContext> {
         return TacResult(allStatements, null)
     }
 
-    override fun visitIfThen(statement: IfThenStatement, ctx: TacContext): TacResult {
+    override fun visitIfThen(statement: IfThenStatement): TacResult {
         val allStatements = mutableListOf<TacInstruction>()
         val (ts, te) = translateExpression(statement.test)
         allStatements.addAll(ts)
@@ -122,7 +122,7 @@ class TacTranslation : AstStatementVisitor<TacResult, TacContext> {
         return TacResult(allStatements, null)
     }
 
-    override fun visitLabeled(statement: LabeledStatement, ctx: TacContext): TacResult {
+    override fun visitLabeled(statement: LabeledStatement): TacResult {
         val (ts, te) = translateStatement(statement.statement)
         require(te == null)
         val allStatements = mutableListOf<TacInstruction>()
@@ -131,12 +131,12 @@ class TacTranslation : AstStatementVisitor<TacResult, TacContext> {
         return TacResult(allStatements, null)
     }
 
-    override fun visitReturn(statement: ReturnStatement, ctx: TacContext): TacResult {
+    override fun visitReturn(statement: ReturnStatement): TacResult {
         require(statement.value == null)
         return TacResult(listOf(TacReturnInstruction()), null)
     }
 
-    override fun visitSwitch(statement: SwitchStatement, ctx: TacContext): TacResult {
+    override fun visitSwitch(statement: SwitchStatement): TacResult {
         val allStatements = mutableListOf<TacInstruction>()
 
         // Evaluate switch expression
@@ -201,7 +201,7 @@ class TacTranslation : AstStatementVisitor<TacResult, TacContext> {
         return allStatements
     }
 
-    override fun visitVariableDeclaration(statement: VariableDeclarationStatement, ctx: TacContext): TacResult {
+    override fun visitVariableDeclaration(statement: VariableDeclarationStatement): TacResult {
         val allStatements = mutableListOf<TacInstruction>()
         statement.variableDeclarators.forEach {
             it.init?.let { vd ->
@@ -214,7 +214,7 @@ class TacTranslation : AstStatementVisitor<TacResult, TacContext> {
         return TacResult(allStatements, null)
     }
 
-    override fun visitWhile(statement: WhileStatement, ctx: TacContext): TacResult {
+    override fun visitWhile(statement: WhileStatement): TacResult {
         val allStatements = mutableListOf<TacInstruction>()
         val (ts, te) = translateExpression(statement.condition)
         requireNotNull(te)

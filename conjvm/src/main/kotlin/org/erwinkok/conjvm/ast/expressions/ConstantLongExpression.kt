@@ -4,7 +4,7 @@ import org.erwinkok.conjvm.ast.AstExpressionVisitor
 import org.erwinkok.conjvm.ast.SourceLocation
 
 class ConstantLongExpression(location: SourceLocation, val value: Long) : ConstantExpression(location) {
-    override fun <R, C> accept(visitor: AstExpressionVisitor<R, C>, ctx: C): R = visitor.visitConstantLong(this, ctx)
+    override fun <R> accept(visitor: AstExpressionVisitor<R>): R = visitor.visitConstantLong(this)
 
     override fun equals(other: Any?): Boolean {
         if (other === this) {

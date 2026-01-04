@@ -37,13 +37,9 @@ import org.erwinkok.conjvm.ast.statements.VariableDeclarationStatement
 import org.erwinkok.conjvm.ast.statements.WhileStatement
 import java.io.Writer
 
-data class DisplayContext(
-    val indent: Int = 0,
-) {
-    fun increaseIndent() = copy(indent = indent + 1)
-}
+class CodeWriter(val writer: Writer) : AstVisitor<String> {
+    private var indent: Int = 0
 
-class CodeWriter(val writer: Writer) : AstVisitor<String, DisplayContext> {
     private val format = HexFormat {
         upperCase = false
         bytes {
@@ -55,34 +51,34 @@ class CodeWriter(val writer: Writer) : AstVisitor<String, DisplayContext> {
         }
     }
 
-    override fun visitArrayAccess(expression: ArrayAccessExpression, ctx: DisplayContext): String {
-        val nodeResult = visit(expression.index, ctx)
+    override fun visitArrayAccess(expression: ArrayAccessExpression): String {
+        val nodeResult = visit(expression.index)
         return "${expression.base}[$nodeResult]"
     }
 
-    override fun visitAssignment(expression: AssignmentExpression, ctx: DisplayContext): String {
-        val leftResult = visit(expression.leftExpression, ctx)
-        val rightResult = visit(expression.rightExpression, ctx)
+    override fun visitAssignment(expression: AssignmentExpression): String {
+        val leftResult = visit(expression.leftExpression)
+        val rightResult = visit(expression.rightExpression)
         return "$leftResult ${expression.type} $rightResult"
     }
 
-    override fun visitBinary(expression: BinaryExpression, ctx: DisplayContext): String {
-        val leftResult = visit(expression.leftExpression, ctx)
-        val rightResult = visit(expression.rightExpression, ctx)
+    override fun visitBinary(expression: BinaryExpression): String {
+        val leftResult = visit(expression.leftExpression)
+        val rightResult = visit(expression.rightExpression)
         return "$leftResult ${expression.type} $rightResult"
     }
 
-    override fun visitCall(expression: CallExpression, ctx: DisplayContext): String {
-        val arguments = expression.arguments.joinToString(", ") { visit(it, ctx) }
+    override fun visitCall(expression: CallExpression): String {
+        val arguments = expression.arguments.joinToString(", ") { visit(it) }
         return "${expression.function}($arguments)"
     }
 
-    override fun visitCast(expression: CastExpression, ctx: DisplayContext): String {
-        val nodeResult = visit(expression.expression, ctx)
+    override fun visitCast(expression: CastExpression): String {
+        val nodeResult = visit(expression.expression)
         return "(${expression.targetType})$nodeResult"
     }
 
-    override fun visitConstantInt(expression: ConstantIntExpression, ctx: DisplayContext): String {
+    override fun visitConstantInt(expression: ConstantIntExpression): String {
         return if (expression.value < 10) {
             expression.value.toString()
         } else {
@@ -90,7 +86,7 @@ class CodeWriter(val writer: Writer) : AstVisitor<String, DisplayContext> {
         }
     }
 
-    override fun visitConstantLong(expression: ConstantLongExpression, ctx: DisplayContext): String {
+    override fun visitConstantLong(expression: ConstantLongExpression): String {
         return if (expression.value < 10) {
             expression.value.toString()
         } else {
@@ -98,133 +94,135 @@ class CodeWriter(val writer: Writer) : AstVisitor<String, DisplayContext> {
         }
     }
 
-    override fun visitConstantString(expression: ConstantStringExpression, ctx: DisplayContext): String {
+    override fun visitConstantString(expression: ConstantStringExpression): String {
         return expression.value
     }
 
-    override fun visitFieldAccess(expression: FieldAccessExpression, ctx: DisplayContext): String {
+    override fun visitFieldAccess(expression: FieldAccessExpression): String {
         return "${expression.base}.${expression.field}"
     }
 
-    override fun visitIdentifier(identifier: Identifier, ctx: DisplayContext): String {
+    override fun visitIdentifier(identifier: Identifier): String {
         return identifier.name
     }
 
-    override fun visitParenthesized(expression: ParenthesizedExpression, ctx: DisplayContext): String {
-        val nodeResult = visit(expression.expression, ctx)
+    override fun visitParenthesized(expression: ParenthesizedExpression): String {
+        val nodeResult = visit(expression.expression)
         return "($nodeResult)"
     }
 
-    override fun visitPostfixDecrement(expression: PostfixDecrementExpression, ctx: DisplayContext): String {
-        val nodeResult = visit(expression.expression, ctx)
+    override fun visitPostfixDecrement(expression: PostfixDecrementExpression): String {
+        val nodeResult = visit(expression.expression)
         return "$nodeResult--"
     }
 
-    override fun visitPostfixIncrement(expression: PostfixIncrementExpression, ctx: DisplayContext): String {
-        val nodeResult = visit(expression.expression, ctx)
+    override fun visitPostfixIncrement(expression: PostfixIncrementExpression): String {
+        val nodeResult = visit(expression.expression)
         return "$nodeResult++"
     }
 
-    override fun visitTernary(expression: TernaryExpression, ctx: DisplayContext): String {
-        val testResult = visit(expression.condition, ctx)
-        val thenResult = visit(expression.thenExpression, ctx)
-        val elseResult = visit(expression.elseExpression, ctx)
+    override fun visitTernary(expression: TernaryExpression): String {
+        val testResult = visit(expression.condition)
+        val thenResult = visit(expression.thenExpression)
+        val elseResult = visit(expression.elseExpression)
         return "$testResult ? $thenResult : $elseResult"
     }
 
-    override fun visitUnary(expression: UnaryExpression, ctx: DisplayContext): String {
-        val nodeResult = visit(expression.operand, ctx)
+    override fun visitUnary(expression: UnaryExpression): String {
+        val nodeResult = visit(expression.operand)
         return "${expression.type}$nodeResult"
     }
 
-    override fun visitBlock(statement: BlockStatement, ctx: DisplayContext): String {
-        appendIndent(ctx)
+    override fun visitBlock(statement: BlockStatement): String {
+        appendIndent()
         writer.appendLine("{")
-        statement.statements.forEach { visit(it, ctx.increaseIndent()) }
-        appendIndent(ctx)
+        withIncreasedIdent {
+            statement.statements.forEach { visit(it) }
+        }
+        appendIndent()
         writer.appendLine("}")
         return ""
     }
 
-    override fun visitBreak(statement: BreakStatement, ctx: DisplayContext): String {
-        appendIndent(ctx)
+    override fun visitBreak(statement: BreakStatement): String {
+        appendIndent()
         writer.appendLine("break;")
         return ""
     }
 
-    override fun visitCompilationUnit(statement: CompilationUnitStatement, ctx: DisplayContext): String {
-        require(ctx.indent == 0)
-        statement.functionDefinitions.forEach { visit(it, ctx) }
+    override fun visitCompilationUnit(statement: CompilationUnitStatement): String {
+        require(indent == 0)
+        statement.functionDefinitions.forEach { visit(it) }
         return ""
     }
 
-    override fun visitContinue(statement: ContinueStatement, ctx: DisplayContext): String {
-        appendIndent(ctx)
+    override fun visitContinue(statement: ContinueStatement): String {
+        appendIndent()
         writer.appendLine("continue;")
         return ""
     }
 
-    override fun visitExpression(statement: ExpressionStatement, ctx: DisplayContext): String {
-        appendIndent(ctx)
-        val nodeResult = visit(statement.expression, ctx)
+    override fun visitExpression(statement: ExpressionStatement): String {
+        appendIndent()
+        val nodeResult = visit(statement.expression)
         writer.appendLine("$nodeResult;")
         return ""
     }
 
-    override fun visitFor(statement: ForStatement, ctx: DisplayContext): String {
-        val initResult = statement.init?.let { visitForInit(it, ctx) } ?: ""
-        val testResult = statement.condition?.let { visit(it, ctx) } ?: ""
-        val iteratorResult = statement.iterators?.joinToString(";") { visit(it, ctx) } ?: ""
-        appendIndent(ctx)
+    override fun visitFor(statement: ForStatement): String {
+        val initResult = statement.init?.let { visitForInit(it) } ?: ""
+        val testResult = statement.condition?.let { visit(it) } ?: ""
+        val iteratorResult = statement.iterators?.joinToString(";") { visit(it) } ?: ""
+        appendIndent()
         writer.appendLine("for ($initResult; $testResult; $iteratorResult)")
-        writer.appendLine(visit(statement.statements, ctx))
+        writer.appendLine(visit(statement.statements))
         return ""
     }
 
-    override fun visitFunctionDefinition(definition: FunctionDefinitionStatement, ctx: DisplayContext): String {
+    override fun visitFunctionDefinition(definition: FunctionDefinitionStatement): String {
         writer.appendLine(definition.toString())
-        visit(definition.statements, ctx)
+        visit(definition.statements)
         writer.appendLine()
         writer.appendLine()
         return ""
     }
 
-    override fun visitGoto(statement: GotoStatement, ctx: DisplayContext): String {
-        appendIndent(ctx)
+    override fun visitGoto(statement: GotoStatement): String {
+        appendIndent()
         writer.appendLine("goto ${statement.label};")
         return ""
     }
 
-    override fun visitIfThenElse(statement: IfThenElseStatement, ctx: DisplayContext): String {
-        appendIndent(ctx)
-        val testResult = visit(statement.test, ctx)
+    override fun visitIfThenElse(statement: IfThenElseStatement): String {
+        appendIndent()
+        val testResult = visit(statement.test)
         writer.appendLine("if ($testResult)")
-        writer.appendLine(visit(statement.thenBlock, ctx))
-        appendIndent(ctx)
+        writer.appendLine(visit(statement.thenBlock))
+        appendIndent()
         writer.appendLine("else")
-        writer.appendLine(visit(statement.elseBlock, ctx))
+        writer.appendLine(visit(statement.elseBlock))
         return ""
     }
 
-    override fun visitIfThen(statement: IfThenStatement, ctx: DisplayContext): String {
-        appendIndent(ctx)
-        val testResult = visit(statement.test, ctx)
+    override fun visitIfThen(statement: IfThenStatement): String {
+        appendIndent()
+        val testResult = visit(statement.test)
         writer.appendLine("if ($testResult)")
-        writer.appendLine(visit(statement.thenBlock, ctx))
+        writer.appendLine(visit(statement.thenBlock))
         return ""
     }
 
-    override fun visitLabeled(statement: LabeledStatement, ctx: DisplayContext): String {
-        appendIndent(ctx)
+    override fun visitLabeled(statement: LabeledStatement): String {
+        appendIndent()
         writer.appendLine("${statement.id}:")
-        visit(statement.statement, ctx)
+        visit(statement.statement)
         return ""
     }
 
-    override fun visitReturn(statement: ReturnStatement, ctx: DisplayContext): String {
-        appendIndent(ctx)
+    override fun visitReturn(statement: ReturnStatement): String {
+        appendIndent()
         if (statement.value != null) {
-            val nodeResult = visit(statement.value, ctx)
+            val nodeResult = visit(statement.value)
             writer.appendLine("return $nodeResult;")
         } else {
             writer.appendLine("return;")
@@ -232,20 +230,21 @@ class CodeWriter(val writer: Writer) : AstVisitor<String, DisplayContext> {
         return ""
     }
 
-    override fun visitSwitch(statement: SwitchStatement, ctx: DisplayContext): String {
-        appendIndent(ctx)
-        val testResult = visit(statement.test, ctx)
+    override fun visitSwitch(statement: SwitchStatement): String {
+        appendIndent()
+        val testResult = visit(statement.test)
         writer.appendLine("switch ($testResult) {")
-        val newIdent = ctx.increaseIndent()
-        statement.sections.forEach { visitSwitchCase(it, newIdent) }
-        statement.defaultSection?.let { visitSwitchDefault(it, newIdent) }
-        appendIndent(ctx)
+        withIncreasedIdent {
+            statement.sections.forEach { visitSwitchCase(it) }
+            statement.defaultSection?.let { visitSwitchDefault(it) }
+        }
+        appendIndent()
         writer.appendLine("}")
         return ""
     }
 
-    override fun visitVariableDeclaration(statement: VariableDeclarationStatement, ctx: DisplayContext): String {
-        appendIndent(ctx)
+    override fun visitVariableDeclaration(statement: VariableDeclarationStatement): String {
+        appendIndent()
         val nodeResult = statement.variableDeclarators.joinToString {
             it.toString()
         }
@@ -253,47 +252,55 @@ class CodeWriter(val writer: Writer) : AstVisitor<String, DisplayContext> {
         return ""
     }
 
-    override fun visitWhile(statement: WhileStatement, ctx: DisplayContext): String {
-        val testResult = visit(statement.condition, ctx)
-        appendIndent(ctx)
+    override fun visitWhile(statement: WhileStatement): String {
+        val testResult = visit(statement.condition)
+        appendIndent()
         writer.appendLine("while ($testResult)")
-        writer.appendLine(visit(statement.statements, ctx))
+        writer.appendLine(visit(statement.statements))
         return ""
     }
 
-    private fun visitSwitchCase(statement: SwitchCaseStatement, ctx: DisplayContext): String {
-        appendIndent(ctx)
-        val labelResult = visit(statement.test, ctx)
+    private fun visitSwitchCase(statement: SwitchCaseStatement): String {
+        appendIndent()
+        val labelResult = visit(statement.test)
         writer.appendLine("case $labelResult:")
-        val newIdent = ctx.increaseIndent()
-        statement.blockStatement.statements.forEach {
-            writer.appendLine(visit(it, newIdent))
+        withIncreasedIdent {
+            statement.blockStatement.statements.forEach {
+                writer.appendLine(visit(it))
+            }
         }
         return ""
     }
 
-    private fun visitSwitchDefault(statement: SwitchDefaultStatement, ctx: DisplayContext): String {
-        appendIndent(ctx)
+    private fun visitSwitchDefault(statement: SwitchDefaultStatement): String {
+        appendIndent()
         writer.appendLine("default:")
-        val newIdent = ctx.increaseIndent()
-        statement.blockStatement.statements.forEach {
-            writer.appendLine(visit(it, newIdent))
+        withIncreasedIdent {
+            statement.blockStatement.statements.forEach {
+                writer.appendLine(visit(it))
+            }
         }
         return ""
     }
 
-    private fun visitForInit(statement: ForInit, ctx: DisplayContext): String {
+    private fun visitForInit(statement: ForInit): String {
         if (statement is ForInitVariableDeclaration) {
             val nodeResult = statement.variableDeclaration.variableDeclarators.joinToString { it.toString() }
             return "${statement.variableDeclaration.declarationSpecifier} $nodeResult"
         } else {
             require(statement is ForInitAssignmentExpression)
-            return statement.assignments.joinToString(", ") { visit(it, ctx) }
+            return statement.assignments.joinToString(", ") { visit(it) }
         }
     }
 
-    private fun appendIndent(ctx: DisplayContext) {
-        repeat(ctx.indent) {
+    private inline fun withIncreasedIdent(action: () -> Unit) {
+        indent++
+        action()
+        indent--
+    }
+
+    private fun appendIndent() {
+        repeat(indent) {
             writer.append("\t")
         }
     }

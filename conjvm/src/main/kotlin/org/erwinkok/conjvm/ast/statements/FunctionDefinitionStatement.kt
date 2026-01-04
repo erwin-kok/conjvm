@@ -11,7 +11,7 @@ class FunctionDefinitionStatement(
     val declarator: Declarator,
     val statements: BlockStatement,
 ) : Statement(location) {
-    override fun <R, C> accept(visitor: AstStatementVisitor<R, C>, ctx: C): R = visitor.visitFunctionDefinition(this, ctx)
+    override fun <R> accept(visitor: AstStatementVisitor<R>): R = visitor.visitFunctionDefinition(this)
 
     override fun equals(other: Any?): Boolean {
         if (other === this) {

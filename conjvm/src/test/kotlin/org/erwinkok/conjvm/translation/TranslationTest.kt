@@ -1,8 +1,12 @@
 package org.erwinkok.conjvm.translation
 
+import org.erwinkok.conjvm.ast.types.Field
+import org.erwinkok.conjvm.ast.types.QualType
 import org.erwinkok.conjvm.ast.types.SymbolTable
-import org.erwinkok.conjvm.ast.types.TypeContext
+import org.erwinkok.conjvm.ast.types.Type
+import org.erwinkok.conjvm.ast.types.TypeSystem
 import org.erwinkok.conjvm.ast.types.TypeVisitor
+import org.erwinkok.conjvm.parser.ErrorReporter
 import org.erwinkok.conjvm.parser.Parser
 import org.erwinkok.conjvm.tac.TacCodeWriter
 import org.erwinkok.conjvm.tac.TacTranslation
@@ -15,15 +19,6 @@ class TranslationTest {
     @Test
     @Disabled
     fun translationTest() {
-//        val x = Parser.parseString(
-//            """
-//            void *bladie(float **volatile*const a, int b) {
-//
-//            }
-//            """.trimIndent(),
-//        )
-//        TypeVisitor().visit(x, TypeContext())
-
         val symbolTable = SymbolTable()
 
         val classLoader = TranslationTest::class.java.classLoader
@@ -31,11 +26,30 @@ class TranslationTest {
         requireNotNull(inputStream)
         val compilationUnit = Parser.parseStream(inputStream, symbolTable)
 
-        val typeVisitor = TypeVisitor(symbolTable)
+        val typeVisitor = TypeVisitor(symbolTable, ErrorReporter())
         typeVisitor.globalScope.defineFunction("m68ki_exception_1010", TypeSystem.voidType, emptySet())
         typeVisitor.globalScope.defineFunction("m68ki_exception_1111", TypeSystem.voidType, emptySet())
-        typeVisitor.globalScope.defineVariable("m68ki_cpu", TypeSystem.voidType, emptySet())
-        typeVisitor.visit(compilationUnit, TypeContext())
+        typeVisitor.globalScope.defineVariable(
+            "m68ki_cpu",
+            QualType(
+                Type.Struct(
+                    "m68ki_cpu",
+                    listOf(
+                        Field("cpu_type", QualType(Type.Int(signed = true))),
+                        Field("n_flag", QualType(Type.Int(signed = true))),
+                        Field("x_flag", QualType(Type.Int(signed = true))),
+                        Field("v_flag", QualType(Type.Int(signed = true))),
+                        Field("c_flag", QualType(Type.Int(signed = true))),
+                        Field("not_z_flag", QualType(Type.Int(signed = true))),
+                        Field("dar", QualType(Type.Int(signed = true))),
+                        Field("ir", QualType(Type.Int(signed = true))),
+                    ),
+                ),
+                emptySet(),
+            ),
+            emptySet(),
+        )
+        typeVisitor.visit(compilationUnit)
 
         var translatedCompilationUnit = Translator.translateStatement(compilationUnit, ConvertForToWhileTranslation())
         translatedCompilationUnit = Translator.translateStatement(translatedCompilationUnit, AssignmentTranslation())

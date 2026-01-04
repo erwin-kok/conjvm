@@ -5,11 +5,16 @@ data class Field(val name: String, val type: QualType)
 sealed class Type {
     object Error : Type()
 
-    object Void : Type()
+    object Void : Type() {
+        override fun toString() = "void"
+    }
 
     data class Char(val signed: Boolean) : Type()
     data class Short(val signed: Boolean) : Type()
-    data class Int(val signed: Boolean) : Type()
+    data class Int(val signed: Boolean) : Type() {
+        override fun toString() = "int"
+    }
+
     data class Long(val signed: Boolean) : Type()
     data class LongLong(val signed: Boolean) : Type()
 

@@ -52,7 +52,7 @@ class ForStatement(
     val iterators: List<Expression>?,
     val statements: BlockStatement,
 ) : Statement(location) {
-    override fun <R, C> accept(visitor: AstStatementVisitor<R, C>, ctx: C): R = visitor.visitFor(this, ctx)
+    override fun <R> accept(visitor: AstStatementVisitor<R>): R = visitor.visitFor(this)
 
     override fun equals(other: Any?): Boolean {
         if (other === this) {

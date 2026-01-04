@@ -1,10 +1,10 @@
 package org.erwinkok.conjvm.tac.instructions
 
-import org.erwinkok.conjvm.ast.types.VariableType
+import org.erwinkok.conjvm.ast.types.QualType
 import org.erwinkok.conjvm.tac.values.TacTemp
 import org.erwinkok.conjvm.tac.values.TacValue
 
-class TacCastInstruction(val dst: TacTemp, val type: VariableType, val value: TacValue) : TacInstruction {
+class TacCastInstruction(val dst: TacTemp, val type: QualType, val value: TacValue) : TacInstruction {
     override fun toString(): String {
         return "$dst = ($type)$value"
     }
