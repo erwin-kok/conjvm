@@ -35,8 +35,9 @@ import org.erwinkok.conjvm.ast.statements.SwitchStatement
 import org.erwinkok.conjvm.ast.statements.VariableDeclarationStatement
 import org.erwinkok.conjvm.ast.statements.VariableDeclarator
 import org.erwinkok.conjvm.ast.statements.WhileStatement
+import org.erwinkok.conjvm.parser.ErrorReporter
 
-abstract class BaseTranslationVisitor : TranslationVisitor {
+abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : TranslationVisitor {
     override fun translateArrayAccess(expression: ArrayAccessExpression): TranslationResult {
         val (ts, te) = translate(expression.index)
         requireNotNull(te)

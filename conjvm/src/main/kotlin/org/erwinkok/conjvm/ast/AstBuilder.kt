@@ -59,25 +59,8 @@ import org.erwinkok.conjvm.ast.types.TypeName
 import org.erwinkok.conjvm.ast.types.TypeQualifier
 import org.erwinkok.conjvm.ast.types.TypeSpec
 import org.erwinkok.conjvm.parser.ErrorReporter
-
-private val ParserRuleContext.location: SourceLocation
-    get() {
-        return if (this.stop != null) {
-            SourceLocation(
-                this.start.line,
-                this.start.charPositionInLine,
-                this.stop.line,
-                this.stop.charPositionInLine + (this.stop.text?.length ?: 0),
-            )
-        } else {
-            SourceLocation(
-                this.start.line,
-                this.start.charPositionInLine,
-                0,
-                0,
-            )
-        }
-    }
+import org.erwinkok.conjvm.parser.SourceFile
+import org.erwinkok.conjvm.parser.SourceLocation
 
 class Value private constructor(val value: Any) {
     inline fun <reified T> cast(): T {
@@ -95,7 +78,10 @@ class Value private constructor(val value: Any) {
     }
 }
 
-class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
+class AstBuilder(
+    private val reporter: ErrorReporter,
+    private val source: SourceFile,
+) : CBaseVisitor<Value>() {
     override fun visitCompilationUnit(ctx: CParser.CompilationUnitContext): Value {
         val varDecls = mutableListOf<VariableDeclarationStatement>()
         val funcDefs = mutableListOf<FunctionDefinitionStatement>()
@@ -516,7 +502,9 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
 
     override fun visitSwitch_statement(ctx: CParser.Switch_statementContext): Value {
         val (cases, default) = ctx.switch_section().map { visit(it) }.partition { it.tryCast<SwitchCaseStatement>() != null }
-        require(default.size <= 1) { "There must be one or zero default cases in a switch statement" }
+        if (default.size > 1) {
+            reporter.reportError(ctx.location, "Switch statement cannot have more than one default section")
+        }
         val defaultCase = default.firstOrNull()?.tryCast<SwitchDefaultStatement>()
         return Value.of(
             SwitchStatement(
@@ -785,4 +773,14 @@ class AstBuilder(val reporter: ErrorReporter) : CBaseVisitor<Value>() {
             else -> throw TypeException("Invalid function spec: ${ctx.text}")
         }
     }
+
+    private val ParserRuleContext.location: SourceLocation
+        get() {
+            return SourceLocation(
+                source = source,
+                line = this.start.line,
+                column = this.start.charPositionInLine,
+                length = this.start.text?.length ?: 1,
+            )
+        }
 }

@@ -5,8 +5,8 @@ import org.erwinkok.conjvm.tac.instructions.TacLabeledInstruction
 import java.io.Writer
 
 class TacCodeWriter(val writer: Writer) {
-    fun printFunctions(functions: Map<String, TacFunctionDefinition>) {
-        functions.forEach { (name, fd) ->
+    fun printInstructions(functions: Map<String, TacFunctionDefinition>) {
+        functions.forEach { (_, fd) ->
             writer.appendLine("void ${fd.name}(void)")
             writer.appendLine("{")
             fd.instructions.forEach {
@@ -16,7 +16,6 @@ class TacCodeWriter(val writer: Writer) {
                 writer.appendLine(it.toString())
             }
             writer.appendLine("}")
-            writer.appendLine()
             writer.appendLine()
         }
     }

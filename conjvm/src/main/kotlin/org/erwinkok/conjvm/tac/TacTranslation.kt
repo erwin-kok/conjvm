@@ -19,6 +19,7 @@ import org.erwinkok.conjvm.ast.statements.Statement
 import org.erwinkok.conjvm.ast.statements.SwitchStatement
 import org.erwinkok.conjvm.ast.statements.VariableDeclarationStatement
 import org.erwinkok.conjvm.ast.statements.WhileStatement
+import org.erwinkok.conjvm.parser.ErrorReporter
 import org.erwinkok.conjvm.tac.instructions.TacBinaryInstruction
 import org.erwinkok.conjvm.tac.instructions.TacFunctionDefinition
 import org.erwinkok.conjvm.tac.instructions.TacGotoInstruction
@@ -29,7 +30,9 @@ import org.erwinkok.conjvm.tac.instructions.TacReturnInstruction
 import org.erwinkok.conjvm.tac.instructions.TacStoreInstruction
 import org.erwinkok.conjvm.tac.lvalues.TacIdentifier
 
-class TacTranslation : AstStatementVisitor<TacResult> {
+class TacTranslation(
+    private val reporter: ErrorReporter,
+) : AstStatementVisitor<TacResult> {
     private val tempFactory = TacTempFactory()
     private val labelFactory = TacLabelFactory()
     private val functionMap = mutableMapOf<String, TacFunctionDefinition>()

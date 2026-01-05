@@ -14,8 +14,9 @@ import org.erwinkok.conjvm.ast.statements.ExpressionStatement
 import org.erwinkok.conjvm.ast.statements.Statement
 import org.erwinkok.conjvm.ast.statements.VariableDeclarationStatement
 import org.erwinkok.conjvm.ast.statements.VariableDeclarator
+import org.erwinkok.conjvm.parser.ErrorReporter
 
-class AssignmentTranslation : BaseTranslationVisitor() {
+class AssignmentTranslation(reporter: ErrorReporter) : BaseTranslationVisitor(reporter) {
     override fun translateAssignment(expression: AssignmentExpression): TranslationResult {
         val lte = translate(expression.leftExpression)
         val rte = translate(expression.rightExpression)

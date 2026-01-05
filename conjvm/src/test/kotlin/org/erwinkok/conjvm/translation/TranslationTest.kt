@@ -2,6 +2,7 @@ package org.erwinkok.conjvm.translation
 
 import org.erwinkok.conjvm.ast.types.Field
 import org.erwinkok.conjvm.ast.types.QualType
+import org.erwinkok.conjvm.ast.types.Scope
 import org.erwinkok.conjvm.ast.types.SymbolTable
 import org.erwinkok.conjvm.ast.types.Type
 import org.erwinkok.conjvm.ast.types.TypeSystem
@@ -18,57 +19,107 @@ import java.io.StringWriter
 
 class TranslationTest {
     @Test
-    @Disabled
     fun translationTest() {
-        val classLoader = TranslationTest::class.java.classLoader
-        val inputStream = classLoader.getResourceAsStream("input.c")
-        requireNotNull(inputStream)
-
         val symbolTable = SymbolTable()
-        val source = SourceFile.ofString("input.c", "void func(void) { x = ; }") // SourceFile.ofStream("input.c", inputStream)
-        val compilationUnit = Parser.parseSource(source, symbolTable)
+        val source = SourceFile.ofString("input.c", "void func(void) { uint x = 4; }")
+        val errorReporter = ErrorReporter()
+
+        val compilationUnit = Parser(errorReporter).parseSource(source, symbolTable)
+        errorReporter.assertNoDiagnostics()
         requireNotNull(compilationUnit)
 
-        val typeVisitor = TypeVisitor(symbolTable, ErrorReporter())
-        typeVisitor.globalScope.defineFunction("m68ki_exception_1010", TypeSystem.voidType, emptySet())
-        typeVisitor.globalScope.defineFunction("m68ki_exception_1111", TypeSystem.voidType, emptySet())
-        typeVisitor.globalScope.defineVariable(
+        val typeVisitor = TypeVisitor(symbolTable, errorReporter)
+        typeVisitor.visit(compilationUnit)
+        errorReporter.assertNoDiagnostics()
+
+        val translatedCompilationUnit = AstTranslator(errorReporter).translate(compilationUnit, listOf(::ConvertForToWhileTranslation, ::AssignmentTranslation))
+        errorReporter.assertNoDiagnostics()
+        requireNotNull(translatedCompilationUnit)
+
+        val translationVisitor = TacTranslation(errorReporter)
+        translationVisitor.translateStatement(translatedCompilationUnit)
+        errorReporter.assertNoDiagnostics()
+
+        val writer = StringWriter()
+        val tacCodeWriter = TacCodeWriter(writer)
+        tacCodeWriter.printInstructions(translationVisitor.functions)
+        val actual = writer.toString()
+
+        assertEquals(
+"""void func(void)
+{
+	StoreVar(x) = 4
+}
+
+
+""".trimIndent(),
+            actual,
+        )
+    }
+
+    @Test
+    @Disabled
+    fun translationTest2() {
+        val source = readResource("input.c.gz")
+
+        val symbolTable = SymbolTable()
+        val errorReporter = ErrorReporter()
+
+        val compilationUnit = Parser(errorReporter).parseSource(source, symbolTable)
+        errorReporter.assertNoDiagnostics()
+        requireNotNull(compilationUnit)
+
+        val typeVisitor = TypeVisitor(symbolTable, errorReporter)
+        prepareGlobalScope(typeVisitor.globalScope)
+        typeVisitor.visit(compilationUnit)
+        errorReporter.assertNoDiagnostics()
+
+        val translatedCompilationUnit = AstTranslator(errorReporter).translate(compilationUnit, listOf(::ConvertForToWhileTranslation, ::AssignmentTranslation))
+        errorReporter.assertNoDiagnostics()
+        requireNotNull(translatedCompilationUnit)
+
+        val translationVisitor = TacTranslation(errorReporter)
+        translationVisitor.translateStatement(translatedCompilationUnit)
+        errorReporter.assertNoDiagnostics()
+
+        val expected = readResource("reference.c.gz")
+
+        val writer = StringWriter()
+        val tacCodeWriter = TacCodeWriter(writer)
+        tacCodeWriter.printInstructions(translationVisitor.functions)
+        val actual = writer.toString()
+
+        assertEquals(expected.text, actual)
+    }
+
+    private fun prepareGlobalScope(scope: Scope) {
+        scope.defineFunction("m68ki_exception_1010", TypeSystem.voidType, emptySet())
+        scope.defineFunction("m68ki_exception_1111", TypeSystem.voidType, emptySet())
+        scope.defineFunction("m68ki_write_8_fc", TypeSystem.voidType, emptySet())
+        scope.defineFunction("m68ki_write_16_fc", TypeSystem.voidType, emptySet())
+        scope.defineFunction("m68ki_write_32_fc", TypeSystem.voidType, emptySet())
+        scope.defineFunction("m68040_fpu_op0", TypeSystem.voidType, emptySet())
+        scope.defineFunction("m68040_fpu_op1", TypeSystem.voidType, emptySet())
+
+        scope.defineVariable(
             "m68ki_cpu",
             QualType(
                 Type.Struct(
                     "m68ki_cpu",
                     listOf(
-                        Field("cpu_type", QualType(Type.Int(signed = true))),
-                        Field("n_flag", QualType(Type.Int(signed = true))),
-                        Field("x_flag", QualType(Type.Int(signed = true))),
-                        Field("v_flag", QualType(Type.Int(signed = true))),
-                        Field("c_flag", QualType(Type.Int(signed = true))),
-                        Field("not_z_flag", QualType(Type.Int(signed = true))),
-                        Field("dar", QualType(Type.Int(signed = true))),
-                        Field("ir", QualType(Type.Int(signed = true))),
+                        Field("cpu_type", QualType(Type.Int(signed = false))),
+                        Field("dar", QualType(Type.Array(QualType(Type.Int(signed = false)), 16))),
+                        Field("ir", QualType(Type.Int(signed = false))),
+                        Field("n_flag", QualType(Type.Int(signed = false))),
+                        Field("x_flag", QualType(Type.Int(signed = false))),
+                        Field("v_flag", QualType(Type.Int(signed = false))),
+                        Field("c_flag", QualType(Type.Int(signed = false))),
+                        Field("not_z_flag", QualType(Type.Int(signed = false))),
                     ),
                 ),
                 emptySet(),
             ),
             emptySet(),
         )
-        typeVisitor.visit(compilationUnit)
-
-        var translatedCompilationUnit = Translator.translateStatement(compilationUnit, ConvertForToWhileTranslation())
-        translatedCompilationUnit = Translator.translateStatement(translatedCompilationUnit, AssignmentTranslation())
-
-        val translationVisitor = TacTranslation()
-        translationVisitor.translateStatement(translatedCompilationUnit)
-
-        val referenceStream = classLoader.getResourceAsStream("reference.c")
-        requireNotNull(referenceStream)
-        val expected = String(referenceStream.readBytes())
-
-        val writer = StringWriter()
-        val tacCodeWriter = TacCodeWriter(writer)
-        tacCodeWriter.printFunctions(translationVisitor.functions)
-        val actual = writer.toString()
-
-        assertEquals(expected, actual)
     }
 }

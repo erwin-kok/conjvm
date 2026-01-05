@@ -1,7 +1,7 @@
 package org.erwinkok.conjvm.ast.expressions
 
 import org.erwinkok.conjvm.ast.AstExpressionVisitor
-import org.erwinkok.conjvm.ast.SourceLocation
+import org.erwinkok.conjvm.parser.SourceLocation
 
 class ConstantStringExpression(location: SourceLocation, val value: String) : ConstantExpression(location) {
     override fun <R> accept(visitor: AstExpressionVisitor<R>): R = visitor.visitConstantString(this)

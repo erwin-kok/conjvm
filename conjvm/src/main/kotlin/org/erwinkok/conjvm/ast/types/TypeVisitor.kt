@@ -2,7 +2,6 @@ package org.erwinkok.conjvm.ast.types
 
 import org.erwinkok.conjvm.ast.AstExpressionVisitor
 import org.erwinkok.conjvm.ast.AstStatementVisitor
-import org.erwinkok.conjvm.ast.SourceLocation
 import org.erwinkok.conjvm.ast.expressions.ArrayAccessExpression
 import org.erwinkok.conjvm.ast.expressions.AssignmentExpression
 import org.erwinkok.conjvm.ast.expressions.BinaryExpression
@@ -38,6 +37,7 @@ import org.erwinkok.conjvm.ast.statements.SwitchStatement
 import org.erwinkok.conjvm.ast.statements.VariableDeclarationStatement
 import org.erwinkok.conjvm.ast.statements.WhileStatement
 import org.erwinkok.conjvm.parser.ErrorReporter
+import org.erwinkok.conjvm.parser.SourceLocation
 import java.util.IdentityHashMap
 
 class TypeVisitor(
@@ -158,7 +158,7 @@ class TypeVisitor(
                 reporter.reportError(statement.location, "missing return value")
             }
         } else {
-            val valueType = visit(value)
+            val valueType = typeOf(value).toRValue()
             if (valueType.isError()) {
                 return
             }
@@ -175,7 +175,7 @@ class TypeVisitor(
     }
 
     override fun visitVariableDeclaration(statement: VariableDeclarationStatement) {
-        defineVariableDeclaration(statement)
+        defineVariable(statement)
     }
 
     override fun visitWhile(statement: WhileStatement) {
@@ -184,14 +184,14 @@ class TypeVisitor(
     }
 
     override fun visitArrayAccess(expression: ArrayAccessExpression): ExpressionType {
-        val base = typeOf(expression.base)
+        val base = typeOf(expression.base).toRValue()
         val index = typeOf(expression.index)
 
         if (base.isError() || index.isError()) {
             return ExpressionType(QualType.ErrorType, isLValue = false)
         }
 
-        val baseType = TypeSystem.decay(base.type)
+        val baseType = base.type
         val idxType = TypeSystem.decay(index.type)
 
         // Index must be integer
@@ -204,7 +204,7 @@ class TypeVisitor(
         val elementType = when (val bt = baseType.type) {
             is Type.Pointer -> bt.pointee
             else -> {
-                reporter.reportError(expression.location, "'${expression.base}' element must be a pointer")
+                reporter.reportError(expression.location, "'${expression.base}' expression is not subscriptable")
                 return ExpressionType(QualType.ErrorType, false)
             }
         }
@@ -215,7 +215,7 @@ class TypeVisitor(
 
     override fun visitAssignment(expression: AssignmentExpression): ExpressionType {
         val lhs = typeOf(expression.leftExpression)
-        val rhs = typeOf(expression.rightExpression)
+        val rhs = typeOf(expression.rightExpression).toRValue()
 
         if (lhs.isError() || rhs.isError()) {
             return ExpressionType(QualType.ErrorType, isLValue = false)
@@ -235,8 +235,8 @@ class TypeVisitor(
     }
 
     override fun visitBinary(expression: BinaryExpression): ExpressionType {
-        val lhs = typeOf(expression.leftExpression)
-        val rhs = typeOf(expression.rightExpression)
+        val lhs = typeOf(expression.leftExpression).toRValue()
+        val rhs = typeOf(expression.rightExpression).toRValue()
 
         if (lhs.isError() || rhs.isError()) {
             return ExpressionType(QualType.ErrorType, isLValue = false)
@@ -263,7 +263,7 @@ class TypeVisitor(
     }
 
     override fun visitCall(expression: CallExpression): ExpressionType {
-        val callee = typeOf(expression.function)
+        val callee = typeOf(expression.function).toRValue()
 
         if (callee.isError()) {
             return ExpressionType(QualType.ErrorType, isLValue = false)
@@ -327,12 +327,13 @@ class TypeVisitor(
             val tp = target.type as Type.Pointer
             val ep = exprType.type as Type.Pointer
 
-            // Allow any pointer → pointer cast (like void* rules)
-            // But track qualifiers: cannot drop const from pointee
-            val combinedQuals = tp.pointee.qualifiers intersect ep.pointee.qualifiers
+            if (TypeQualifier.CONST in ep.pointee.qualifiers && TypeQualifier.CONST !in tp.pointee.qualifiers) {
+                reporter.reportWarning(expression.location, "pointer casts are const")
+                return ExpressionType(QualType.ErrorType, isLValue = false)
+            }
 
-            val resultPointee = QualType(tp.pointee.type, combinedQuals)
-            return ExpressionType(QualType(Type.Pointer(resultPointee)), isLValue = false)
+            val resultPointee = tp.pointee
+            return ExpressionType(QualType(Type.Pointer(resultPointee), target.qualifiers), isLValue = false)
         }
 
         // Integer → pointer or pointer → integer
@@ -375,7 +376,7 @@ class TypeVisitor(
             return ExpressionType(QualType.ErrorType, isLValue = false)
         }
 
-        val baseType = TypeSystem.decay(baseExpr.type)
+        val baseType = baseExpr.type
         val structType = when (val t = baseType.type) {
             is Type.Struct -> t
             is Type.Pointer -> (t.pointee.type as? Type.Struct)
@@ -421,16 +422,16 @@ class TypeVisitor(
     }
 
     override fun visitTernary(expression: TernaryExpression): ExpressionType {
-        val condType = typeOf(expression.condition)
-        val thenType = typeOf(expression.thenExpression)
-        val elseType = typeOf(expression.elseExpression)
+        val condType = typeOf(expression.condition).toRValue()
+        val thenType = typeOf(expression.thenExpression).toRValue()
+        val elseType = typeOf(expression.elseExpression).toRValue()
 
         if (condType.isError() || thenType.isError() || elseType.isError()) {
             return ExpressionType(QualType.ErrorType, isLValue = false)
         }
 
-        val t1 = TypeSystem.decay(thenType.type)
-        val t2 = TypeSystem.decay(elseType.type)
+        val t1 = thenType.type
+        val t2 = elseType.type
 
         // both arithmetic → usual arithmetic conversions
         if (TypeSystem.isArithmetic(t1) && TypeSystem.isArithmetic(t2)) {
@@ -481,6 +482,7 @@ class TypeVisitor(
 
     override fun visitUnary(expression: UnaryExpression): ExpressionType {
         val operand = typeOf(expression.operand)
+
         if (operand.isError()) {
             return ExpressionType(QualType.ErrorType, isLValue = false)
         }
@@ -512,6 +514,17 @@ class TypeVisitor(
 
             UnaryType.Minus,
             UnaryType.Plus,
+            -> {
+                // Arithmetic operators
+                if (TypeSystem.isArithmetic(t)) {
+                    val promoted = TypeSystem.integerPromote(t)
+                    ExpressionType(promoted, false)
+                } else {
+                    reporter.reportError(expression.location, "'${t.type}' is not arithmetic in '$expression'")
+                    ExpressionType(QualType.ErrorType, isLValue = false)
+                }
+            }
+
             UnaryType.LogicalNot,
             UnaryType.BitwiseNot,
             -> {
@@ -557,7 +570,7 @@ class TypeVisitor(
         scope = parent
     }
 
-    fun typeOf(expression: Expression): ExpressionType {
+    private fun typeOf(expression: Expression): ExpressionType {
         return cache.getOrPut(expression) { visit(expression) }
     }
 
@@ -569,11 +582,19 @@ class TypeVisitor(
     }
 
     private fun defineGlobalVariable(statement: VariableDeclarationStatement) {
+        defineVariableInScope(statement, globalScope)
+    }
+
+    private fun defineVariable(statement: VariableDeclarationStatement) {
+        defineVariableInScope(statement, scope)
+    }
+
+    private fun defineVariableInScope(statement: VariableDeclarationStatement, s: Scope) {
         for (varDecl in statement.variableDeclarators) {
             try {
                 val qt = resolveType(statement.declarationSpecifier, varDecl.declarator)
                 TypeSystem.validateType(qt, TypeUse.OBJECT)
-                globalScope.defineVariable(varDecl.declarator.name(), qt, statement.declarationSpecifier.storage)
+                s.defineVariable(varDecl.declarator.name(), qt, statement.declarationSpecifier.storage)
             } catch (e: TypeException) {
                 reporter.reportError(statement.location, e.message ?: "unknown error message")
             }
@@ -587,18 +608,6 @@ class TypeVisitor(
             globalScope.defineFunction(statement.declarator.name(), qt, statement.declarationSpecifier.storage)
         } catch (e: TypeException) {
             reporter.reportError(statement.location, e.message ?: "unknown error message")
-        }
-    }
-
-    private fun defineVariableDeclaration(statement: VariableDeclarationStatement) {
-        for (varDecl in statement.variableDeclarators) {
-            try {
-                val qt = resolveType(statement.declarationSpecifier, varDecl.declarator)
-                TypeSystem.validateType(qt, TypeUse.OBJECT)
-                scope.defineVariable(varDecl.declarator.name(), qt, statement.declarationSpecifier.storage)
-            } catch (e: TypeException) {
-                reporter.reportError(statement.location, e.message ?: "unknown error message")
-            }
         }
     }
 

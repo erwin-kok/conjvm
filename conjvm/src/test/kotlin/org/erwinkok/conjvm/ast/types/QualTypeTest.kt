@@ -1,10 +1,5 @@
-package org.erwinkok.conjvm.asm.types
+package org.erwinkok.conjvm.ast.types
 
-import org.erwinkok.conjvm.ast.types.Field
-import org.erwinkok.conjvm.ast.types.QualType
-import org.erwinkok.conjvm.ast.types.Type
-import org.erwinkok.conjvm.ast.types.TypeException
-import org.erwinkok.conjvm.ast.types.TypeQualifier
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue

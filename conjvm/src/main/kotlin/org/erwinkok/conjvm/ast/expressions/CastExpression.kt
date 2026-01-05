@@ -1,9 +1,9 @@
 package org.erwinkok.conjvm.ast.expressions
 
 import org.erwinkok.conjvm.ast.AstExpressionVisitor
-import org.erwinkok.conjvm.ast.SourceLocation
 import org.erwinkok.conjvm.ast.types.QualType
 import org.erwinkok.conjvm.ast.types.TypeName
+import org.erwinkok.conjvm.parser.SourceLocation
 
 class CastExpression(location: SourceLocation, val targetType: TypeName, val expression: Expression) : Expression(location) {
     var targetQualType: QualType? = null

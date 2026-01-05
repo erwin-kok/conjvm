@@ -1,6 +1,5 @@
 package org.erwinkok.conjvm.translation
 
-import org.erwinkok.conjvm.ast.SourceLocation
 import org.erwinkok.conjvm.ast.expressions.ConstantLongExpression
 import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.ast.statements.BlockStatement
@@ -15,8 +14,10 @@ import org.erwinkok.conjvm.ast.statements.IfThenStatement
 import org.erwinkok.conjvm.ast.statements.Statement
 import org.erwinkok.conjvm.ast.statements.SwitchStatement
 import org.erwinkok.conjvm.ast.statements.WhileStatement
+import org.erwinkok.conjvm.parser.ErrorReporter
+import org.erwinkok.conjvm.parser.SourceLocation
 
-class ConvertForToWhileTranslation : BaseTranslationVisitor() {
+class ConvertForToWhileTranslation(reporter: ErrorReporter) : BaseTranslationVisitor(reporter) {
     override fun translateFor(statement: ForStatement): TranslationResult {
         val allStatements = mutableListOf<Statement>()
 

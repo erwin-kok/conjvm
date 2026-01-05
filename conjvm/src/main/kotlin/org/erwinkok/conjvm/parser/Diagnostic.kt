@@ -7,9 +7,6 @@ enum class Severity {
 
 data class Diagnostic(
     val severity: Severity,
+    val location: SourceLocation,
     val message: String,
-    val line: Int,
-    val column: Int,
-    val length: Int,
-    val sourceName: String,
 )

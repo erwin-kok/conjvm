@@ -1,9 +1,9 @@
 package org.erwinkok.conjvm.ast.statements
 
 import org.erwinkok.conjvm.ast.AstStatementVisitor
-import org.erwinkok.conjvm.ast.SourceLocation
 import org.erwinkok.conjvm.ast.expressions.ConstantExpression
 import org.erwinkok.conjvm.ast.expressions.Expression
+import org.erwinkok.conjvm.parser.SourceLocation
 
 abstract class SwitchSection
 

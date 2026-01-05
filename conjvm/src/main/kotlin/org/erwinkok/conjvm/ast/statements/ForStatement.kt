@@ -1,9 +1,9 @@
 package org.erwinkok.conjvm.ast.statements
 
 import org.erwinkok.conjvm.ast.AstStatementVisitor
-import org.erwinkok.conjvm.ast.SourceLocation
 import org.erwinkok.conjvm.ast.expressions.AssignmentExpression
 import org.erwinkok.conjvm.ast.expressions.Expression
+import org.erwinkok.conjvm.parser.SourceLocation
 
 sealed class ForInit
 

@@ -1,10 +1,10 @@
-package org.erwinkok.conjvm.ast
+package org.erwinkok.conjvm.parser
 
 data class SourceLocation(
-    val startLine: Int,
-    val startColumn: Int,
-    val endLine: Int,
-    val endColumn: Int,
+    val source: SourceFile,
+    val line: Int,
+    val column: Int,
+    val length: Int,
 ) {
     override fun equals(other: Any?): Boolean {
         if (other === this) {

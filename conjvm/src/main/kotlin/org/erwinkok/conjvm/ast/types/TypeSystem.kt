@@ -32,6 +32,12 @@ object TypeSystem {
         if (qt.type is Type.Function && qt.type.returnType.type is Type.Function) {
             throw TypeException("function returning function is illegal")
         }
+        if (qt.type is Type.Function && use == TypeUse.PARAMETER) {
+            val params = qt.type.parameters
+            if (params.size > 1 && params.any { it.type == Type.Void }) {
+                throw TypeException("void must be the only parameter")
+            }
+        }
         validateRecursive(qt.type)
     }
 
@@ -155,7 +161,37 @@ object TypeSystem {
     private fun maxIntegerRank(a: QualType, b: QualType): QualType {
         val ra = integerRank(a.type)
         val rb = integerRank(b.type)
-        return if (ra >= rb) a else b
+
+        val sa = isSigned(a.type)
+        val sb = isSigned(b.type)
+
+        // Same signedness → higher rank wins
+        if (sa == sb) {
+            return if (ra >= rb) a else b
+        }
+
+        // Mixed signedness
+        val signedQT: QualType
+        val unsignedQT: QualType
+
+        if (sa) {
+            signedQT = a
+            unsignedQT = b
+        } else {
+            signedQT = b
+            unsignedQT = a
+        }
+
+        val rs = integerRank(signedQT.type)
+        val ru = integerRank(unsignedQT.type)
+
+        // unsigned rank >= signed rank → unsigned wins
+        if (ru >= rs) {
+            return unsignedQT
+        }
+
+        // signed rank > unsigned rank → signed can represent all values
+        return signedQT
     }
 
     private fun integerRank(t: Type): Int {
@@ -174,8 +210,8 @@ object TypeSystem {
      * ============================================================ */
 
     fun pointerArithmetic(ptr: QualType, idx: QualType): QualType {
-        val p = decay(ptr).canonical
-        val i = decay(idx).canonical
+        val p = ptr.canonical
+        val i = idx.canonical
 
         if (p.type is Type.Pointer && isInteger(i)) {
             return p
@@ -184,8 +220,8 @@ object TypeSystem {
     }
 
     fun pointerDifference(a: QualType, b: QualType): QualType {
-        val pa = decay(a).canonical
-        val pb = decay(b).canonical
+        val pa = a.canonical
+        val pb = b.canonical
 
         if (pa.type is Type.Pointer &&
             pb.type is Type.Pointer &&
@@ -258,6 +294,7 @@ object TypeSystem {
     fun dereference(t: QualType): QualType {
         val ct = decay(t).canonical
         val ptr = ct.type as? Type.Pointer ?: return QualType.ErrorType
+        if (ptr.pointee.type == Type.Void) return QualType.ErrorType
         return ptr.pointee
     }
 
@@ -272,5 +309,14 @@ object TypeSystem {
             is Type.Pointer -> ty.pointee.type as? Type.Function
             else -> null
         }
+    }
+
+    private fun isSigned(t: Type): Boolean = when (t) {
+        is Type.Char -> t.signed
+        is Type.Short -> t.signed
+        is Type.Int -> t.signed
+        is Type.Long -> t.signed
+        is Type.LongLong -> t.signed
+        else -> false
     }
 }

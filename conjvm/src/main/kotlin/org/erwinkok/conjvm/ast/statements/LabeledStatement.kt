@@ -1,7 +1,7 @@
 package org.erwinkok.conjvm.ast.statements
 
 import org.erwinkok.conjvm.ast.AstStatementVisitor
-import org.erwinkok.conjvm.ast.SourceLocation
+import org.erwinkok.conjvm.parser.SourceLocation
 
 class LabeledStatement(location: SourceLocation, val id: String, val statement: Statement) : Statement(location) {
     override fun <R> accept(visitor: AstStatementVisitor<R>): R = visitor.visitLabeled(this)

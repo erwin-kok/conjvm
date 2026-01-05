@@ -1,11 +1,5 @@
-package org.erwinkok.conjvm.asm.types
+package org.erwinkok.conjvm.ast.types
 
-import org.erwinkok.conjvm.ast.types.QualType
-import org.erwinkok.conjvm.ast.types.Type
-import org.erwinkok.conjvm.ast.types.TypeException
-import org.erwinkok.conjvm.ast.types.TypeQualifier
-import org.erwinkok.conjvm.ast.types.TypeSystem
-import org.erwinkok.conjvm.ast.types.TypeUse
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -235,10 +229,10 @@ class TypeSystemTest {
     }
 
     @Test
-    fun dereferencingVoidPointerCurrentlyAllowed() {
+    fun dereferencingVoidPointerIsError() {
         val vp = QualType(Type.Pointer(TypeSystem.voidType))
         val d = TypeSystem.dereference(vp)
-        assertEquals(Type.Void, d.type)
+        assertEquals(Type.Error, d.type)
     }
 
     @Test
@@ -311,5 +305,124 @@ class TypeSystemTest {
         // ip = vp; vp = lp; ip = vp; all allowed
         assertTrue(TypeSystem.isAssignable(ip, vp))
         assertTrue(TypeSystem.isAssignable(vp, lp))
+    }
+
+    @Test
+    fun mixedSignednessUsualArithmeticConversion() {
+        val signedInt = QualType(Type.Int(true))
+        val unsignedInt = QualType(Type.Int(false))
+        val signedLong = QualType(Type.Long(true))
+        val unsignedLong = QualType(Type.Long(false))
+
+        // Same rank, mixed signedness → unsigned wins
+        assertEquals(unsignedInt, TypeSystem.usualArithmeticConversion(signedInt, unsignedInt))
+
+        // Signed rank > unsigned rank → signed wins
+        assertEquals(signedLong, TypeSystem.usualArithmeticConversion(signedLong, unsignedInt))
+
+        // Unsigned rank > signed rank → unsigned wins
+        assertEquals(unsignedLong, TypeSystem.usualArithmeticConversion(signedInt, unsignedLong))
+    }
+
+    @Test
+    fun incompleteMultiDimensionalArrayParameter() {
+        val inner = QualType(Type.Array(TypeSystem.intType, null))
+        val outer = QualType(Type.Array(inner, 10))
+        val fn = QualType(Type.Function(TypeSystem.intType, listOf(outer)))
+        assertDoesNotThrow {
+            TypeSystem.validateType(fn, TypeUse.PARAMETER)
+        }
+    }
+
+    @Test
+    fun functionReturningFunctionPointerAllowed() {
+        val fn = QualType(
+            Type.Function(
+                QualType(Type.Pointer(QualType(Type.Function(TypeSystem.intType, emptyList())))),
+                emptyList(),
+            ),
+        )
+        assertDoesNotThrow {
+            TypeSystem.validateType(fn, TypeUse.OBJECT)
+        }
+    }
+
+    @Test
+    fun pointerToConstAssignability() {
+        val constPointee = QualType(Type.Pointer(TypeSystem.intType.with(TypeQualifier.CONST)))
+        val normalPointee = QualType(Type.Pointer(TypeSystem.intType))
+
+        // const pointer cannot be assigned from non-const pointee
+        assertTrue(TypeSystem.isAssignable(constPointee, normalPointee))
+
+        val lhs = QualType(Type.Pointer(TypeSystem.intType))
+        val rhs = QualType(Type.Pointer(TypeSystem.intType.with(TypeQualifier.CONST)))
+        assertFalse(TypeSystem.isAssignable(lhs, rhs))
+    }
+
+    @Test
+    fun dereferenceArrayDecaysToPointer() {
+        val arr = QualType(Type.Array(TypeSystem.intType, 10))
+        val decayed = TypeSystem.decay(arr)
+        val deref = TypeSystem.dereference(decayed)
+        assertEquals(TypeSystem.intType.type, deref.type)
+    }
+
+    @Test
+    fun assignmentWithIntegerPromotions() {
+        val x = TypeSystem.intType
+        val y = QualType(Type.Short(true))
+        assertTrue(TypeSystem.isAssignable(x, y))
+    }
+
+    @Test
+    fun functionParameterVoidAmongOthersIllegal() {
+        val fn = QualType(
+            Type.Function(
+                TypeSystem.intType,
+                listOf(QualType(Type.Void), TypeSystem.intType),
+            ),
+        )
+        assertThrows<TypeException> {
+            TypeSystem.validateType(fn, TypeUse.PARAMETER)
+        }
+    }
+
+    @Test
+    fun pointerArithmeticArrayDecays() {
+        val arr = QualType(Type.Array(TypeSystem.intType, 10))
+        val decayed = TypeSystem.decay(arr)
+        val r = TypeSystem.pointerArithmetic(decayed, TypeSystem.intType)
+        assertTrue(r.type is Type.Pointer)
+    }
+
+    @Test
+    fun multiDimensionalArrayDecay() {
+        val inner = QualType(Type.Array(TypeSystem.intType, 5))
+        val outer = QualType(Type.Array(inner, 10))
+
+        val decayed = TypeSystem.decay(outer)
+
+        // Outer array decays to pointer
+        assertTrue(decayed.type is Type.Pointer)
+
+        val innerArray = (decayed.type as Type.Pointer).pointee.type
+        // Inner type should still be an array
+        assertTrue(innerArray is Type.Array)
+
+        val innerElement = (innerArray as Type.Array).elementType.type
+        // Innermost element is int
+        assertEquals(Type.Int(true), innerElement)
+    }
+
+    @Test
+    fun restrictConstPointerParameter() {
+        val p = QualType(
+            Type.Pointer(TypeSystem.intType.with(TypeQualifier.CONST)),
+            qualifiers = setOf(TypeQualifier.RESTRICT),
+        )
+        assertDoesNotThrow {
+            TypeSystem.validateType(p, TypeUse.PARAMETER)
+        }
     }
 }

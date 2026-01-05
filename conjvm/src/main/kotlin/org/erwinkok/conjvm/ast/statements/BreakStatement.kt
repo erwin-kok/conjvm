@@ -1,7 +1,7 @@
 package org.erwinkok.conjvm.ast.statements
 
 import org.erwinkok.conjvm.ast.AstStatementVisitor
-import org.erwinkok.conjvm.ast.SourceLocation
+import org.erwinkok.conjvm.parser.SourceLocation
 
 class BreakStatement(location: SourceLocation) : Statement(location) {
     override fun <R> accept(visitor: AstStatementVisitor<R>): R = visitor.visitBreak(this)

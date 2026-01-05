@@ -1,6 +1,8 @@
 package org.erwinkok.conjvm.parser
 
 import java.io.InputStream
+import java.util.zip.GZIPInputStream
+import java.util.zip.ZipException
 
 class SourceFile private constructor(
     val name: String,
@@ -18,7 +20,13 @@ class SourceFile private constructor(
 
     companion object {
         fun ofStream(name: String, inputStream: InputStream): SourceFile {
-            return SourceFile(name, String(inputStream.readAllBytes()))
+            try {
+                GZIPInputStream(inputStream).use { gzip ->
+                    return SourceFile(name, String(gzip.readAllBytes()))
+                }
+            } catch (_: ZipException) {
+                return SourceFile(name, String(inputStream.readAllBytes()))
+            }
         }
 
         fun ofString(name: String, content: String): SourceFile {
