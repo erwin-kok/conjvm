@@ -54,6 +54,7 @@ import org.erwinkok.conjvm.ast.types.Declarator
 import org.erwinkok.conjvm.ast.types.FunctionSpec
 import org.erwinkok.conjvm.ast.types.Parameter
 import org.erwinkok.conjvm.ast.types.StorageClass
+import org.erwinkok.conjvm.ast.types.SymbolTable
 import org.erwinkok.conjvm.ast.types.TypeException
 import org.erwinkok.conjvm.ast.types.TypeName
 import org.erwinkok.conjvm.ast.types.TypeQualifier
@@ -61,26 +62,12 @@ import org.erwinkok.conjvm.ast.types.TypeSpec
 import org.erwinkok.conjvm.parser.ErrorReporter
 import org.erwinkok.conjvm.parser.SourceFile
 import org.erwinkok.conjvm.parser.SourceLocation
-
-class Value private constructor(val value: Any) {
-    inline fun <reified T> cast(): T {
-        return value as T
-    }
-
-    inline fun <reified T> tryCast(): T? {
-        return value as? T
-    }
-
-    companion object {
-        fun of(value: Any): Value {
-            return Value(value)
-        }
-    }
-}
+import org.erwinkok.conjvm.utils.Value
 
 class AstBuilder(
     private val reporter: ErrorReporter,
     private val source: SourceFile,
+    private val symbols: SymbolTable,
 ) : CBaseVisitor<Value>() {
     override fun visitCompilationUnit(ctx: CParser.CompilationUnitContext): Value {
         val varDecls = mutableListOf<VariableDeclarationStatement>()
@@ -563,12 +550,13 @@ class AstBuilder(
 
     override fun visitForInitVarDecl(ctx: CParser.ForInitVarDeclContext): Value {
         val declarationSpecifier = visit(ctx.declaration_specifiers()).cast<DeclarationSpecifier>()
+        val variableDeclarators = ctx.init_declarator_list()?.let { visit(it).cast<List<VariableDeclarator>>() } ?: emptyList()
         return Value.of(
             ForInitVariableDeclaration(
                 VariableDeclarationStatement(
                     ctx.location,
                     declarationSpecifier,
-                    visit(ctx.init_declarator_list()).cast<List<VariableDeclarator>>(),
+                    variableDeclarators,
                 ),
             ),
         )

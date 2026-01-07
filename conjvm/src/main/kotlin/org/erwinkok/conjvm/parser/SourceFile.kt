@@ -19,7 +19,7 @@ class SourceFile private constructor(
     }
 
     override fun toString(): String {
-        return "source: $name (#${lines.size})"
+        return "source: $name"
     }
 
     companion object {

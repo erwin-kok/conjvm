@@ -1,5 +1,3 @@
-grammar C;
-
 /*
  BASED ON:
 
@@ -32,6 +30,8 @@ grammar C;
  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+grammar C;
+
 @lexer::header {
 import org.erwinkok.conjvm.ast.types.SymbolTable;
 }
@@ -40,9 +40,9 @@ import org.erwinkok.conjvm.ast.types.SymbolTable;
     private SymbolTable symbolTable;
 
     public CLexer(CharStream input, SymbolTable symbolTable) {
-        this(input);
-        this.symbolTable = symbolTable;
-    }
+	    this(input);
+	    this.symbolTable = symbolTable;
+	}
 
     private Boolean isTypedef(String s) {
         return symbolTable.isTypedef(s);
@@ -171,7 +171,7 @@ unary_operator
     ;
 
 sizeof_type
-    : 'sizeof' '(' type_name ')'
+    :   'sizeof' '(' type_name ')'
     ;
 
 postfix_expression
@@ -291,7 +291,7 @@ return_statement
 // VARIABLE DECLARATION
 //
 variable_declaration
-    :   declaration_specifiers init_declarator_list? ';'
+    :   declaration_specifiers init_declarator_list ';'
     ;
 
 declaration_specifiers
@@ -321,7 +321,7 @@ storage_class_specifier
     |   Register
     ;
 
-// struct, union and enum are not supported
+// union is not supported
 type_specifier
     :   Void
     |   Char
@@ -332,15 +332,49 @@ type_specifier
     |   Double
     |   Signed
     |   Unsigned
+    |   struct_specifier
+    |   enum_specifier
     |   typedef_name
     ;
 
-typedef_name
-    :   TYPEDEF_NAME
+struct_specifier
+    :   'struct' Identifier? '{' struct_declaration_list '}'
+    |   'struct' Identifier
+    ;
+
+struct_declaration_list
+    :   struct_declaration
+    ;
+
+struct_declaration
+    :   specifier_qualifier_list struct_declarator_list ';'
+    |   specifier_qualifier_list ';'
     ;
 
 specifier_qualifier_list
     :   (type_specifier | type_qualifier)+
+    ;
+
+struct_declarator_list
+    :   struct_declarator (',' struct_declarator)*
+    ;
+
+struct_declarator
+    :   declarator
+    |   declarator? ':' constant_expression
+    ;
+
+enum_specifier
+    :   'enum' Identifier? '{' enumerator_list ','? '}'
+    |   'enum' Identifier
+    ;
+
+enumerator_list
+    :   enumerator (',' enumerator)*
+    ;
+
+enumerator
+    :   Identifier ('=' constant_expression)?
     ;
 
 type_qualifier
@@ -387,6 +421,10 @@ parameter_declaration
 
 type_name
     :   specifier_qualifier_list
+    ;
+
+typedef_name
+    :   TYPEDEF_NAME
     ;
 
 initializer

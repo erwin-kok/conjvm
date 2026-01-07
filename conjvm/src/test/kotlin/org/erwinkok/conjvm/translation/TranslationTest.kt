@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import java.io.StringWriter
+import java.util.UUID
 
 class TranslationTest {
     @Test
@@ -24,7 +25,7 @@ class TranslationTest {
         val source = SourceFile.ofString("input.c", "void func(void) { uint x = 4; }")
         val errorReporter = ErrorReporter()
 
-        val compilationUnit = Parser(errorReporter).parseSource(source, symbolTable)
+        val compilationUnit = Parser(errorReporter, symbolTable).parseCompilationUnit(source)
         errorReporter.assertNoDiagnostics()
         requireNotNull(compilationUnit)
 
@@ -46,26 +47,34 @@ class TranslationTest {
         val actual = writer.toString()
 
         assertEquals(
-"""void func(void)
-{
-	StoreVar(x) = 4
-}
+            """void func(void)
+            |{
+            |    StoreVar(x) = 4
+            |}
 
-
-""".trimIndent(),
+            """.trimMargin(),
             actual,
         )
     }
 
     @Test
-    @Disabled
     fun translationTest2() {
+        val reporter = ErrorReporter()
+        val source = SourceFile.ofString("<statement>", "int f;")
+        val symbolTable = SymbolTable()
+        val statement = Parser(reporter, symbolTable).parseCompilationUnit(source)
+        reporter.assertNoDiagnostics()
+    }
+
+    @Test
+    @Disabled
+    fun translationTest3() {
         val source = readResource("input.c.gz")
 
         val symbolTable = SymbolTable()
         val errorReporter = ErrorReporter()
 
-        val compilationUnit = Parser(errorReporter).parseSource(source, symbolTable)
+        val compilationUnit = Parser(errorReporter, symbolTable).parseCompilationUnit(source)
         errorReporter.assertNoDiagnostics()
         requireNotNull(compilationUnit)
 
@@ -105,6 +114,7 @@ class TranslationTest {
             "m68ki_cpu",
             QualType(
                 Type.Struct(
+                    UUID.randomUUID(),
                     "m68ki_cpu",
                     listOf(
                         Field("cpu_type", QualType(Type.Int(signed = false))),

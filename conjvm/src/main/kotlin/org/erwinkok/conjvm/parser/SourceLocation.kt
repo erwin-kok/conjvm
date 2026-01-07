@@ -7,7 +7,7 @@ data class SourceLocation(
     val length: Int,
 ) {
     override fun toString(): String {
-        return "($source, $line, $column)"
+        return "($source, line: $line, column: $column)"
     }
 
     override fun equals(other: Any?): Boolean {

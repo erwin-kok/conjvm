@@ -3,10 +3,6 @@ package org.erwinkok.conjvm.ast.types
 import java.util.UUID
 
 class SymbolTable {
-    private val typedefs = mutableSetOf<String>()
-    private val structTags = mutableSetOf<String>()
-    private val enumTags = mutableSetOf<String>()
-
     private val typedefTable = mutableMapOf<String, QualType>()
 
     init {
@@ -31,18 +27,6 @@ class SymbolTable {
         typedefTable["m68ki_bitfield_t"] = QualType(Type.Struct(UUID.randomUUID(), "m68ki_bitfield_t", emptyList()))
     }
 
-    fun defineTypedef(name: String) {
-        typedefs.add(name)
-    }
-
-    fun defineStructTag(name: String) {
-        structTags.add(name)
-    }
-
-    fun defineEnumTag(name: String) {
-        enumTags.add(name)
-    }
-
     fun defineTypedef(name: String, type: QualType) {
         typedefTable[name] = type
     }
@@ -51,7 +35,22 @@ class SymbolTable {
         return typedefTable[name]
     }
 
-    fun isTypedef(name: String): Boolean {
-        return typedefTable.containsKey(name)
+    fun isTypedef(s: String): Boolean {
+        return "uint" == s ||
+            "uint8" == s ||
+            "uint16" == s ||
+            "uint32" == s ||
+            "uint64" == s ||
+            "sint" == s ||
+            "sint8" == s ||
+            "sint16" == s ||
+            "sint32" == s ||
+            "sint64" == s ||
+            "int" == s ||
+            "int8" == s ||
+            "int16" == s ||
+            "int32" == s ||
+            "int64" == s ||
+            "m68ki_bitfield_t" == s
     }
 }

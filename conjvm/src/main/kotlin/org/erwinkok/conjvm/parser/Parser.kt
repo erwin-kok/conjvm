@@ -6,32 +6,46 @@ import org.antlr.v4.runtime.misc.ParseCancellationException
 import org.erwinkok.conjvm.CLexer
 import org.erwinkok.conjvm.CParser
 import org.erwinkok.conjvm.ast.AstBuilder
-import org.erwinkok.conjvm.ast.statements.BlockStatement
+import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.ast.statements.CompilationUnitStatement
+import org.erwinkok.conjvm.ast.statements.Statement
 import org.erwinkok.conjvm.ast.types.SymbolTable
 
 class Parser(
     private val errorReporter: ErrorReporter,
+    private val symbolTable: SymbolTable,
 ) {
-    fun parseSource(source: SourceFile, symbolTable: SymbolTable): CompilationUnitStatement? {
+    fun parseCompilationUnit(source: SourceFile): CompilationUnitStatement? {
         return try {
-            val parser = createParser(source, symbolTable)
-            AstBuilder(errorReporter, source).visit(parser.compilationUnit()).cast<CompilationUnitStatement>()
+            val parser = createParser(source)
+            val compilationUnitContext = parser.compilationUnit()
+            AstBuilder(errorReporter, source, symbolTable).visit(compilationUnitContext).cast<CompilationUnitStatement>()
         } catch (_: ParseCancellationException) {
             null
         }
     }
 
-    fun parseBlock(source: SourceFile, symbolTable: SymbolTable): BlockStatement? {
+    fun parseStatement(source: SourceFile): Statement? {
         return try {
-            val parser = createParser(source, symbolTable)
-            AstBuilder(errorReporter, source).visit(parser.statement()).cast<BlockStatement>()
+            val parser = createParser(source)
+            val statementContext = parser.statement()
+            AstBuilder(errorReporter, source, symbolTable).visit(statementContext).cast<Statement>()
         } catch (_: ParseCancellationException) {
             null
         }
     }
 
-    private fun createParser(source: SourceFile, symbolTable: SymbolTable): CParser {
+    fun parseExpression(source: SourceFile): Expression? {
+        return try {
+            val parser = createParser(source)
+            val statementContext = parser.expression()
+            AstBuilder(errorReporter, source, symbolTable).visit(statementContext).cast<Expression>()
+        } catch (_: ParseCancellationException) {
+            null
+        }
+    }
+
+    private fun createParser(source: SourceFile): CParser {
         val input = CharStreams.fromString(source.text)
         val lexer = CLexer(input, symbolTable)
         lexer.removeErrorListeners()
