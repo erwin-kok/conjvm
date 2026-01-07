@@ -67,7 +67,7 @@ class TypeVisitor(
         // Resolve the function's full type (including parameters)
         val funcType = try {
             val funcType = resolveType(definition.declarationSpecifier, definition.declarator)
-            TypeSystem.validateType(funcType, TypeUse.FUNCTION_RETURN)
+            TypeSystem.validateWellFormed(funcType)
             funcType
         } catch (e: TypeException) {
             reporter.reportError(definition.location, e.message ?: "unknown error message")
@@ -159,10 +159,10 @@ class TypeVisitor(
             }
         } else {
             val valueType = typeOf(value).toRValue()
-            if (valueType.isError()) {
+            if (valueType.isError) {
                 return
             }
-            if (!currentReturn.isAssignableFrom(valueType.type)) {
+            if (!TypeSystem.isAssignable(currentReturn, valueType.type)) {
                 reporter.reportError(statement.location, "return type mismatch")
             }
         }
@@ -187,8 +187,8 @@ class TypeVisitor(
         val base = typeOf(expression.base).toRValue()
         val index = typeOf(expression.index)
 
-        if (base.isError() || index.isError()) {
-            return ExpressionType(QualType.ErrorType, isLValue = false)
+        if (base.isError || index.isError) {
+            return errorType(expression)
         }
 
         val baseType = base.type
@@ -197,7 +197,7 @@ class TypeVisitor(
         // Index must be integer
         if (!TypeSystem.isInteger(idxType)) {
             reporter.reportError(expression.location, "array index '${expression.index}' must be an integer")
-            return ExpressionType(QualType.ErrorType, false)
+            return errorType(expression)
         }
 
         // Base must be pointer or array
@@ -205,107 +205,99 @@ class TypeVisitor(
             is Type.Pointer -> bt.pointee
             else -> {
                 reporter.reportError(expression.location, "'${expression.base}' expression is not subscriptable")
-                return ExpressionType(QualType.ErrorType, false)
+                return errorType(expression)
             }
         }
 
         // Access yields lvalue of element type
-        return ExpressionType(elementType, isLValue = true)
+        return expressionType(expression, elementType, true)
     }
 
     override fun visitAssignment(expression: AssignmentExpression): ExpressionType {
         val lhs = typeOf(expression.leftExpression)
         val rhs = typeOf(expression.rightExpression).toRValue()
 
-        if (lhs.isError() || rhs.isError()) {
-            return ExpressionType(QualType.ErrorType, isLValue = false)
+        if (lhs.isError || rhs.isError) {
+            return errorType(expression)
         }
 
         if (!lhs.isLValue) {
             reporter.reportError(expression.location, "'${lhs.type}' must be a lvalue in assignment")
-            return ExpressionType(QualType.ErrorType, false)
+            return errorType(expression)
         }
         if (!TypeSystem.isAssignable(lhs.type, rhs.type)) {
             reporter.reportError(expression.location, "'${rhs.type}' is not assignable to '${lhs.type}' in '$expression'")
-            return ExpressionType(QualType.ErrorType, false)
+            return errorType(expression)
         }
 
         // Result of assignment is rvalue of LHS type
-        return ExpressionType(lhs.type, isLValue = false)
+        return expressionType(expression, lhs.type)
     }
 
     override fun visitBinary(expression: BinaryExpression): ExpressionType {
         val lhs = typeOf(expression.leftExpression).toRValue()
         val rhs = typeOf(expression.rightExpression).toRValue()
 
-        if (lhs.isError() || rhs.isError()) {
-            return ExpressionType(QualType.ErrorType, isLValue = false)
+        if (lhs.isError || rhs.isError) {
+            return errorType(expression)
         }
 
         val resultType = when {
-            TypeSystem.isPointer(lhs.type) && TypeSystem.isInteger(rhs.type) ->
-                TypeSystem.pointerArithmetic(lhs.type, rhs.type)
-
-            TypeSystem.isPointer(rhs.type) && TypeSystem.isInteger(lhs.type) ->
-                TypeSystem.pointerArithmetic(rhs.type, lhs.type)
-
-            TypeSystem.isPointer(lhs.type) && TypeSystem.isPointer(rhs.type) ->
-                TypeSystem.pointerDifference(lhs.type, rhs.type)
-
-            else ->
-                TypeSystem.usualArithmeticConversion(lhs.type, rhs.type)
+            TypeSystem.isPointer(lhs.type) && TypeSystem.isInteger(rhs.type) -> TypeSystem.pointerArithmetic(lhs.type, rhs.type)
+            TypeSystem.isPointer(rhs.type) && TypeSystem.isInteger(lhs.type) -> TypeSystem.pointerArithmetic(rhs.type, lhs.type)
+            TypeSystem.isPointer(lhs.type) && TypeSystem.isPointer(rhs.type) -> TypeSystem.pointerDifference(lhs.type, rhs.type)
+            else -> TypeSystem.usualArithmeticConversion(lhs.type, rhs.type)
         }
-        if (resultType.isError()) {
+        if (resultType.isError) {
             reporter.reportError(expression.location, "invalid operands to binary operator '$expression'")
-            return ExpressionType(QualType.ErrorType, false)
+            return errorType(expression)
         }
-        return ExpressionType(resultType, false)
+        return expressionType(expression, resultType)
     }
 
     override fun visitCall(expression: CallExpression): ExpressionType {
         val callee = typeOf(expression.function).toRValue()
 
-        if (callee.isError()) {
-            return ExpressionType(QualType.ErrorType, isLValue = false)
+        if (callee.isError) {
+            return errorType(expression)
         }
 
-        val funcType = TypeSystem.asFunctionType(callee.type) ?: return ExpressionType(QualType.ErrorType, false)
+        val funcType = TypeSystem.asFunctionType(callee.type) ?: return errorType(expression)
 
         // Check argument count
         if (expression.arguments.size != funcType.parameters.size) {
             reporter.reportError(expression.location, "arguments do not match in call")
-            return ExpressionType(QualType.ErrorType, false)
+            return errorType(expression)
         }
 
         // Check assignability for each argument
         for ((argExpr, paramType) in expression.arguments.zip(funcType.parameters)) {
             val arg = typeOf(argExpr)
-            if (arg.isError()) {
-                return ExpressionType(QualType.ErrorType, false)
+            if (arg.isError) {
+                return errorType(expression)
             }
             val promotedArg = TypeSystem.integerPromote(TypeSystem.decay(arg.type))
-            if (!paramType.isAssignableFrom(promotedArg)) {
+            if (!TypeSystem.isAssignable(paramType, promotedArg)) {
                 reporter.reportError(expression.location, "parameter $paramType is not assignable from $promotedArg")
-                return ExpressionType(QualType.ErrorType, false)
+                return errorType(expression)
             }
         }
-
-        return ExpressionType(funcType.returnType, isLValue = false)
+        return expressionType(expression, funcType.returnType)
     }
 
     override fun visitCast(expression: CastExpression): ExpressionType {
         val operand = typeOf(expression.expression)
-        if (operand.isError()) {
-            return ExpressionType(QualType.ErrorType, isLValue = false)
+        if (operand.isError) {
+            return errorType(expression)
         }
 
         val target = try {
             val target = resolveType(expression.targetType.declarationSpecifier, expression.targetType.abstractDeclarator).canonical
-            TypeSystem.validateType(target, TypeUse.CAST)
+            TypeSystem.validateWellFormed(target)
             target
         } catch (e: TypeException) {
             reporter.reportError(expression.location, e.message ?: "unknown error message")
-            return ExpressionType(QualType.ErrorType, isLValue = false)
+            return errorType(expression)
         }
 
         expression.targetQualType = target
@@ -314,12 +306,12 @@ class TypeVisitor(
 
         // If target is void, any type can be cast
         if (target.type == Type.Void) {
-            return ExpressionType(target, isLValue = false)
+            return expressionType(expression, target)
         }
 
         // Arithmetic casts: int → float, float → int, etc.
         if (TypeSystem.isArithmetic(target) && TypeSystem.isArithmetic(exprType)) {
-            return ExpressionType(target, isLValue = false)
+            return expressionType(expression, target)
         }
 
         // Pointer casts
@@ -329,11 +321,10 @@ class TypeVisitor(
 
             if (TypeQualifier.CONST in ep.pointee.qualifiers && TypeQualifier.CONST !in tp.pointee.qualifiers) {
                 reporter.reportWarning(expression.location, "pointer casts are const")
-                return ExpressionType(QualType.ErrorType, isLValue = false)
             }
 
             val resultPointee = tp.pointee
-            return ExpressionType(QualType(Type.Pointer(resultPointee), target.qualifiers), isLValue = false)
+            return expressionType(expression, QualType(Type.Pointer(resultPointee), target.qualifiers))
         }
 
         // Integer → pointer or pointer → integer
@@ -341,39 +332,39 @@ class TypeVisitor(
             (TypeSystem.isPointer(target) && TypeSystem.isInteger(exprType)) ||
             (TypeSystem.isInteger(target) && TypeSystem.isPointer(exprType))
         ) {
-            return ExpressionType(target, isLValue = false)
+            return expressionType(expression, target)
         }
 
         // Struct → struct cast not allowed in C
         if (target.type is Type.Struct || exprType.type is Type.Struct) {
             reporter.reportError(expression.location, "struct cast in '$expression' is not allowed")
-            return ExpressionType(QualType.ErrorType, isLValue = false)
+            return errorType(expression)
         }
 
         // Fallback: cast not allowed
         reporter.reportError(expression.location, "cast in '$expression' is not allowed")
-        return ExpressionType(QualType.ErrorType, isLValue = false)
+        return errorType(expression)
     }
 
     override fun visitConstantInt(expression: ConstantIntExpression): ExpressionType {
-        return ExpressionType(TypeSystem.intType, isLValue = false)
+        return expressionType(expression, TypeSystem.intType)
     }
 
     override fun visitConstantLong(expression: ConstantLongExpression): ExpressionType {
-        return ExpressionType(TypeSystem.longType, isLValue = false)
+        return expressionType(expression, TypeSystem.longType)
     }
 
     override fun visitConstantString(expression: ConstantStringExpression): ExpressionType {
         // String literals decay to pointer to char
-        val charType = QualType(Type.Char(signed = true))
+        val charType = QualType(Type.Char(true), setOf(TypeQualifier.CONST))
         val arrayType = QualType(Type.Array(charType, expression.value.length.toLong()))
-        return ExpressionType(TypeSystem.decay(arrayType), isLValue = false)
+        return expressionType(expression, TypeSystem.decay(arrayType))
     }
 
     override fun visitFieldAccess(expression: FieldAccessExpression): ExpressionType {
         val baseExpr = typeOf(expression.base)
-        if (baseExpr.isError()) {
-            return ExpressionType(QualType.ErrorType, isLValue = false)
+        if (baseExpr.isError) {
+            return errorType(expression)
         }
 
         val baseType = baseExpr.type
@@ -384,41 +375,53 @@ class TypeVisitor(
         }
         if (structType == null) {
             reporter.reportError(expression.location, "'${expression.base}' is not a struct")
-            return ExpressionType(QualType.ErrorType, false)
+            return errorType(expression)
         }
         val field = structType.fields?.find { it.name == expression.field }
         if (field == null) {
             reporter.reportError(expression.location, "could not find field '${expression.field}' in struct '${expression.base}'")
-            return ExpressionType(QualType.ErrorType, false)
+            return errorType(expression)
         }
 
         // Field access: lvalue if base is lvalue
-        return ExpressionType(field.type, isLValue = baseExpr.isLValue)
+        return expressionType(expression, field.type, baseExpr.isLValue)
     }
 
     override fun visitIdentifier(identifier: Identifier): ExpressionType {
         val localVar = scope.resolveVariable(identifier.name)
         if (localVar != null) {
-            return ExpressionType(localVar.type, isLValue = true)
+            return expressionType(identifier, localVar.type, true)
         }
         val globalFunc = globalScope.resolveFunction(identifier.name)
         if (globalFunc != null) {
-            return ExpressionType(globalFunc.type, isLValue = false)
+            return expressionType(identifier, globalFunc.type)
         }
         reporter.reportError(identifier.location, "undeclared identifier: '${identifier.name}'")
-        return ExpressionType(QualType.ErrorType, isLValue = false)
+        return errorType(identifier)
     }
 
     override fun visitParenthesized(expression: ParenthesizedExpression): ExpressionType {
         return visit(expression.expression)
     }
 
-    override fun visitPostfixDecrement(expression: PostfixDecrementExpression): ExpressionType {
-        return visit(expression.expression)
+    override fun visitPostfixIncrement(expression: PostfixIncrementExpression): ExpressionType {
+        val operand = typeOf(expression.expression)
+        if (!operand.isLValue || !TypeSystem.isArithmetic(operand.type)) {
+            reporter.reportError(expression.location, "'${operand.type}' must be an lvalue and arithmetic in '$expression'")
+            return errorType(expression)
+        }
+        // Result of x++ is rvalue
+        return expressionType(expression, operand.type, false)
     }
 
-    override fun visitPostfixIncrement(expression: PostfixIncrementExpression): ExpressionType {
-        return visit(expression.expression)
+    override fun visitPostfixDecrement(expression: PostfixDecrementExpression): ExpressionType {
+        val operand = typeOf(expression.expression)
+        if (!operand.isLValue || !TypeSystem.isArithmetic(operand.type)) {
+            reporter.reportError(expression.location, "'${operand.type}' must be an lvalue and arithmetic in '$expression'")
+            return errorType(expression)
+        }
+        // Result of x-- is rvalue
+        return expressionType(expression, operand.type, false)
     }
 
     override fun visitTernary(expression: TernaryExpression): ExpressionType {
@@ -426,8 +429,8 @@ class TypeVisitor(
         val thenType = typeOf(expression.thenExpression).toRValue()
         val elseType = typeOf(expression.elseExpression).toRValue()
 
-        if (condType.isError() || thenType.isError() || elseType.isError()) {
-            return ExpressionType(QualType.ErrorType, isLValue = false)
+        if (condType.isError || thenType.isError || elseType.isError) {
+            return errorType(expression)
         }
 
         val t1 = thenType.type
@@ -435,80 +438,75 @@ class TypeVisitor(
 
         // both arithmetic → usual arithmetic conversions
         if (TypeSystem.isArithmetic(t1) && TypeSystem.isArithmetic(t2)) {
-            return ExpressionType(
-                TypeSystem.usualArithmeticConversion(t1, t2),
-                isLValue = false,
-            )
+            return expressionType(expression, TypeSystem.usualArithmeticConversion(t1, t2))
         }
 
         if (!TypeSystem.isArithmetic(condType.type) && !TypeSystem.isPointer(condType.type)) {
             reporter.reportError(expression.location, "condition of ?: must be scalar in '$expression'")
-            return ExpressionType(QualType.ErrorType, false)
+            return errorType(expression)
         }
 
         if (t1.type == Type.Void && t2.type == Type.Void) {
-            return ExpressionType(TypeSystem.voidType, false)
+            return expressionType(expression, TypeSystem.voidType)
         }
 
         // both pointers → pointer compatibility
         if (TypeSystem.isPointer(t1) && TypeSystem.isPointer(t2)) {
-            val resultPointee: QualType = if (t1.isCompatibleWith(t2)) {
-                // Result qualifiers = intersection of qualifiers of both
-                val combinedQuals = t1.qualifiers intersect t2.qualifiers
-                QualType((t1.type as Type.Pointer).pointee.type, combinedQuals)
+            if (t1.isCompatibleWith(t2)) {
+                val p1 = t1.type as Type.Pointer
+                val p2 = t2.type as Type.Pointer
+                val mergedPointee = QualType(
+                    p1.pointee.type,
+                    p1.pointee.qualifiers + p2.pointee.qualifiers,
+                )
+                return expressionType(expression, QualType(Type.Pointer(mergedPointee)))
             } else {
                 reporter.reportError(expression.location, "pointers '${t1.type}' and '${t2.type}' are not compatible in '$expression'")
-                return ExpressionType(QualType.ErrorType, isLValue = false)
+                return errorType(expression)
             }
-            return ExpressionType(QualType(Type.Pointer(resultPointee)), isLValue = false)
         }
 
         // mixed pointer vs arithmetic → error
-        if ((TypeSystem.isPointer(t1) && TypeSystem.isArithmetic(t2)) ||
-            (TypeSystem.isArithmetic(t1) && TypeSystem.isPointer(t2))
-        ) {
+        if ((TypeSystem.isPointer(t1) && TypeSystem.isArithmetic(t2)) || (TypeSystem.isArithmetic(t1) && TypeSystem.isPointer(t2))) {
             reporter.reportError(expression.location, "pointers '${t1.type}' and '${t2.type}' are not compatible in '$expression'")
-            return ExpressionType(QualType.ErrorType, isLValue = false)
+            return errorType(expression)
         }
 
         // lvalue propagation (rare)
         if (thenType.isLValue && elseType.isLValue && t1 == t2) {
-            return ExpressionType(t1, isLValue = true)
+            return expressionType(expression, t1, true)
         }
 
         // fallback: decay to rvalue
-        return ExpressionType(t1, isLValue = false)
+        return expressionType(expression, t1)
     }
 
     override fun visitUnary(expression: UnaryExpression): ExpressionType {
         val operand = typeOf(expression.operand)
 
-        if (operand.isError()) {
-            return ExpressionType(QualType.ErrorType, isLValue = false)
+        if (operand.isError) {
+            return errorType(expression)
         }
 
         val t = operand.type
         return when (expression.type) {
             UnaryType.Address -> {
                 val address = TypeSystem.addressOf(t, operand.isLValue)
-                if (address.isError()) {
+                if (address.isError) {
                     reporter.reportError(expression.location, "cannot take address of '$expression'")
-                    ExpressionType(QualType.ErrorType, false)
+                    errorType(expression)
                 } else {
-                    ExpressionType(address, false)
+                    expressionType(expression, address)
                 }
             }
 
             UnaryType.Indirection -> {
                 val deref = TypeSystem.dereference(t)
-                if (deref.isError()) {
+                if (deref.isError) {
                     reporter.reportError(expression.location, "cannot dereference '$expression'")
-                    ExpressionType(QualType.ErrorType, false)
+                    errorType(expression)
                 } else {
-                    ExpressionType(
-                        deref,
-                        isLValue = deref.type !is Type.Void && deref.type !is Type.Function,
-                    )
+                    expressionType(expression, deref, deref.type !is Type.Void && deref.type !is Type.Function)
                 }
             }
 
@@ -518,10 +516,10 @@ class TypeVisitor(
                 // Arithmetic operators
                 if (TypeSystem.isArithmetic(t)) {
                     val promoted = TypeSystem.integerPromote(t)
-                    ExpressionType(promoted, false)
+                    expressionType(expression, promoted)
                 } else {
                     reporter.reportError(expression.location, "'${t.type}' is not arithmetic in '$expression'")
-                    ExpressionType(QualType.ErrorType, isLValue = false)
+                    errorType(expression)
                 }
             }
 
@@ -530,22 +528,23 @@ class TypeVisitor(
             -> {
                 // Arithmetic operators
                 if (TypeSystem.isArithmetic(t)) {
-                    ExpressionType(t, isLValue = false)
+                    expressionType(expression, t)
                 } else {
                     reporter.reportError(expression.location, "'${t.type}' is not arithmetic in '$expression'")
-                    ExpressionType(QualType.ErrorType, isLValue = false)
+                    errorType(expression)
                 }
             }
 
             UnaryType.MinusMinus,
             UnaryType.PlusPlus,
             -> {
-                // Only lvalues of arithmetic type
+                // Only lvalues of arithmetic type allowed
                 if (operand.isLValue && TypeSystem.isArithmetic(t)) {
-                    ExpressionType(t, isLValue = false)
+                    // Result is rvalue in C, not lvalue
+                    expressionType(expression, t)
                 } else {
-                    reporter.reportError(expression.location, "'${t.type}' must be a lvalue and an arithmetic in '$expression'")
-                    ExpressionType(QualType.ErrorType, isLValue = false)
+                    reporter.reportError(expression.location, "'${t.type}' must be a lvalue and arithmetic in '$expression'")
+                    errorType(expression)
                 }
             }
         }
@@ -568,6 +567,16 @@ class TypeVisitor(
         val parent = scope.parent
         requireNotNull(parent)
         scope = parent
+    }
+
+    private fun expressionType(expression: Expression, type: QualType, isLValue: Boolean = false): ExpressionType {
+        val et = ExpressionType(type, isLValue)
+        expression.expressionType = et
+        return et
+    }
+
+    private fun errorType(expression: Expression): ExpressionType {
+        return expressionType(expression, QualType.ErrorType)
     }
 
     private fun typeOf(expression: Expression): ExpressionType {
@@ -593,8 +602,12 @@ class TypeVisitor(
         for (varDecl in statement.variableDeclarators) {
             try {
                 val qt = resolveType(statement.declarationSpecifier, varDecl.declarator)
-                TypeSystem.validateType(qt, TypeUse.OBJECT)
-                s.defineVariable(varDecl.declarator.name(), qt, statement.declarationSpecifier.storage)
+                if (statement.declarationSpecifier.storage.contains(StorageClass.TYPEDEF)) {
+                    defineTypedef(statement.location, varDecl.declarator.name(), qt)
+                } else {
+                    TypeSystem.validateObjectType(qt)
+                    s.defineVariable(varDecl.declarator.name(), qt, statement.declarationSpecifier.storage)
+                }
             } catch (e: TypeException) {
                 reporter.reportError(statement.location, e.message ?: "unknown error message")
             }
@@ -604,7 +617,7 @@ class TypeVisitor(
     private fun defineGlobalFunction(statement: FunctionDefinitionStatement) {
         try {
             val qt = resolveType(statement.declarationSpecifier, statement.declarator)
-            TypeSystem.validateType(qt, TypeUse.OBJECT)
+            TypeSystem.validateObjectType(qt)
             globalScope.defineFunction(statement.declarator.name(), qt, statement.declarationSpecifier.storage)
         } catch (e: TypeException) {
             reporter.reportError(statement.location, e.message ?: "unknown error message")
@@ -653,10 +666,11 @@ class TypeVisitor(
             }
 
             specs.contains(TypeSpec.DOUBLE) -> {
-                if (longCount > 0) {
-                    throw TypeException("invalid type specifier: long double not supported yet")
+                when (longCount) {
+                    0 -> Type.Double
+                    1 -> Type.LongDouble
+                    else -> throw TypeException("invalid type specifier: too many long specifiers")
                 }
-                Type.Double
             }
 
             specs.contains(TypeSpec.CHAR) -> {
@@ -702,7 +716,7 @@ class TypeVisitor(
                 val returnType = applyDeclarator(baseType, declarator.declarator)
                 val params = declarator.parameters.map { p ->
                     val qt = resolveType(p.declarationSpecifier, p.declarator)
-                    TypeSystem.validateType(qt, TypeUse.PARAMETER)
+                    TypeSystem.validateWellFormed(qt)
                     when (qt.type) {
                         is Type.Array -> QualType(Type.Pointer(qt.type.elementType))
                         is Type.Function -> QualType(Type.Pointer(qt))

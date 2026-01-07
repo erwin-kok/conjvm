@@ -6,6 +6,10 @@ data class SourceLocation(
     val column: Int,
     val length: Int,
 ) {
+    override fun toString(): String {
+        return "($source, $line, $column)"
+    }
+
     override fun equals(other: Any?): Boolean {
         if (other === this) {
             return true

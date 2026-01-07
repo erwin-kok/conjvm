@@ -301,7 +301,7 @@ class CodeWriter(val writer: Writer) : AstVisitor<String> {
 
     private fun appendIndent() {
         repeat(indent) {
-            writer.append("\t")
+            writer.append("    ")
         }
     }
 }

@@ -56,10 +56,10 @@ class ErrorReporter {
             repeat(maxOf(1, d.location.length)) { append("^") }
         }
         return """
-        ${d.location.source.name}:${d.location.line}:${d.location.column + 1}: ${d.severity.name.lowercase()}
-        $lineText
-        $underline
-        ${d.message}
-        """.trimIndent()
+        |${d.location.source.name}:${d.location.line}:${d.location.column + 1}: ${d.severity.name.lowercase()}
+        |$lineText
+        |$underline
+        |${d.message}
+        """.trimMargin()
     }
 }

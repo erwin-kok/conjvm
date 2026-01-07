@@ -1,44 +1,34 @@
 package org.erwinkok.conjvm.ast.types
 
-data class QualType(val type: Type, val qualifiers: Set<TypeQualifier> = emptySet()) {
+data class QualType(
+    val type: Type,
+    val qualifiers: Set<TypeQualifier> = emptySet(),
+) {
     companion object {
         val ErrorType = QualType(Type.Error, emptySet())
     }
 
     val canonical: QualType by lazy { computeCanonical() }
 
-    fun with(q: TypeQualifier) = copy(qualifiers = qualifiers + q)
+    val isError: Boolean = this.type == Type.Error
 
-    fun isError(): Boolean = this.type == Type.Error
+    fun with(q: TypeQualifier) = copy(qualifiers = qualifiers + q)
 
     fun withoutQualifiers() = QualType(type, emptySet())
 
     fun isCompatibleWith(other: QualType): Boolean {
-        val a = canonical
+        val a = this.canonical
         val b = other.canonical
-
-        return when {
-            a.type is Type.Pointer && b.type is Type.Pointer ->
-                a.type.pointee.isCompatibleWith(b.type.pointee)
-
-            else -> a.type == b.type
-        }
-    }
-
-    fun isAssignableFrom(rhs: QualType): Boolean {
-        val lhs = this.canonical
-        val r = rhs.canonical
-        if (lhs.type != r.type) {
-            return false
-        }
-        if (TypeQualifier.CONST in r.qualifiers && TypeQualifier.CONST !in lhs.qualifiers) {
-            return false
-        }
-        return true
+        return a.type.isCompatibleWith(b.type)
     }
 
     override fun toString(): String {
-        return "$type"
+        val qualPrefix = if (qualifiers.isEmpty()) {
+            ""
+        } else {
+            qualifiers.joinToString(" ") { it.name.lowercase() } + " "
+        }
+        return qualPrefix + type.toString()
     }
 
     override fun equals(other: Any?): Boolean {
@@ -49,38 +39,39 @@ data class QualType(val type: Type, val qualifiers: Set<TypeQualifier> = emptySe
             this.canonical.qualifiers == other.canonical.qualifiers
     }
 
-    override fun hashCode(): Int = canonical.type.hashCode() * 31 + canonical.qualifiers.hashCode()
-
-    private fun computeCanonical(): QualType {
-        var t = this
-        val seen = mutableSetOf<Type>()
-        while (t.type is Type.Typedef) {
-            val typedefType = t.type
-            if (!seen.add(typedefType)) {
-                throw TypeException("circular typedef detected for '${typedefType.name}'")
-            }
-            // Merge qualifiers: typedef's qualifiers only apply at top level if not pointer
-            t = when (typedefType.underlying.type) {
-                is Type.Pointer -> {
-                    // qualifiers inside pointer remain with pointer
-                    QualType(typedefType.underlying.type, t.qualifiers)
-                }
-
-                else -> {
-                    // merge qualifiers for normal types
-                    typedefType.underlying.copy(qualifiers = typedefType.underlying.qualifiers + t.qualifiers)
-                }
-            }
-        }
-        return t.copy(type = canonicalInner(t.type))
+    override fun hashCode(): Int {
+        return canonical.type.hashCode() * 31 + canonical.qualifiers.hashCode()
     }
 
-    private fun canonicalInner(type: Type): Type {
+    private fun computeCanonical(): QualType {
+        var current: QualType = this
+        val seenNames = mutableSetOf<String>()
+        var accumulatedQualifiers = current.qualifiers
+        while (current.type is Type.Typedef) {
+            val td = current.type
+
+            // detect circular typedefs by typedef name
+            if (td.name in seenNames) {
+                throw TypeException("circular typedef detected for '${td.name}'")
+            }
+            seenNames.add(td.name)
+
+            // merge underlying qualifiers
+            accumulatedQualifiers += td.underlying.qualifiers
+
+            // move to underlying type
+            current = td.underlying
+        }
+        val canonicalType = canonicalizeInner(current.type)
+        return QualType(canonicalType, accumulatedQualifiers)
+    }
+
+    private fun canonicalizeInner(type: Type): Type {
         return when (type) {
             is Type.Pointer -> Type.Pointer(type.pointee.canonical)
             is Type.Array -> Type.Array(type.elementType.canonical, type.size)
             is Type.Function -> Type.Function(type.returnType.canonical, type.parameters.map { it.canonical })
-            is Type.Typedef -> throw TypeException("Typedef not unwrapped in QualType.canonical()")
+            is Type.Typedef -> error("Typedef should not appear during canonicalization")
             else -> type
         }
     }

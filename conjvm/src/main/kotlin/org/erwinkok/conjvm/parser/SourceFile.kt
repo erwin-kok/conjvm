@@ -18,6 +18,10 @@ class SourceFile private constructor(
         return lines.size
     }
 
+    override fun toString(): String {
+        return "source: $name (#${lines.size})"
+    }
+
     companion object {
         fun ofStream(name: String, inputStream: InputStream): SourceFile {
             try {

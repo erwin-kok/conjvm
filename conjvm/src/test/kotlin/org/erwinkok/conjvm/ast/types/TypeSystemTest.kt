@@ -13,7 +13,7 @@ class TypeSystemTest {
     @Test
     fun voidObjectIsRejected() {
         assertThrows<TypeException> {
-            TypeSystem.validateType(QualType(Type.Void), TypeUse.OBJECT)
+            TypeSystem.validateObjectType(QualType(Type.Void))
         }
     }
 
@@ -21,7 +21,7 @@ class TypeSystemTest {
     fun restrictRequiresPointer() {
         val t = QualType(Type.Int(true)).with(TypeQualifier.RESTRICT)
         assertThrows<TypeException> {
-            TypeSystem.validateType(t, TypeUse.OBJECT)
+            TypeSystem.validateObjectType(t)
         }
     }
 
@@ -30,7 +30,7 @@ class TypeSystemTest {
         val fn = QualType(Type.Function(TypeSystem.intType, emptyList()))
         val arr = QualType(Type.Array(fn, 10))
         assertThrows<TypeException> {
-            TypeSystem.validateType(arr, TypeUse.OBJECT)
+            TypeSystem.validateObjectType(arr)
         }
     }
 
@@ -108,9 +108,7 @@ class TypeSystemTest {
     @Test
     fun cannotDropConstOnPointee() {
         val lhs = QualType(Type.Pointer(TypeSystem.intType))
-        val rhs = QualType(
-            Type.Pointer(TypeSystem.intType.with(TypeQualifier.CONST)),
-        )
+        val rhs = QualType(Type.Pointer(TypeSystem.intType.with(TypeQualifier.CONST)))
         assertFalse(TypeSystem.isAssignable(lhs, rhs))
     }
 
@@ -125,7 +123,7 @@ class TypeSystemTest {
     @Test
     fun addressOfRequiresLValue() {
         val t = TypeSystem.intType
-        assertEquals(Type.Error, TypeSystem.addressOf(t, isLValue = false).type)
+        assertEquals(Type.Error, TypeSystem.addressOf(t, false).type)
     }
 
     @Test
@@ -146,7 +144,7 @@ class TypeSystemTest {
     @Test
     fun voidCastIsAllowed() {
         assertDoesNotThrow {
-            TypeSystem.validateType(QualType(Type.Void), TypeUse.CAST)
+            TypeSystem.validateWellFormed(QualType(Type.Void))
         }
     }
 
@@ -154,7 +152,7 @@ class TypeSystemTest {
     fun voidFunctionReturnAllowed() {
         val fn = QualType(Type.Function(QualType(Type.Void), emptyList()))
         assertDoesNotThrow {
-            TypeSystem.validateType(fn, TypeUse.FUNCTION_RETURN)
+            TypeSystem.validateObjectType(fn)
         }
     }
 
@@ -167,7 +165,7 @@ class TypeSystemTest {
             ),
         )
         assertDoesNotThrow {
-            TypeSystem.validateType(fn, TypeUse.OBJECT)
+            TypeSystem.validateObjectType(fn)
         }
     }
 
@@ -179,7 +177,7 @@ class TypeSystemTest {
         )
 
         assertThrows<TypeException> {
-            TypeSystem.validateType(fn, TypeUse.OBJECT)
+            TypeSystem.validateObjectType(fn)
         }
     }
 
@@ -187,7 +185,7 @@ class TypeSystemTest {
     fun incompleteArrayObjectCurrentlyAllowed() {
         val arr = QualType(Type.Array(TypeSystem.intType, null))
         assertDoesNotThrow {
-            TypeSystem.validateType(arr, TypeUse.OBJECT)
+            TypeSystem.validateObjectType(arr)
         }
     }
 
@@ -218,7 +216,6 @@ class TypeSystemTest {
     fun pointerAssignmentDifferentTypesRejected() {
         val ip = QualType(Type.Pointer(TypeSystem.intType))
         val lp = QualType(Type.Pointer(TypeSystem.longType))
-
         assertFalse(TypeSystem.isAssignable(ip, lp))
     }
 
@@ -242,27 +239,13 @@ class TypeSystemTest {
     }
 
     @Test
-    fun voidParameterAmongOthersCurrentlyAllowed() {
-        val fn = QualType(
-            Type.Function(
-                TypeSystem.intType,
-                listOf(QualType(Type.Void), TypeSystem.intType),
-            ),
-        )
-        assertDoesNotThrow {
-            TypeSystem.validateType(fn, TypeUse.OBJECT)
-        }
-    }
-
-    @Test
     fun restrictAllowedOnPointerParameter() {
         val p = QualType(
             Type.Pointer(TypeSystem.intType),
             qualifiers = setOf(TypeQualifier.RESTRICT),
         )
-
         assertDoesNotThrow {
-            TypeSystem.validateType(p, TypeUse.PARAMETER)
+            TypeSystem.validateObjectType(p)
         }
     }
 
@@ -271,7 +254,7 @@ class TypeSystemTest {
         val t = TypeSystem.intType.with(TypeQualifier.RESTRICT)
 
         assertThrows<TypeException> {
-            TypeSystem.validateType(t, TypeUse.PARAMETER)
+            TypeSystem.validateObjectType(t)
         }
     }
 
@@ -284,7 +267,7 @@ class TypeSystemTest {
             Type.Function(inner, emptyList()),
         )
         assertThrows<TypeException> {
-            TypeSystem.validateType(outer, TypeUse.OBJECT)
+            TypeSystem.validateObjectType(outer)
         }
     }
 
@@ -292,7 +275,7 @@ class TypeSystemTest {
     fun arrayOfVoidIsIllegal() {
         val arr = QualType(Type.Array(TypeSystem.voidType, 10))
         assertThrows<TypeException> {
-            TypeSystem.validateType(arr, TypeUse.OBJECT)
+            TypeSystem.validateObjectType(arr)
         }
     }
 
@@ -330,7 +313,7 @@ class TypeSystemTest {
         val outer = QualType(Type.Array(inner, 10))
         val fn = QualType(Type.Function(TypeSystem.intType, listOf(outer)))
         assertDoesNotThrow {
-            TypeSystem.validateType(fn, TypeUse.PARAMETER)
+            TypeSystem.validateObjectType(fn)
         }
     }
 
@@ -343,7 +326,7 @@ class TypeSystemTest {
             ),
         )
         assertDoesNotThrow {
-            TypeSystem.validateType(fn, TypeUse.OBJECT)
+            TypeSystem.validateObjectType(fn)
         }
     }
 
@@ -384,7 +367,7 @@ class TypeSystemTest {
             ),
         )
         assertThrows<TypeException> {
-            TypeSystem.validateType(fn, TypeUse.PARAMETER)
+            TypeSystem.validateObjectType(fn)
         }
     }
 
@@ -422,7 +405,7 @@ class TypeSystemTest {
             qualifiers = setOf(TypeQualifier.RESTRICT),
         )
         assertDoesNotThrow {
-            TypeSystem.validateType(p, TypeUse.PARAMETER)
+            TypeSystem.validateObjectType(p)
         }
     }
 }

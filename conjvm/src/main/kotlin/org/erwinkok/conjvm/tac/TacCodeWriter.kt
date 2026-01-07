@@ -11,12 +11,11 @@ class TacCodeWriter(val writer: Writer) {
             writer.appendLine("{")
             fd.instructions.forEach {
                 if (it !is TacLabeledInstruction) {
-                    writer.append("\t")
+                    writer.append("    ")
                 }
                 writer.appendLine(it.toString())
             }
             writer.appendLine("}")
-            writer.appendLine()
         }
     }
 }

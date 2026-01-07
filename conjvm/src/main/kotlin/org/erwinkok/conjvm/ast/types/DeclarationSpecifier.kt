@@ -20,6 +20,8 @@ sealed class TypeSpec {
     object UNSIGNED : TypeSpec()
 
     data class TypedefName(val name: String) : TypeSpec()
+    data class Struct(val name: String?) : TypeSpec()
+    data class Enum(val name: String?) : TypeSpec()
 }
 
 enum class TypeQualifier {
@@ -37,4 +39,6 @@ data class DeclarationSpecifier(
     val typeSpecs: List<TypeSpec>,
     val qualifiers: Set<TypeQualifier>,
     val functionSpecs: Set<FunctionSpec>,
-)
+) {
+    val hasTypedef: Boolean = storage.contains(StorageClass.TYPEDEF)
+}

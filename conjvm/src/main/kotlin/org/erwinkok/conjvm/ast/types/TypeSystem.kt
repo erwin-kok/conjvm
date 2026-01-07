@@ -1,12 +1,5 @@
 package org.erwinkok.conjvm.ast.types
 
-enum class TypeUse {
-    OBJECT,
-    CAST,
-    FUNCTION_RETURN,
-    PARAMETER,
-}
-
 object TypeSystem {
     /* ============================================================
      * Builtin canonical types
@@ -16,53 +9,20 @@ object TypeSystem {
     val longType = QualType(Type.Long(signed = true))
     val voidType = QualType(Type.Void)
 
-    fun validateType(qt: QualType, use: TypeUse) {
+    fun validateWellFormed(qt: QualType) {
         if (TypeQualifier.RESTRICT in qt.qualifiers && qt.type !is Type.Pointer) {
             throw TypeException("restrict qualifier requires pointer type")
         }
         if (qt.type is Type.Function && qt.qualifiers.isNotEmpty()) {
             throw TypeException("function type may not be qualified")
         }
-        if (qt.type is Type.Void && use == TypeUse.OBJECT) {
-            throw TypeException("object declared with type void")
-        }
-        if (qt.type is Type.Array && qt.type.elementType.canonical.type is Type.Void) {
-            throw TypeException("array of void is illegal")
-        }
-        if (qt.type is Type.Function && qt.type.returnType.type is Type.Function) {
-            throw TypeException("function returning function is illegal")
-        }
-        if (qt.type is Type.Function && use == TypeUse.PARAMETER) {
-            val params = qt.type.parameters
-            if (params.size > 1 && params.any { it.type == Type.Void }) {
-                throw TypeException("void must be the only parameter")
-            }
-        }
         validateRecursive(qt.type)
     }
 
-    private fun validateRecursive(type: Type) {
-        when (type) {
-            is Type.Pointer -> {
-                validateRecursive(type.pointee.type)
-            }
-
-            is Type.Array -> {
-                if (type.elementType.type is Type.Function) {
-                    throw TypeException("array of functions is illegal")
-                }
-                validateRecursive(type.elementType.type)
-            }
-
-            is Type.Function -> {
-                if (type.returnType.type is Type.Array) {
-                    throw TypeException("function returning array is illegal")
-                }
-                validateRecursive(type.returnType.type)
-                type.parameters.forEach { validateRecursive(it.type) }
-            }
-
-            else -> {}
+    fun validateObjectType(qt: QualType) {
+        validateWellFormed(qt)
+        if (qt.type == Type.Void) {
+            throw TypeException("object declared with type void")
         }
     }
 
@@ -86,7 +46,8 @@ object TypeSystem {
     fun isArithmetic(t: QualType): Boolean {
         return isInteger(t) ||
             t.canonical.type == Type.Float ||
-            t.canonical.type == Type.Double
+            t.canonical.type == Type.Double ||
+            t.canonical.type == Type.LongDouble
     }
 
     fun isPointer(t: QualType): Boolean {
@@ -95,26 +56,19 @@ object TypeSystem {
 
     /* ============================================================
      * Lvalue-to-rvalue, array/function decay
-     * C11 6.3.2.1
      * ============================================================ */
 
     fun decay(t: QualType): QualType {
         val ct = t.canonical
         return when (val ty = ct.type) {
-            is Type.Array ->
-                QualType(Type.Pointer(ty.elementType), emptySet())
-
-            is Type.Function ->
-                QualType(Type.Pointer(ct), emptySet())
-
-            else ->
-                ct.withoutQualifiers()
+            is Type.Array -> QualType(Type.Pointer(ty.elementType), emptySet())
+            is Type.Function -> QualType(Type.Pointer(QualType(ty, emptySet())), emptySet())
+            else -> ct.withoutQualifiers()
         }
     }
 
     /* ============================================================
      * Integer promotions
-     * C11 6.3.1.1
      * ============================================================ */
 
     fun integerPromote(t: QualType): QualType {
@@ -122,6 +76,7 @@ object TypeSystem {
         return when (ct.type) {
             is Type.Char,
             is Type.Short,
+            is Type.Bool,
             -> intType
 
             else -> ct
@@ -130,7 +85,6 @@ object TypeSystem {
 
     /* ============================================================
      * Usual arithmetic conversions
-     * C11 6.3.1.8
      * ============================================================ */
 
     fun usualArithmeticConversion(a: QualType, b: QualType): QualType {
@@ -141,11 +95,11 @@ object TypeSystem {
             return QualType.ErrorType
         }
 
-        if (ta.type == tb.type) {
-            return ta
+        // Floating
+        if (ta.type == Type.LongDouble || tb.type == Type.LongDouble) {
+            return QualType(Type.LongDouble)
         }
 
-        // Floating dominates integer
         if (ta.type == Type.Double || tb.type == Type.Double) {
             return QualType(Type.Double)
         }
@@ -154,54 +108,28 @@ object TypeSystem {
             return QualType(Type.Float)
         }
 
-        // Integer rank + signedness
-        return maxIntegerRank(ta, tb)
-    }
+        // Integers
+        if (ta.type == tb.type) {
+            return ta
+        }
 
-    private fun maxIntegerRank(a: QualType, b: QualType): QualType {
-        val ra = integerRank(a.type)
-        val rb = integerRank(b.type)
+        val sa = isSigned(ta.type)
+        val sb = isSigned(tb.type)
+        val ra = integerRank(ta.type)
+        val rb = integerRank(tb.type)
 
-        val sa = isSigned(a.type)
-        val sb = isSigned(b.type)
-
-        // Same signedness → higher rank wins
+        // Same signedness
         if (sa == sb) {
-            return if (ra >= rb) a else b
+            return if (ra >= rb) ta else tb
         }
 
-        // Mixed signedness
-        val signedQT: QualType
-        val unsignedQT: QualType
+        val signed = if (sa) ta else tb
+        val unsigned = if (sa) tb else ta
 
-        if (sa) {
-            signedQT = a
-            unsignedQT = b
-        } else {
-            signedQT = b
-            unsignedQT = a
-        }
-
-        val rs = integerRank(signedQT.type)
-        val ru = integerRank(unsignedQT.type)
-
-        // unsigned rank >= signed rank → unsigned wins
-        if (ru >= rs) {
-            return unsignedQT
-        }
-
-        // signed rank > unsigned rank → signed can represent all values
-        return signedQT
-    }
-
-    private fun integerRank(t: Type): Int {
-        return when (t) {
-            is Type.Char -> 1
-            is Type.Short -> 2
-            is Type.Int -> 3
-            is Type.Long -> 4
-            is Type.LongLong -> 5
-            else -> 0
+        return when {
+            integerRank(unsigned.type) >= integerRank(signed.type) -> unsigned
+            canRepresentAllValues(signed.type, unsigned.type) -> signed
+            else -> makeUnsignedVersion(signed)
         }
     }
 
@@ -212,8 +140,7 @@ object TypeSystem {
     fun pointerArithmetic(ptr: QualType, idx: QualType): QualType {
         val p = ptr.canonical
         val i = idx.canonical
-
-        if (p.type is Type.Pointer && isInteger(i)) {
+        if (p.type is Type.Pointer && isInteger(i) && p.type.pointee.type != Type.Void) {
             return p
         }
         return QualType.ErrorType
@@ -223,10 +150,7 @@ object TypeSystem {
         val pa = a.canonical
         val pb = b.canonical
 
-        if (pa.type is Type.Pointer &&
-            pb.type is Type.Pointer &&
-            pa.type.pointee.isCompatibleWith(pb.type.pointee)
-        ) {
+        if (pa.type is Type.Pointer && pb.type is Type.Pointer && pa.type.pointee.isCompatibleWith(pb.type.pointee)) {
             return longType // ptrdiff_t approximation
         }
         return QualType.ErrorType
@@ -234,51 +158,49 @@ object TypeSystem {
 
     /* ============================================================
      * Assignment
-     * C11 6.5.16.1
      * ============================================================ */
 
     fun isAssignable(lhs: QualType, rhs: QualType): Boolean {
         val l = lhs.canonical
         val r = rhs.canonical
 
+        // If either type is error, allow to prevent cascading
         if (l.type == Type.Error || r.type == Type.Error) {
             return true
         }
 
-        // Cannot assign to const
+        // LHS must be modifiable
         if (TypeQualifier.CONST in l.qualifiers) {
             return false
         }
 
-        // Exact match
-        if (l.type == r.type) {
-            // cannot drop const on RHS
-            if (TypeQualifier.CONST in r.qualifiers && TypeQualifier.CONST !in l.qualifiers) {
-                return false
-            }
-            return true
-        }
-
-        // Arithmetic assignment
+        // Arithmetic types
         if (isArithmetic(l) && isArithmetic(r)) {
+            // Allowed as long as LHS is not const
             return true
         }
 
+        // Pointer assignment
         if (l.type is Type.Pointer && r.type is Type.Pointer) {
             val lp = l.type.pointee.canonical
             val rp = r.type.pointee.canonical
 
+            // void* is compatible
             if (lp.type == Type.Void || rp.type == Type.Void) {
-                return true
+                return lp.qualifiers.containsAll(rp.qualifiers)
             }
 
-            if (TypeQualifier.CONST in rp.qualifiers && TypeQualifier.CONST !in lp.qualifiers) {
+            // Pointee types must be compatible
+            if (!lp.isCompatibleWith(rp)) {
                 return false
             }
 
-            return lp.isCompatibleWith(rp)
+            // Cannot drop qualifiers
+            if (!lp.qualifiers.containsAll(rp.qualifiers)) {
+                return false
+            }
+            return true
         }
-
         return false
     }
 
@@ -287,14 +209,18 @@ object TypeSystem {
      * ============================================================ */
 
     fun addressOf(t: QualType, isLValue: Boolean): QualType {
-        if (!isLValue) return QualType.ErrorType
+        if (!isLValue) {
+            return QualType.ErrorType
+        }
         return QualType(Type.Pointer(t))
     }
 
     fun dereference(t: QualType): QualType {
         val ct = decay(t).canonical
         val ptr = ct.type as? Type.Pointer ?: return QualType.ErrorType
-        if (ptr.pointee.type == Type.Void) return QualType.ErrorType
+        if (ptr.pointee.type == Type.Void) {
+            return QualType.ErrorType
+        }
         return ptr.pointee
     }
 
@@ -318,5 +244,75 @@ object TypeSystem {
         is Type.Long -> t.signed
         is Type.LongLong -> t.signed
         else -> false
+    }
+
+    private fun validateRecursive(type: Type) {
+        when (type) {
+            is Type.Pointer -> validateWellFormed(type.pointee)
+
+            is Type.Array -> {
+                if (type.elementType.type is Type.Function) {
+                    throw TypeException("array of functions is illegal")
+                }
+                if (type.elementType.type is Type.Void) {
+                    throw TypeException("array of void is illegal")
+                }
+                validateWellFormed(type.elementType)
+            }
+
+            is Type.Function -> {
+                if (type.returnType.type is Type.Function) {
+                    throw TypeException("function returning function is illegal")
+                }
+                if (type.returnType.type is Type.Array) {
+                    throw TypeException("function returning array is illegal")
+                }
+
+                validateWellFormed(type.returnType)
+                type.parameters.forEach { validateWellFormed(it) }
+
+                validateFunctionParameters(type.parameters)
+            }
+
+            else -> {}
+        }
+    }
+
+    private fun validateFunctionParameters(params: List<QualType>) {
+        if (params.isEmpty()) {
+            return
+        }
+        if (params.size == 1 && params[0].type == Type.Void) {
+            return
+        }
+        if (params.any { it.type == Type.Void }) {
+            throw TypeException("void must be the only parameter")
+        }
+    }
+
+    private fun canRepresentAllValues(signed: Type, unsigned: Type): Boolean {
+        val rs = integerRank(signed)
+        val ru = integerRank(unsigned)
+        // If signed has strictly greater rank, it must be wider
+        return rs > ru
+    }
+
+    private fun makeUnsignedVersion(t: QualType): QualType = when (t.type) {
+        is Type.Int -> QualType(Type.Int(false))
+        is Type.Long -> QualType(Type.Long(false))
+        is Type.LongLong -> QualType(Type.LongLong(false))
+        else -> t
+    }
+
+    private fun integerRank(t: Type): Int {
+        return when (t) {
+            is Type.Bool -> 0
+            is Type.Char -> 1
+            is Type.Short -> 2
+            is Type.Int -> 3
+            is Type.Long -> 4
+            is Type.LongLong -> 5
+            else -> -1
+        }
     }
 }

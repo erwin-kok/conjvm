@@ -1,27 +1,25 @@
 package org.erwinkok.conjvm.ast.types
 
+import java.util.UUID
+
 data class Field(val name: String, val type: QualType)
 
 sealed class Type {
     object Error : Type()
-
-    object Void : Type() {
-        override fun toString() = "void"
-    }
+    object Void : Type()
+    object Bool : Type()
+    object Float : Type()
+    object Double : Type()
+    object LongDouble : Type()
 
     data class Char(val signed: Boolean) : Type()
     data class Short(val signed: Boolean) : Type()
-    data class Int(val signed: Boolean) : Type() {
-        override fun toString() = "int"
-    }
-
+    data class Int(val signed: Boolean) : Type()
     data class Long(val signed: Boolean) : Type()
     data class LongLong(val signed: Boolean) : Type()
 
-    object Float : Type()
-    object Double : Type()
-
     data class Struct(
+        val id: UUID,
         val tag: String?, // null = anonymous
         val fields: List<Field>?, // null = incomplete type
     ) : Type()
@@ -37,5 +35,92 @@ sealed class Type {
         }
 
         override fun hashCode(): kotlin.Int = underlying.canonical.hashCode()
+    }
+
+    fun isCompatibleWith(other: Type): Boolean {
+        if (this === other) return true
+        return when (this) {
+            is Char if other is Char -> this.signed == other.signed
+            is Short if other is Short -> this.signed == other.signed
+            is Int if other is Int -> this.signed == other.signed
+            is Long if other is Long -> this.signed == other.signed
+            is LongLong if other is LongLong -> this.signed == other.signed
+            is Pointer if other is Pointer -> pointerCompatible(this, other)
+            is Array if other is Array -> arrayCompatible(this, other)
+            is Function if other is Function -> functionCompatible(this, other)
+            is Struct if other is Struct -> this.id == other.id
+            else -> false
+        }
+    }
+
+    override fun toString(): String = when (this) {
+        is Error -> "<error>"
+        is Void -> "void"
+        is Bool -> "bool"
+        is Char -> if (this.signed) "signed char" else "unsigned char"
+        is Short -> if (this.signed) "short" else "unsigned short"
+        is Int -> if (this.signed) "int" else "unsigned int"
+        is Long -> if (this.signed) "long" else "unsigned long"
+        is LongLong -> if (this.signed) "long long" else "unsigned long long"
+        is Float -> "float"
+        is Double -> "double"
+        is LongDouble -> "long double"
+        is Struct -> this.tag?.let { "struct $it" } ?: "<anonymous struct>"
+        is Pointer -> "${this.pointee.type}*".let {
+            if (this.pointee.qualifiers.isNotEmpty()) {
+                this.pointee.qualifiers.joinToString(" ", postfix = " ") + it
+            } else {
+                it
+            }
+        }
+
+        is Array -> {
+            "${this.elementType.type}[${this.size?.toString() ?: ""}]"
+        }
+
+        is Function -> {
+            val params = this.parameters.joinToString(", ") { it.type.toString() }
+            "${this.returnType}($params)"
+        }
+
+        is Typedef -> this.name
+    }
+
+    private fun pointerCompatible(a: Pointer, b: Pointer): Boolean {
+        val pa = a.pointee.canonical
+        val pb = b.pointee.canonical
+        // void* is compatible with any object pointer
+        if (pa.type == Void || pb.type == Void) {
+            return true
+        }
+        return pa.isCompatibleWith(pb)
+    }
+
+    private fun arrayCompatible(a: Array, b: Array): Boolean {
+        // Element types must be compatible
+        if (!a.elementType.isCompatibleWith(b.elementType)) {
+            return false
+        }
+        // Sizes: if both known, must match
+        if (a.size != null && b.size != null && a.size != b.size) {
+            return false
+        }
+        return true
+    }
+
+    private fun functionCompatible(a: Function, b: Function): Boolean {
+        if (!a.returnType.isCompatibleWith(b.returnType)) {
+            return false
+        }
+        if (a.parameters.isEmpty() || b.parameters.isEmpty()) {
+            return true
+        }
+
+        if (a.parameters.size != b.parameters.size) {
+            return false
+        }
+        return a.parameters.zip(b.parameters).all { (pa, pb) ->
+            pa.isCompatibleWith(pb)
+        }
     }
 }
