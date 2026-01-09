@@ -731,6 +731,10 @@ class TypeVisitor(
                 }
                 QualType(Type.Function(returnType, params))
             }
+
+            is Declarator.BitFieldDeclarator -> {
+                QualType(Type.BitField(baseType, declarator.width))
+            }
         }
     }
 
