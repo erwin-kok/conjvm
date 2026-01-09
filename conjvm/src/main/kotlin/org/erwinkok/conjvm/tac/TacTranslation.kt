@@ -7,6 +7,7 @@ import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.BreakStatement
 import org.erwinkok.conjvm.ast.statements.CompilationUnitStatement
 import org.erwinkok.conjvm.ast.statements.ContinueStatement
+import org.erwinkok.conjvm.ast.statements.DoWhileStatement
 import org.erwinkok.conjvm.ast.statements.ExpressionStatement
 import org.erwinkok.conjvm.ast.statements.ForStatement
 import org.erwinkok.conjvm.ast.statements.FunctionDefinitionStatement
@@ -233,6 +234,19 @@ class TacTranslation(
         allStatements.addAll(translatedBlock)
         allStatements.add(TacGotoInstruction(whileLabel))
         allStatements.add(TacLabeledInstruction(endLabel))
+        return TacResult(allStatements, null)
+    }
+
+    override fun visitDoWhile(statement: DoWhileStatement): TacResult {
+        val allStatements = mutableListOf<TacInstruction>()
+        val (ts, te) = translateExpression(statement.condition)
+        requireNotNull(te)
+        val translatedBlock = translateBlockStatement(statement.statements)
+        val doLabel = labelFactory.new()
+        allStatements.add(TacLabeledInstruction(doLabel))
+        allStatements.addAll(translatedBlock)
+        allStatements.addAll(ts)
+        allStatements.add(TacIfGotoInstruction(te, doLabel))
         return TacResult(allStatements, null)
     }
 

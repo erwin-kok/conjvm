@@ -31,6 +31,7 @@ import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.BreakStatement
 import org.erwinkok.conjvm.ast.statements.CompilationUnitStatement
 import org.erwinkok.conjvm.ast.statements.ContinueStatement
+import org.erwinkok.conjvm.ast.statements.DoWhileStatement
 import org.erwinkok.conjvm.ast.statements.ExpressionStatement
 import org.erwinkok.conjvm.ast.statements.ForInit
 import org.erwinkok.conjvm.ast.statements.ForInitAssignmentExpression
@@ -121,6 +122,10 @@ class AstBuilder(
                 visit(ctx.assignment_expression()).cast<Expression>(),
             ),
         )
+    }
+
+    override fun visitAssignExprWithLiteral(ctx: CParser.AssignExprWithLiteralContext): Value {
+        return Value.of(parseConstant(ctx.location, ctx.DigitSequence().text))
     }
 
     override fun visitSimpleConditional(ctx: CParser.SimpleConditionalContext): Value {
@@ -291,6 +296,10 @@ class AstBuilder(
         return Value.of(CastExpression(ctx.location, typeName, nodeResult))
     }
 
+    override fun visitCastWithLiteral(ctx: CParser.CastWithLiteralContext): Value {
+        return Value.of(parseConstant(ctx.location, ctx.DigitSequence().text))
+    }
+
     override fun visitUnary_expression(ctx: CParser.Unary_expressionContext): Value {
         val coreExpr = visit(ctx.unary_core()).cast<Expression>()
         return Value.of(
@@ -418,6 +427,10 @@ class AstBuilder(
         return visit(ctx.while_statement())
     }
 
+    override fun visitStatementDo(ctx: CParser.StatementDoContext): Value {
+        return visit(ctx.do_statement())
+    }
+
     override fun visitStatementFor(ctx: CParser.StatementForContext): Value {
         return visit(ctx.for_statement())
     }
@@ -532,6 +545,16 @@ class AstBuilder(
         )
     }
 
+    override fun visitDo_statement(ctx: CParser.Do_statementContext): Value {
+        return Value.of(
+            DoWhileStatement(
+                ctx.location,
+                visit(ctx.test).cast<Expression>(),
+                visit(ctx.statements).toBlockStatement(ctx.location),
+            ),
+        )
+    }
+
     override fun visitFor_statement(ctx: CParser.For_statementContext): Value {
         return Value.of(
             ForStatement(
@@ -592,7 +615,7 @@ class AstBuilder(
     //
     override fun visitVariable_declaration(ctx: CParser.Variable_declarationContext): Value {
         val declarationSpecifier = visit(ctx.declaration_specifiers()).cast<DeclarationSpecifier>()
-        val variableDeclarators = visit(ctx.init_declarator_list()).cast<List<VariableDeclarator>>()
+        val variableDeclarators = ctx.init_declarator_list()?.let { visit(it).cast<List<VariableDeclarator>>() } ?: emptyList()
         return Value.of(
             VariableDeclarationStatement(
                 ctx.location,
@@ -659,7 +682,7 @@ class AstBuilder(
 
     override fun visitDirectDeclFunction(ctx: CParser.DirectDeclFunctionContext): Value {
         val inner = visit(ctx.direct_declarator()).cast<Declarator>()
-        val params = visit(ctx.parameter_type_list()).cast<List<Parameter>>()
+        val params = ctx.parameter_type_list()?.let { visit(it).cast<List<Parameter>>() } ?: emptyList()
         return Value.of(Declarator.FunctionDeclarator(ctx.location, inner, params))
     }
 

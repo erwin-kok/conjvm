@@ -22,6 +22,7 @@ import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.BreakStatement
 import org.erwinkok.conjvm.ast.statements.CompilationUnitStatement
 import org.erwinkok.conjvm.ast.statements.ContinueStatement
+import org.erwinkok.conjvm.ast.statements.DoWhileStatement
 import org.erwinkok.conjvm.ast.statements.ExpressionStatement
 import org.erwinkok.conjvm.ast.statements.ForStatement
 import org.erwinkok.conjvm.ast.statements.FunctionDefinitionStatement
@@ -138,6 +139,7 @@ interface StatementTranslationVisitor : AstStatementVisitor<TranslationResult> {
     fun translateSwitch(statement: SwitchStatement): TranslationResult
     fun translateVariableDeclaration(statement: VariableDeclarationStatement): TranslationResult
     fun translateWhile(statement: WhileStatement): TranslationResult
+    fun translateDoWhile(statement: DoWhileStatement): TranslationResult
 
     override fun visitBlock(statement: BlockStatement): TranslationResult {
         return translateBlock(statement)
@@ -197,6 +199,10 @@ interface StatementTranslationVisitor : AstStatementVisitor<TranslationResult> {
 
     override fun visitWhile(statement: WhileStatement): TranslationResult {
         return translateWhile(statement)
+    }
+
+    override fun visitDoWhile(statement: DoWhileStatement): TranslationResult {
+        return translateDoWhile(statement)
     }
 }
 

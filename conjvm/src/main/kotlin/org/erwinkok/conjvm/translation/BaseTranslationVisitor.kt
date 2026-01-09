@@ -20,6 +20,7 @@ import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.BreakStatement
 import org.erwinkok.conjvm.ast.statements.CompilationUnitStatement
 import org.erwinkok.conjvm.ast.statements.ContinueStatement
+import org.erwinkok.conjvm.ast.statements.DoWhileStatement
 import org.erwinkok.conjvm.ast.statements.ExpressionStatement
 import org.erwinkok.conjvm.ast.statements.ForStatement
 import org.erwinkok.conjvm.ast.statements.FunctionDefinitionStatement
@@ -257,6 +258,14 @@ abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : T
         val translatedBlock = translateBlockStatement(statement.statements)
         return TranslationResult(
             listOf(WhileStatement(statement.location, statement.condition, translatedBlock)),
+            null,
+        )
+    }
+
+    override fun translateDoWhile(statement: DoWhileStatement): TranslationResult {
+        val translatedBlock = translateBlockStatement(statement.statements)
+        return TranslationResult(
+            listOf(DoWhileStatement(statement.location, statement.condition, translatedBlock)),
             null,
         )
     }

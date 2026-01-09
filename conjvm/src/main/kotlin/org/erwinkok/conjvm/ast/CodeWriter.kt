@@ -19,6 +19,7 @@ import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.BreakStatement
 import org.erwinkok.conjvm.ast.statements.CompilationUnitStatement
 import org.erwinkok.conjvm.ast.statements.ContinueStatement
+import org.erwinkok.conjvm.ast.statements.DoWhileStatement
 import org.erwinkok.conjvm.ast.statements.ExpressionStatement
 import org.erwinkok.conjvm.ast.statements.ForInit
 import org.erwinkok.conjvm.ast.statements.ForInitAssignmentExpression
@@ -257,6 +258,15 @@ class CodeWriter(val writer: Writer) : AstVisitor<String> {
         appendIndent()
         writer.appendLine("while ($testResult)")
         writer.appendLine(visit(statement.statements))
+        return ""
+    }
+
+    override fun visitDoWhile(statement: DoWhileStatement): String {
+        val testResult = visit(statement.condition)
+        appendIndent()
+        writer.appendLine("do ")
+        writer.appendLine(visit(statement.statements))
+        writer.appendLine("while ($testResult);")
         return ""
     }
 

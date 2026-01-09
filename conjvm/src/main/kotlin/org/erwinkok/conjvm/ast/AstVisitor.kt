@@ -71,6 +71,7 @@ interface AstStatementVisitor<out R> {
     fun visitSwitch(statement: SwitchStatement): R
     fun visitVariableDeclaration(statement: VariableDeclarationStatement): R
     fun visitWhile(statement: WhileStatement): R
+    fun visitDoWhile(statement: DoWhileStatement): R
 }
 
 interface AstVisitor<out R> :

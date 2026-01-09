@@ -80,6 +80,7 @@ expression
 assignment_expression
     :   conditional_expression                                                                      #simpleAssignExpr
     |   unary_expression assignment_operator assignment_expression                                  #compoundAssignExpr
+    |   DigitSequence                                                                               #assignExprWithLiteral
     ;
 
 assignment_operator
@@ -144,6 +145,7 @@ multiplicative_expression
 cast_expression
     :   '(' type_name ')' cast_expression                                                           #castExpr
     |   unary_expression                                                                            #simpleCast
+    |   DigitSequence                                                                               #castWithLiteral
     ;
 
 unary_expression
@@ -181,8 +183,8 @@ postfix_expression
 postfix_suffix
     :   '[' index = expression ']'                                                                  #postfixArrayAccess
     |   '(' args = argument_list? ')'                                                               #postfixFunctionCall
-    |   '.' field = Identifier                                                                      #postfixMemberAccess
     |   '->' field = Identifier                                                                     #postfixPointerMemberAccess
+    |   '.' field = Identifier                                                                      #postfixMemberAccess
     |   '++'                                                                                        #postfixIncrement
     |   '--'                                                                                        #postfixDecrement
     ;
@@ -212,6 +214,7 @@ embedded_statement
     |   if_then_statement                                                                           #statementIfThen
     |   if_then_else_statement                                                                      #statementIfThenElse
     |   while_statement                                                                             #statementWhile
+    |   do_statement                                                                                #statementDo
     |   for_statement                                                                               #statementFor
     |   switch_statement                                                                            #statementSwitch
     |   break_statement                                                                             #statementBreak
@@ -258,6 +261,10 @@ while_statement
     :   While '(' test = expression ')' statements = embedded_statement
     ;
 
+do_statement
+    :   Do statements = embedded_statement While '(' test = expression ')' ';'
+    ;
+
 for_statement
     :   For '(' init = for_initializer? ';' test = expression? ';' iterator = for_expression? ')' embedded_statement
     ;
@@ -291,7 +298,7 @@ return_statement
 // VARIABLE DECLARATION
 //
 variable_declaration
-    :   declaration_specifiers init_declarator_list ';'
+    :   declaration_specifiers init_declarator_list? ';'
     ;
 
 declaration_specifiers
@@ -343,10 +350,10 @@ struct_specifier
     ;
 
 struct_declaration_list
-    :   struct_declaration
+    :   struct_declaration+
     ;
 
-struct_declaration
+struct_declaration // The first two rules have priority order and cannot be simplified to one expression.
     :   specifier_qualifier_list struct_declarator_list ';'
     |   specifier_qualifier_list ';'
     ;
@@ -394,7 +401,7 @@ declarator
 direct_declarator
     :   Identifier                                                                                  #directDeclIdentifier
     |   '(' declarator ')'                                                                          #directDeclParenthesized
-    |   direct_declarator '(' parameter_type_list ')'                                               #directDeclFunction
+    |   direct_declarator '(' parameter_type_list? ')'                                              #directDeclFunction
     |   direct_declarator '[' assignment_expression? ']'                                            #directDeclArray
     ;
 
