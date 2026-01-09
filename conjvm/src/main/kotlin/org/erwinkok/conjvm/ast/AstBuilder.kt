@@ -689,7 +689,13 @@ class AstBuilder(
     override fun visitDirectDeclArray(ctx: CParser.DirectDeclArrayContext): Value {
         val inner = visit(ctx.direct_declarator()).cast<Declarator>()
         val size = ctx.assignment_expression()?.let { visit(it).cast<Expression>() }
-        return Value.of(Declarator.ArrayDeclarator(ctx.location, size, inner))
+        return Value.of(Declarator.ArrayDeclarator(ctx.location, inner, size))
+    }
+
+    override fun visitDirectDeclBitField(ctx: CParser.DirectDeclBitFieldContext): Value {
+        val name = ctx.Identifier().text
+        val width = ctx.DigitSequence().text.toInt()
+        return Value.of(Declarator.BitFieldDeclarator(ctx.location, name, width))
     }
 
     override fun visitPointer(ctx: CParser.PointerContext): Value {

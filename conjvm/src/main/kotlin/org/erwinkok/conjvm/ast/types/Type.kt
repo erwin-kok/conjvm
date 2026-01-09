@@ -27,6 +27,7 @@ sealed class Type {
     data class Pointer(val pointee: QualType) : Type()
     data class Array(val elementType: QualType, val size: kotlin.Long?) : Type()
     data class Function(val returnType: QualType, val parameters: List<QualType>) : Type()
+    data class BitField(val base: QualType, val width: kotlin.Int) : Type()
     data class Typedef(val name: String, val underlying: QualType) : Type() {
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
@@ -81,6 +82,10 @@ sealed class Type {
         is Function -> {
             val params = this.parameters.joinToString(", ") { it.type.toString() }
             "${this.returnType}($params)"
+        }
+
+        is BitField -> {
+            "${this.base.type} : [${this.width}]"
         }
 
         is Typedef -> this.name

@@ -403,6 +403,7 @@ direct_declarator
     |   '(' declarator ')'                                                                          #directDeclParenthesized
     |   direct_declarator '(' parameter_type_list? ')'                                              #directDeclFunction
     |   direct_declarator '[' assignment_expression? ']'                                            #directDeclArray
+    |   Identifier ':' DigitSequence                                                                #directDeclBitField
     ;
 
 pointer

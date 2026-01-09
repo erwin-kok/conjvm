@@ -13,10 +13,12 @@ sealed class Declarator {
         is PointerDeclarator -> this.pointee.name()
         is ArrayDeclarator -> this.elementType.name()
         is FunctionDeclarator -> this.declarator.name()
+        is BitFieldDeclarator -> this.name
     }
 
     data class IdentifierDeclarator(val location: SourceLocation, val name: String) : Declarator()
     data class PointerDeclarator(val location: SourceLocation, val qualifiers: Set<TypeQualifier>, val pointee: Declarator) : Declarator()
     data class FunctionDeclarator(val location: SourceLocation, val declarator: Declarator, val parameters: List<Parameter>) : Declarator()
-    data class ArrayDeclarator(val location: SourceLocation, val size: Expression?, val elementType: Declarator) : Declarator()
+    data class ArrayDeclarator(val location: SourceLocation, val elementType: Declarator, val size: Expression?) : Declarator()
+    data class BitFieldDeclarator(val location: SourceLocation, val name: String, val width: Int) : Declarator()
 }
