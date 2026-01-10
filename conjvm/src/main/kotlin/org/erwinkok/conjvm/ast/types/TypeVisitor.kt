@@ -589,11 +589,13 @@ class TypeVisitor(
         return cache.getOrPut(expression) { visit(expression) }
     }
 
-    private fun defineTypedef(location: SourceLocation, name: String, type: QualType) {
-        if (symbols.resolve(name) != null) {
-            reporter.reportError(location, "typedef '$name' already defined")
+    private fun defineTypedef(location: SourceLocation, name: String?, type: QualType) {
+        if (name != null) {
+            if (symbols.resolve(name) != null) {
+                reporter.reportError(location, "typedef '$name' already defined")
+            }
+            symbols.defineTypedef(name, type)
         }
-        symbols.defineTypedef(name, type)
     }
 
     private fun defineGlobalVariable(statement: VariableDeclarationStatement) {
@@ -705,6 +707,10 @@ class TypeVisitor(
     private fun applyDeclarator(baseType: QualType, declarator: Declarator): QualType {
         return when (declarator) {
             is Declarator.IdentifierDeclarator -> {
+                baseType
+            }
+
+            is Declarator.AnonymousDeclarator -> {
                 baseType
             }
 

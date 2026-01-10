@@ -305,6 +305,10 @@ declaration_specifiers
     :   declaration_specifier+
     ;
 
+declaration_specifiers_2
+    :   declaration_specifier+
+    ;
+
 declaration_specifier
     :   storage_class_specifier                                                                     #storageClassSpec
     |   type_specifier                                                                              #declSpecTypeSpec
@@ -424,11 +428,25 @@ parameter_list
     ;
 
 parameter_declaration
-    :   declaration_specifiers declarator
+    :   declaration_specifiers declarator                                                           #paramSpecDecl
+    |   declaration_specifiers_2 abstract_declarator?                                               #paramSpecAbstractDecl
     ;
 
 type_name
-    :   specifier_qualifier_list
+    :   specifier_qualifier_list abstract_declarator?
+    ;
+
+abstract_declarator
+    :   pointer                                                                                     #absDeclPointer
+    |   pointer? direct_abstract_declarator                                                         #absDeclCompound
+    ;
+
+direct_abstract_declarator
+    :   '(' abstract_declarator ')'                                                                 #directAbsDeclParenthesized
+    |   '[' assignment_expression? ']'                                                              #directAbsDeclArray
+    |   '(' parameter_type_list? ')'                                                                #directAbsDeclFunctionSimple
+    |   direct_abstract_declarator '[' assignment_expression? ']'                                   #directAbsDeclArrayCompound
+    |   direct_abstract_declarator '(' parameter_type_list? ')'                                     #directAbsDeclFunctionCompound
     ;
 
 typedef_name

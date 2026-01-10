@@ -641,6 +641,22 @@ class AstBuilder(
         return Value.of(DeclarationSpecifier(storage, typeSpecs, qualifiers, functionSpecs))
     }
 
+    override fun visitDeclaration_specifiers_2(ctx: CParser.Declaration_specifiers_2Context): Value {
+        val storage = mutableSetOf<StorageClass>()
+        val typeSpecs = mutableListOf<TypeSpec>()
+        val qualifiers = mutableSetOf<TypeQualifier>()
+        val functionSpecs = mutableSetOf<FunctionSpec>()
+        ctx.declaration_specifier().forEach {
+            when (it) {
+                is StorageClassSpecContext -> storage += parseStorageClassSpec(it.storage_class_specifier())
+                is DeclSpecTypeSpecContext -> typeSpecs += parseTypeSpec(it.type_specifier())
+                is DeclSpecTypeQualContext -> qualifiers += parseTypeQualifier(it.type_qualifier())
+                is DeclSpecFuncSpecContext -> functionSpecs += parseFunctionSpec(it.function_specifier())
+            }
+        }
+        return Value.of(DeclarationSpecifier(storage, typeSpecs, qualifiers, functionSpecs))
+    }
+
     override fun visitInit_declarator_list(ctx: CParser.Init_declarator_listContext): Value {
         return Value.of(ctx.init_declarator().map { visit(it).cast<VariableDeclarator>() })
     }
@@ -716,15 +732,68 @@ class AstBuilder(
         return Value.of(params)
     }
 
-    override fun visitParameter_declaration(ctx: CParser.Parameter_declarationContext): Value {
+    override fun visitParamSpecDecl(ctx: CParser.ParamSpecDeclContext): Value {
         val declarationSpecifier = visit(ctx.declaration_specifiers()).cast<DeclarationSpecifier>()
         val declarator = visit(ctx.declarator()).cast<Declarator>()
         return Value.of(Parameter(declarationSpecifier, declarator))
     }
 
+    override fun visitParamSpecAbstractDecl(ctx: CParser.ParamSpecAbstractDeclContext): Value {
+        val declarationSpecifier = visit(ctx.declaration_specifiers_2()).cast<DeclarationSpecifier>()
+        val declarator = visit(ctx.abstract_declarator()).cast<Declarator>()
+        return Value.of(Parameter(declarationSpecifier, declarator))
+    }
+
     override fun visitType_name(ctx: CParser.Type_nameContext): Value {
         val declarationSpecifier = visit(ctx.specifier_qualifier_list()).cast<DeclarationSpecifier>()
-        return Value.of(TypeName(declarationSpecifier, null))
+        val declarator = ctx.abstract_declarator()?.let { visit(it).cast<Declarator>() } ?: Declarator.AnonymousDeclarator(ctx.location)
+        return Value.of(TypeName(declarationSpecifier, declarator))
+    }
+
+    override fun visitAbsDeclPointer(ctx: CParser.AbsDeclPointerContext): Value {
+        val base: Declarator = Declarator.AnonymousDeclarator(ctx.location)
+        val pointerQualifiers = visit(ctx.pointer()).cast<List<List<TypeQualifier>>>()
+        val declarator = pointerQualifiers.foldRight(base) { qualifiers, inner ->
+            Declarator.PointerDeclarator(ctx.location, qualifiers.toSet(), inner)
+        }
+        return Value.of(declarator)
+    }
+
+    override fun visitAbsDeclCompound(ctx: CParser.AbsDeclCompoundContext): Value {
+        val base = visit(ctx.direct_abstract_declarator()).cast<Declarator>()
+        val pointerQualifiers = ctx.pointer()?.let { visit(it).cast<List<List<TypeQualifier>>>() } ?: emptyList()
+        val declarator = pointerQualifiers.foldRight(base) { qualifiers, inner ->
+            Declarator.PointerDeclarator(ctx.location, qualifiers.toSet(), inner)
+        }
+        return Value.of(declarator)
+    }
+
+    override fun visitDirectAbsDeclParenthesized(ctx: CParser.DirectAbsDeclParenthesizedContext): Value {
+        return visit(ctx.abstract_declarator())
+    }
+
+    override fun visitDirectAbsDeclArray(ctx: CParser.DirectAbsDeclArrayContext): Value {
+        val inner = Declarator.AnonymousDeclarator(ctx.location)
+        val size = ctx.assignment_expression()?.let { visit(it).cast<Expression>() }
+        return Value.of(Declarator.ArrayDeclarator(ctx.location, inner, size))
+    }
+
+    override fun visitDirectAbsDeclFunctionSimple(ctx: CParser.DirectAbsDeclFunctionSimpleContext): Value {
+        val inner = Declarator.AnonymousDeclarator(ctx.location)
+        val params = ctx.parameter_type_list()?.let { visit(it).cast<List<Parameter>>() } ?: emptyList()
+        return Value.of(Declarator.FunctionDeclarator(ctx.location, inner, params))
+    }
+
+    override fun visitDirectAbsDeclArrayCompound(ctx: CParser.DirectAbsDeclArrayCompoundContext): Value {
+        val inner = visit(ctx.direct_abstract_declarator()).cast<Declarator>()
+        val size = ctx.assignment_expression()?.let { visit(it).cast<Expression>() }
+        return Value.of(Declarator.ArrayDeclarator(ctx.location, inner, size))
+    }
+
+    override fun visitDirectAbsDeclFunctionCompound(ctx: CParser.DirectAbsDeclFunctionCompoundContext): Value {
+        val inner = visit(ctx.direct_abstract_declarator()).cast<Declarator>()
+        val params = ctx.parameter_type_list()?.let { visit(it).cast<List<Parameter>>() } ?: emptyList()
+        return Value.of(Declarator.FunctionDeclarator(ctx.location, inner, params))
     }
 
     override fun visitInitializer(ctx: CParser.InitializerContext): Value {
