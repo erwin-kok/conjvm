@@ -1,6 +1,5 @@
 package org.erwinkok.conjvm.ast
 
-import org.antlr.v4.runtime.ParserRuleContext
 import org.erwinkok.conjvm.CBaseVisitor
 import org.erwinkok.conjvm.CParser
 import org.erwinkok.conjvm.CParser.DeclSpecFuncSpecContext
