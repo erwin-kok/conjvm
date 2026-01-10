@@ -39,7 +39,7 @@ fun parseBlock(inputText: String): QualType {
     try {
         val source = SourceFile.ofString("<statement>", "{$inputText}")
         val symbolTable = SymbolTable()
-        val statement = Parser(reporter, symbolTable).parseStatement(source)
+        val statement = Parser(reporter).parseStatement(source)
         reporter.assertNoDiagnostics()
         require(statement is BlockStatement)
         val typeVisitor = TypeVisitor(symbolTable, reporter)
@@ -67,8 +67,7 @@ class NoOp(reporter: ErrorReporter) : BaseTranslationVisitor(reporter)
 
 fun assertTranslatedAstEquals(inputText: String, expectedText: String, translationVisitor: List<TranslationStep> = listOf(::NoOp)) {
     val reporter = ErrorReporter()
-    val symbolTable = SymbolTable()
-    val parser = Parser(reporter, symbolTable)
+    val parser = Parser(reporter)
     val inputSource = SourceFile.ofString("test", inputText)
     val statement = parser.parseStatement(inputSource)
     requireNotNull(statement)

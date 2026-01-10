@@ -25,7 +25,7 @@ class TranslationTest {
         val source = SourceFile.ofString("input.c", "void func(void) { uint x = 4; }")
         val errorReporter = ErrorReporter()
 
-        val compilationUnit = Parser(errorReporter, symbolTable).parseCompilationUnit(source)
+        val compilationUnit = Parser(errorReporter).parseCompilationUnit(source)
         errorReporter.assertNoDiagnostics()
         requireNotNull(compilationUnit)
 
@@ -60,9 +60,15 @@ class TranslationTest {
     @Test
     fun translationTest2() {
         val reporter = ErrorReporter()
-        val source = SourceFile.ofString("<statement>", "int f;")
-        val symbolTable = SymbolTable()
-        val statement = Parser(reporter, symbolTable).parseCompilationUnit(source)
+        val source = SourceFile.ofString(
+            "<statement>",
+            """
+            |typedef unsigned int A, B;
+            |A x = 4;
+            |int y = (x) & 0xf0;
+            """.trimMargin(),
+        )
+        val statement = Parser(reporter).parseCompilationUnit(source)
         reporter.assertNoDiagnostics()
     }
 
@@ -74,7 +80,7 @@ class TranslationTest {
         val symbolTable = SymbolTable()
         val errorReporter = ErrorReporter()
 
-        val compilationUnit = Parser(errorReporter, symbolTable).parseCompilationUnit(source)
+        val compilationUnit = Parser(errorReporter).parseCompilationUnit(source)
         errorReporter.assertNoDiagnostics()
         requireNotNull(compilationUnit)
 

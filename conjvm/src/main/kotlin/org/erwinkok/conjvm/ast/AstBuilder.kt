@@ -54,7 +54,6 @@ import org.erwinkok.conjvm.ast.types.Declarator
 import org.erwinkok.conjvm.ast.types.FunctionSpec
 import org.erwinkok.conjvm.ast.types.Parameter
 import org.erwinkok.conjvm.ast.types.StorageClass
-import org.erwinkok.conjvm.ast.types.SymbolTable
 import org.erwinkok.conjvm.ast.types.TypeException
 import org.erwinkok.conjvm.ast.types.TypeName
 import org.erwinkok.conjvm.ast.types.TypeQualifier
@@ -68,7 +67,6 @@ import org.erwinkok.conjvm.utils.Value
 class AstBuilder(
     override val reporter: ErrorReporter,
     override val source: SourceFile,
-    private val symbols: SymbolTable,
 ) : CBaseVisitor<Value>(),
     ParserReporting {
     override fun visitCompilationUnit(ctx: CParser.CompilationUnitContext): Value {

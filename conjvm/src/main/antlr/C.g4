@@ -32,25 +32,77 @@
 
 grammar C;
 
-@lexer::header {
-import org.erwinkok.conjvm.ast.types.SymbolTable;
+@parser::header {
+import org.erwinkok.conjvm.symbols.DeclarationListener;
 }
 
-@lexer::members {
-    private SymbolTable symbolTable;
+@parser::members {
+    private DeclarationListener declarationListener;
 
-    public CLexer(CharStream input, SymbolTable symbolTable) {
+    public CParser(TokenStream input, DeclarationListener declarationListener) {
 	    this(input);
-	    this.symbolTable = symbolTable;
+	    this.declarationListener = declarationListener;
 	}
 
-    private Boolean isTypedef(String s) {
-        return symbolTable.isTypedef(s);
+    private Boolean isDeclarationStart() {
+        Token t1 = _input.LT(1);
+        // keyword-based types
+        switch (t1.getType()) {
+            case Typedef:
+            case Extern:
+            case Static:
+            case ThreadLocal:
+            case Auto:
+            case Register:
+            case Void:
+            case Char:
+            case Short:
+            case Int:
+            case Long:
+            case Float:
+            case Double:
+            case Signed:
+            case Unsigned:
+            case Struct:
+            case Enum:
+            case Const:
+            case Volatile:
+            case Restrict:
+            case Bool:
+            case Complex:
+            case Atomic:
+                return true;
+        }
+        // typedef-based types
+        return t1.getType() == Identifier && declarationListener.isTypedefName(t1.getText());
+    }
+
+    boolean isTypeName() {
+        Token t2 = _input.LT(2); // token after '('
+        if (t2.getType() == Struct || t2.getType() == Enum) {
+            return true; // accept even if anonymous struct/enum
+        }
+        switch (t2.getType()) {
+            case Void:
+            case Char:
+            case Short:
+            case Int:
+            case Long:
+            case Float:
+            case Double:
+            case Signed:
+            case Unsigned:
+            case Const:
+            case Volatile:
+            case Restrict:
+            case Bool:
+            case Complex:
+            case Atomic:
+                return true;
+        }
+        return t2.getType() == Identifier && declarationListener.isTypedefName(t2.getText());
     }
 }
-
-// virtual token
-tokens { TYPEDEF_NAME }
 
 compilationUnit
     :   external_declaration* EOF
@@ -143,7 +195,7 @@ multiplicative_expression
 	;
 
 cast_expression
-    :   '(' type_name ')' cast_expression                                                           #castExpr
+    :   {isTypeName()}? '(' type_name ')' cast_expression                                           #castExpr
     |   unary_expression                                                                            #simpleCast
     |   DigitSequence                                                                               #castWithLiteral
     ;
@@ -229,7 +281,7 @@ block_statement
 
 block_item
     :   statement                                                                                   #blckItemStmt
-    |   variable_declaration                                                                        #blckItemVarDecl
+    |   {isDeclarationStart()}? variable_declaration                                                #blckItemVarDecl
     ;
 
 labeled_statement
@@ -271,7 +323,7 @@ for_statement
 
 for_initializer
     :   argument_list                                                                               #forInitAssignmentExpr
-    |   declaration_specifiers init_declarator_list                                                 #forInitVarDecl
+    |   {isDeclarationStart()}? declaration_specifiers init_declarator_list                         #forInitVarDecl
     ;
 
 for_expression
@@ -328,6 +380,7 @@ storage_class_specifier
     :   Typedef
     |   Extern
     |   Static
+    |   ThreadLocal
     |   Auto
     |   Register
     ;
@@ -343,6 +396,8 @@ type_specifier
     |   Double
     |   Signed
     |   Unsigned
+    |   Bool
+    |   Complex
     |   struct_specifier
     |   enum_specifier
     |   typedef_name
@@ -392,6 +447,7 @@ type_qualifier
     :   Const
     |   Restrict
     |   Volatile
+    |   Atomic
     ;
 
 function_specifier
@@ -450,7 +506,7 @@ direct_abstract_declarator
     ;
 
 typedef_name
-    :   TYPEDEF_NAME
+    :   Identifier
     ;
 
 initializer
@@ -546,6 +602,10 @@ Static
     : 'static'
     ;
 
+ThreadLocal
+    : '_Thread_local'
+    ;
+
 Auto
     : 'auto'
     ;
@@ -580,6 +640,18 @@ Unsigned
 
 Void
     : 'void'
+    ;
+
+Atomic
+    : '_Atomic'
+    ;
+
+Bool
+    : '_Bool'
+    ;
+
+Complex
+    : '_Complex'
     ;
 
 Volatile
@@ -781,11 +853,6 @@ Ellipsis
 
 Identifier
     : IdentifierNondigit (IdentifierNondigit | Digit)*
-          {
-              if (isTypedef(getText())) {
-                  setType(CParser.TYPEDEF_NAME);
-              }
-          }
     ;
 
 fragment IdentifierNondigit
