@@ -63,13 +63,15 @@ import org.erwinkok.conjvm.ast.types.TypeSpec
 import org.erwinkok.conjvm.parser.ErrorReporter
 import org.erwinkok.conjvm.parser.SourceFile
 import org.erwinkok.conjvm.parser.SourceLocation
+import org.erwinkok.conjvm.utils.ParserReporting
 import org.erwinkok.conjvm.utils.Value
 
 class AstBuilder(
-    private val reporter: ErrorReporter,
-    private val source: SourceFile,
+    override val reporter: ErrorReporter,
+    override val source: SourceFile,
     private val symbols: SymbolTable,
-) : CBaseVisitor<Value>() {
+) : CBaseVisitor<Value>(),
+    ParserReporting {
     override fun visitCompilationUnit(ctx: CParser.CompilationUnitContext): Value {
         val varDecls = mutableListOf<VariableDeclarationStatement>()
         val funcDefs = mutableListOf<FunctionDefinitionStatement>()
@@ -859,14 +861,4 @@ class AstBuilder(
             else -> throw TypeException("Invalid function spec: ${ctx.text}")
         }
     }
-
-    private val ParserRuleContext.location: SourceLocation
-        get() {
-            return SourceLocation(
-                source = source,
-                line = this.start.line,
-                column = this.start.charPositionInLine,
-                length = this.start.text?.length ?: 1,
-            )
-        }
 }
