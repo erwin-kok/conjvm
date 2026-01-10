@@ -400,59 +400,51 @@ class AstBuilder(
         return visit(ctx.embedded_statement())
     }
 
-    override fun visitStatementBlock(ctx: CParser.StatementBlockContext): Value {
+    override fun visitEmbeddedStmtBlock(ctx: CParser.EmbeddedStmtBlockContext): Value {
         return visit(ctx.block_statement())
     }
 
-    override fun visitBlockItemStatement(ctx: CParser.BlockItemStatementContext): Value {
-        return visit(ctx.statement())
-    }
-
-    override fun visitBlockItemVarDecl(ctx: CParser.BlockItemVarDeclContext): Value {
-        return visit(ctx.variable_declaration())
-    }
-
-    override fun visitStatementExpression(ctx: CParser.StatementExpressionContext): Value {
+    override fun visitEmbeddedStmtExpression(ctx: CParser.EmbeddedStmtExpressionContext): Value {
         return visit(ctx.expression_statement())
     }
 
-    override fun visitStatementIfThen(ctx: CParser.StatementIfThenContext): Value {
+    override fun visitEmbeddedStmtIfThen(ctx: CParser.EmbeddedStmtIfThenContext): Value {
         return visit(ctx.if_then_statement())
     }
 
-    override fun visitStatementIfThenElse(ctx: CParser.StatementIfThenElseContext): Value {
+    override fun visitEmbeddedStmtIfThenElse(ctx: CParser.EmbeddedStmtIfThenElseContext): Value {
         return visit(ctx.if_then_else_statement())
     }
 
-    override fun visitStatementWhile(ctx: CParser.StatementWhileContext): Value {
+    override fun visitEmbeddedStmtWhile(ctx: CParser.EmbeddedStmtWhileContext): Value {
         return visit(ctx.while_statement())
     }
 
-    override fun visitStatementDo(ctx: CParser.StatementDoContext): Value {
+    override fun visitEmbeddedStmtDo(ctx: CParser.EmbeddedStmtDoContext): Value {
         return visit(ctx.do_statement())
     }
 
-    override fun visitStatementFor(ctx: CParser.StatementForContext): Value {
+    override fun visitEmbeddedStmtFor(ctx: CParser.EmbeddedStmtForContext): Value {
         return visit(ctx.for_statement())
     }
 
-    override fun visitStatementSwitch(ctx: CParser.StatementSwitchContext): Value {
+    override fun visitEmbeddedStmtSwitch(ctx: CParser.EmbeddedStmtSwitchContext): Value {
         return visit(ctx.switch_statement())
     }
 
-    override fun visitStatementBreak(ctx: CParser.StatementBreakContext): Value {
+    override fun visitEmbeddedStmtBreak(ctx: CParser.EmbeddedStmtBreakContext): Value {
         return visit(ctx.break_statement())
     }
 
-    override fun visitStatementContinue(ctx: CParser.StatementContinueContext): Value {
+    override fun visitEmbeddedStmtContinue(ctx: CParser.EmbeddedStmtContinueContext): Value {
         return visit(ctx.continue_statement())
     }
 
-    override fun visitStatementGoto(ctx: CParser.StatementGotoContext): Value {
+    override fun visitEmbeddedStmtGoto(ctx: CParser.EmbeddedStmtGotoContext): Value {
         return visit(ctx.goto_statement())
     }
 
-    override fun visitStatementReturn(ctx: CParser.StatementReturnContext): Value {
+    override fun visitEmbeddedStmtReturn(ctx: CParser.EmbeddedStmtReturnContext): Value {
         return visit(ctx.return_statement())
     }
 
@@ -463,6 +455,14 @@ class AstBuilder(
                 ctx.block_item().map { visit(it).cast<Statement>() },
             ),
         )
+    }
+
+    override fun visitBlckItemStmt(ctx: CParser.BlckItemStmtContext): Value {
+        return visit(ctx.statement())
+    }
+
+    override fun visitBlckItemVarDecl(ctx: CParser.BlckItemVarDeclContext): Value {
+        return visit(ctx.variable_declaration())
     }
 
     override fun visitLabeled_statement(ctx: CParser.Labeled_statementContext): Value {

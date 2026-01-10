@@ -209,18 +209,18 @@ statement
     ;
 
 embedded_statement
-    :   block_statement                                                                             #statementBlock
-    |   expression_statement                                                                        #statementExpression
-    |   if_then_statement                                                                           #statementIfThen
-    |   if_then_else_statement                                                                      #statementIfThenElse
-    |   while_statement                                                                             #statementWhile
-    |   do_statement                                                                                #statementDo
-    |   for_statement                                                                               #statementFor
-    |   switch_statement                                                                            #statementSwitch
-    |   break_statement                                                                             #statementBreak
-    |   continue_statement                                                                          #statementContinue
-    |   goto_statement                                                                              #statementGoto
-    |   return_statement                                                                            #statementReturn
+    :   block_statement                                                                             #embeddedStmtBlock
+    |   expression_statement                                                                        #embeddedStmtExpression
+    |   if_then_statement                                                                           #embeddedStmtIfThen
+    |   if_then_else_statement                                                                      #embeddedStmtIfThenElse
+    |   while_statement                                                                             #embeddedStmtWhile
+    |   do_statement                                                                                #embeddedStmtDo
+    |   for_statement                                                                               #embeddedStmtFor
+    |   switch_statement                                                                            #embeddedStmtSwitch
+    |   break_statement                                                                             #embeddedStmtBreak
+    |   continue_statement                                                                          #embeddedStmtContinue
+    |   goto_statement                                                                              #embeddedStmtGoto
+    |   return_statement                                                                            #embeddedStmtReturn
     ;
 
 block_statement
@@ -228,8 +228,8 @@ block_statement
     ;
 
 block_item
-    :   statement                                                                                   #blockItemStatement
-    |   variable_declaration                                                                        #blockItemVarDecl
+    :   statement                                                                                   #blckItemStmt
+    |   variable_declaration                                                                        #blckItemVarDecl
     ;
 
 labeled_statement
