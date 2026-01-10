@@ -33,7 +33,7 @@
 grammar C;
 
 @parser::header {
-import org.erwinkok.conjvm.symbols.DeclarationListener;
+import org.erwinkok.conjvm.declarations.DeclarationListener;
 }
 
 @parser::members {
