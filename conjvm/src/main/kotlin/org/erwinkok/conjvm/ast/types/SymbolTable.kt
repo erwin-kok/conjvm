@@ -34,23 +34,4 @@ class SymbolTable {
     fun resolve(name: String): QualType? {
         return typedefTable[name]
     }
-
-    fun isTypedef(s: String): Boolean {
-        return "uint" == s ||
-            "uint8" == s ||
-            "uint16" == s ||
-            "uint32" == s ||
-            "uint64" == s ||
-            "sint" == s ||
-            "sint8" == s ||
-            "sint16" == s ||
-            "sint32" == s ||
-            "sint64" == s ||
-            "int" == s ||
-            "int8" == s ||
-            "int16" == s ||
-            "int32" == s ||
-            "int64" == s ||
-            "m68ki_bitfield_t" == s
-    }
 }
