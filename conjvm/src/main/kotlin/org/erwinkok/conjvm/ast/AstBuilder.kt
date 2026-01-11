@@ -829,6 +829,12 @@ class AstBuilder(
         if (ctx.typedef_name() != null) {
             return TypeSpec.TypedefName(ctx.typedef_name().text)
         }
+        ctx.struct_specifier()?.let {
+            return TypeSpec.Struct(it.Identifier()?.text)
+        }
+        ctx.enum_specifier()?.let {
+            return TypeSpec.Enum(it.Identifier()?.text)
+        }
         return when {
             ctx.Void() != null -> TypeSpec.VOID
             ctx.Char() != null -> TypeSpec.CHAR

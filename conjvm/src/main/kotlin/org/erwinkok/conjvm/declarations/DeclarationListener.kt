@@ -10,6 +10,9 @@ class DeclarationListener(
     override val source: SourceFile,
 ) : CBaseListener(),
     ParserReporting {
+    private val declarationParser = DeclarationParser(reporter, source)
+    private val rootScope = Scope(reporter, null)
+
     fun isTypedefName(s: String): Boolean {
         return "uint" == s ||
             "uint8" == s ||
