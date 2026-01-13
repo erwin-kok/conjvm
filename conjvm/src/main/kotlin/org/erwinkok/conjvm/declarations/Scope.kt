@@ -1,5 +1,11 @@
 package org.erwinkok.conjvm.declarations
 
+import org.erwinkok.conjvm.ast.types.DeclarationSpecifier
+import org.erwinkok.conjvm.ast.types.Declarator
+import org.erwinkok.conjvm.ast.types.Parameter
+import org.erwinkok.conjvm.parser.SourceLocation
+import java.util.UUID
+
 enum class ScopeKind {
     FILE,
     FUNCTION,
