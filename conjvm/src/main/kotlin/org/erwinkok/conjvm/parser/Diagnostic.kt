@@ -3,6 +3,7 @@ package org.erwinkok.conjvm.parser
 enum class Severity {
     WARNING,
     ERROR,
+    EXCEPTION,
 }
 
 data class Diagnostic(

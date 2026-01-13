@@ -3,9 +3,8 @@ package org.erwinkok.conjvm.ast.types
 import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.parser.SourceLocation
 
-data class TypeName(val declarationSpecifier: DeclarationSpecifier, val abstractDeclarator: Declarator)
-
-data class Parameter(val declarationSpecifier: DeclarationSpecifier, val declarator: Declarator)
+data class TypeName(val location: SourceLocation, val declarationSpecifier: DeclarationSpecifier, val abstractDeclarator: Declarator)
+data class Parameter(val location: SourceLocation, val declarationSpecifier: DeclarationSpecifier, val declarator: Declarator)
 
 sealed class Declarator {
     fun name(): String? = when (this) {

@@ -8,6 +8,7 @@ import org.erwinkok.conjvm.utils.ParserReporting
 class DeclarationListener(
     override val reporter: ErrorReporter,
     override val source: SourceFile,
+    private val scopeManager: ScopeManager,
 ) : CBaseListener(),
     ParserReporting {
     private val declarationParser = DeclarationParser(reporter, source)

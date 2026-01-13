@@ -460,7 +460,7 @@ class AstBuilder(
     }
 
     override fun visitBlckItemVarDecl(ctx: CParser.BlckItemVarDeclContext): Value {
-        return visit(ctx.variable_declaration())
+        return visit(ctx.declaration())
     }
 
     override fun visitLabeled_statement(ctx: CParser.Labeled_statementContext): Value {
@@ -610,9 +610,9 @@ class AstBuilder(
     }
 
     //
-    // VARIABLE DECLARATION
+    // DECLARATION
     //
-    override fun visitVariable_declaration(ctx: CParser.Variable_declarationContext): Value {
+    override fun visitDeclaration(ctx: CParser.DeclarationContext): Value {
         val declarationSpecifier = visit(ctx.declaration_specifiers()).cast<DeclarationSpecifier>()
         val variableDeclarators = ctx.init_declarator_list()?.let { visit(it).cast<List<VariableDeclarator>>() } ?: emptyList()
         return Value.of(
@@ -734,19 +734,19 @@ class AstBuilder(
     override fun visitParamSpecDecl(ctx: CParser.ParamSpecDeclContext): Value {
         val declarationSpecifier = visit(ctx.declaration_specifiers()).cast<DeclarationSpecifier>()
         val declarator = visit(ctx.declarator()).cast<Declarator>()
-        return Value.of(Parameter(declarationSpecifier, declarator))
+        return Value.of(Parameter(ctx.location, declarationSpecifier, declarator))
     }
 
     override fun visitParamSpecAbstractDecl(ctx: CParser.ParamSpecAbstractDeclContext): Value {
         val declarationSpecifier = visit(ctx.declaration_specifiers_2()).cast<DeclarationSpecifier>()
         val declarator = visit(ctx.abstract_declarator()).cast<Declarator>()
-        return Value.of(Parameter(declarationSpecifier, declarator))
+        return Value.of(Parameter(ctx.location, declarationSpecifier, declarator))
     }
 
     override fun visitType_name(ctx: CParser.Type_nameContext): Value {
         val declarationSpecifier = visit(ctx.specifier_qualifier_list()).cast<DeclarationSpecifier>()
         val declarator = ctx.abstract_declarator()?.let { visit(it).cast<Declarator>() } ?: Declarator.AnonymousDeclarator(ctx.location)
-        return Value.of(TypeName(declarationSpecifier, declarator))
+        return Value.of(TypeName(ctx.location, declarationSpecifier, declarator))
     }
 
     override fun visitAbsDeclPointer(ctx: CParser.AbsDeclPointerContext): Value {

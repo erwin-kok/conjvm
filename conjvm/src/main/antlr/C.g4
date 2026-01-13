@@ -110,7 +110,7 @@ compilationUnit
 
 external_declaration
     :   function_definition                                                                         #declrFunctionDef
-    |   variable_declaration                                                                        #declrVarDecl
+    |   declaration                                                                                 #declrVarDecl
     |   ';'                                                                                         #declrStray
     ;
 
@@ -281,7 +281,7 @@ block_statement
 
 block_item
     :   statement                                                                                   #blckItemStmt
-    |   {isDeclarationStart()}? variable_declaration                                                #blckItemVarDecl
+    |   {isDeclarationStart()}? declaration                                                         #blckItemVarDecl
     ;
 
 labeled_statement
@@ -347,9 +347,9 @@ return_statement
 	;
 
 //
-// VARIABLE DECLARATION
+// DECLARATIONS
 //
-variable_declaration
+declaration
     :   declaration_specifiers init_declarator_list? ';'
     ;
 

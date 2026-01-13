@@ -10,16 +10,21 @@ import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.ast.statements.CompilationUnitStatement
 import org.erwinkok.conjvm.ast.statements.Statement
 import org.erwinkok.conjvm.declarations.DeclarationListener
+import org.erwinkok.conjvm.declarations.ScopeManager
 
 class Parser(
     private val reporter: ErrorReporter,
 ) {
+    private val scopeManager = ScopeManager()
+
     fun parseCompilationUnit(source: SourceFile): CompilationUnitStatement? {
         return try {
             val parser = createParser(source)
             val compilationUnitContext = parser.compilationUnit()
             AstBuilder(reporter, source).visit(compilationUnitContext).cast<CompilationUnitStatement>()
-        } catch (e: Exception) {
+        } catch (e: ParseCancellationException) {
+            val location = SourceLocation(source, 0, 0, 0)
+            reporter.reportException(location, e)
             null
         }
     }
@@ -30,6 +35,8 @@ class Parser(
             val statementContext = parser.statement()
             AstBuilder(reporter, source).visit(statementContext).cast<Statement>()
         } catch (e: ParseCancellationException) {
+            val location = SourceLocation(source, 0, 0, 0)
+            reporter.reportException(location, e)
             null
         }
     }
@@ -40,6 +47,8 @@ class Parser(
             val statementContext = parser.expression()
             AstBuilder(reporter, source).visit(statementContext).cast<Expression>()
         } catch (e: ParseCancellationException) {
+            val location = SourceLocation(source, 0, 0, 0)
+            reporter.reportException(location, e)
             null
         }
     }
@@ -50,7 +59,7 @@ class Parser(
         lexer.removeErrorListeners()
         lexer.addErrorListener(LexerErrorListener(reporter, source))
         val tokens = CommonTokenStream(lexer)
-        val declarationListener = DeclarationListener(reporter, source)
+        val declarationListener = DeclarationListener(reporter, source, scopeManager)
         val parser = CParser(tokens, declarationListener)
         parser.addParseListener(declarationListener)
         parser.removeErrorListeners()

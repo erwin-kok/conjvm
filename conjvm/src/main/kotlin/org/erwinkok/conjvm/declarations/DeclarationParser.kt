@@ -6,15 +6,12 @@ import org.erwinkok.conjvm.CParser.DeclSpecFuncSpecContext
 import org.erwinkok.conjvm.CParser.DeclSpecTypeQualContext
 import org.erwinkok.conjvm.CParser.DeclSpecTypeSpecContext
 import org.erwinkok.conjvm.CParser.StorageClassSpecContext
-import org.erwinkok.conjvm.ast.statements.VariableDeclarationStatement
-import org.erwinkok.conjvm.ast.statements.VariableDeclarator
 import org.erwinkok.conjvm.ast.types.DeclarationSpecifier
 import org.erwinkok.conjvm.ast.types.Declarator
 import org.erwinkok.conjvm.ast.types.FunctionSpec
 import org.erwinkok.conjvm.ast.types.Parameter
 import org.erwinkok.conjvm.ast.types.StorageClass
 import org.erwinkok.conjvm.ast.types.TypeException
-import org.erwinkok.conjvm.ast.types.TypeName
 import org.erwinkok.conjvm.ast.types.TypeQualifier
 import org.erwinkok.conjvm.ast.types.TypeSpec
 import org.erwinkok.conjvm.parser.ErrorReporter
@@ -27,18 +24,6 @@ class DeclarationParser(
     override val source: SourceFile,
 ) : CBaseVisitor<Value>(),
     ParserReporting {
-    override fun visitVariable_declaration(ctx: CParser.Variable_declarationContext): Value {
-        val declarationSpecifier = visit(ctx.declaration_specifiers()).cast<DeclarationSpecifier>()
-        val variableDeclarators = ctx.init_declarator_list()?.let { visit(it).cast<List<VariableDeclarator>>() } ?: emptyList()
-        return Value.of(
-            VariableDeclarationStatement(
-                ctx.location,
-                declarationSpecifier,
-                variableDeclarators,
-            ),
-        )
-    }
-
     override fun visitDeclaration_specifiers(ctx: CParser.Declaration_specifiersContext): Value {
         val storage = mutableSetOf<StorageClass>()
         val typeSpecs = mutableListOf<TypeSpec>()
@@ -72,24 +57,13 @@ class DeclarationParser(
     }
 
     override fun visitInit_declarator_list(ctx: CParser.Init_declarator_listContext): Value {
-        return Value.of(ctx.init_declarator().map { visit(it).cast<VariableDeclarator>() })
+        return Value.of(ctx.init_declarator().map { visit(it).cast<Declarator>() })
     }
 
     override fun visitInit_declarator(ctx: CParser.Init_declaratorContext): Value {
         // Note: variable initializers are not evaluated when collecting declarations.
         // These are filled in at a later stage.
-        val declarator = visit(ctx.declarator()).cast<Declarator>()
-        return Value.of(VariableDeclarator(ctx.location, declarator, null))
-    }
-
-    override fun visitStruct_declaration_list(ctx: CParser.Struct_declaration_listContext): Value {
-        return Value.of(ctx.struct_declaration().map { visit(it).cast<StructDeclaration>() })
-    }
-
-    override fun visitStruct_declaration(ctx: CParser.Struct_declarationContext): Value {
-        val declarationSpecifier = visit(ctx.specifier_qualifier_list()).cast<DeclarationSpecifier>()
-        val declarators = ctx.struct_declarator_list()?.let { visit(it).cast<List<StructDeclarator>>() }
-        return Value.of(StructDeclaration(declarationSpecifier, declarators))
+        return Value.of(visit(ctx.declarator()).cast<Declarator>())
     }
 
     override fun visitSpecifier_qualifier_list(ctx: CParser.Specifier_qualifier_listContext): Value {
@@ -109,16 +83,6 @@ class DeclarationParser(
         // Note: bitWidths are not evaluated when collecting declarations.
         // These are filled in at a later stage.
         return Value.of(StructDeclarator(declarator, null))
-    }
-
-    override fun visitEnumerator_list(ctx: CParser.Enumerator_listContext): Value {
-        return Value.of(ctx.enumerator().map { visit(it).cast<Enumerator>() })
-    }
-
-    override fun visitEnumerator(ctx: CParser.EnumeratorContext): Value {
-        // Note: enumerator constants are not evaluated when collecting declarations.
-        // These are filled in at a later stage.
-        return Value.of(Enumerator(ctx.Identifier().text, null))
     }
 
     override fun visitDeclarator(ctx: CParser.DeclaratorContext): Value {
@@ -178,19 +142,13 @@ class DeclarationParser(
     override fun visitParamSpecDecl(ctx: CParser.ParamSpecDeclContext): Value {
         val declarationSpecifier = visit(ctx.declaration_specifiers()).cast<DeclarationSpecifier>()
         val declarator = visit(ctx.declarator()).cast<Declarator>()
-        return Value.of(Parameter(declarationSpecifier, declarator))
+        return Value.of(Parameter(ctx.location, declarationSpecifier, declarator))
     }
 
     override fun visitParamSpecAbstractDecl(ctx: CParser.ParamSpecAbstractDeclContext): Value {
         val declarationSpecifier = visit(ctx.declaration_specifiers_2()).cast<DeclarationSpecifier>()
-        val declarator = visit(ctx.abstract_declarator()).cast<Declarator>()
-        return Value.of(Parameter(declarationSpecifier, declarator))
-    }
-
-    override fun visitType_name(ctx: CParser.Type_nameContext): Value {
-        val declarationSpecifier = visit(ctx.specifier_qualifier_list()).cast<DeclarationSpecifier>()
         val declarator = ctx.abstract_declarator()?.let { visit(it).cast<Declarator>() } ?: Declarator.AnonymousDeclarator(ctx.location)
-        return Value.of(TypeName(declarationSpecifier, declarator))
+        return Value.of(Parameter(ctx.location, declarationSpecifier, declarator))
     }
 
     override fun visitAbsDeclPointer(ctx: CParser.AbsDeclPointerContext): Value {
@@ -246,6 +204,7 @@ class DeclarationParser(
             ctx.Typedef() != null -> StorageClass.TYPEDEF
             ctx.Extern() != null -> StorageClass.EXTERN
             ctx.Static() != null -> StorageClass.STATIC
+            ctx.ThreadLocal() != null -> StorageClass.THREAD_LOCAL
             ctx.Auto() != null -> StorageClass.AUTO
             ctx.Register() != null -> StorageClass.REGISTER
             else -> throw TypeException("Invalid storage class spec: ${ctx.text}")
@@ -272,6 +231,8 @@ class DeclarationParser(
             ctx.Double() != null -> TypeSpec.DOUBLE
             ctx.Signed() != null -> TypeSpec.SIGNED
             ctx.Unsigned() != null -> TypeSpec.UNSIGNED
+            ctx.Bool() != null -> TypeSpec.BOOL
+            ctx.Complex() != null -> TypeSpec.COMPLEX
             else -> throw TypeException("Invalid type spec: ${ctx.text}")
         }
     }
@@ -279,8 +240,9 @@ class DeclarationParser(
     private fun parseTypeQualifier(ctx: CParser.Type_qualifierContext): TypeQualifier {
         return when {
             ctx.Const() != null -> TypeQualifier.CONST
-            ctx.Volatile() != null -> TypeQualifier.VOLATILE
             ctx.Restrict() != null -> TypeQualifier.RESTRICT
+            ctx.Volatile() != null -> TypeQualifier.VOLATILE
+            ctx.Atomic() != null -> TypeQualifier.ATOMIC
             else -> throw TypeException("Invalid type spec: ${ctx.text}")
         }
     }

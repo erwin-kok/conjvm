@@ -9,13 +9,13 @@ class ErrorReporter {
         get() = diagnosticList.any { it.severity == Severity.WARNING }
 
     val hasErrors: Boolean
-        get() = diagnosticList.any { it.severity == Severity.ERROR }
+        get() = diagnosticList.any { it.severity == Severity.ERROR || it.severity == Severity.EXCEPTION }
 
     val warnings: List<Diagnostic>
         get() = diagnosticList.filter { it.severity == Severity.WARNING }
 
     val errors: List<Diagnostic>
-        get() = diagnosticList.filter { it.severity == Severity.ERROR }
+        get() = diagnosticList.filter { it.severity == Severity.ERROR || it.severity == Severity.EXCEPTION }
 
     fun reportWarning(location: SourceLocation, msg: String) {
         diagnosticList += Diagnostic(
@@ -30,6 +30,14 @@ class ErrorReporter {
             severity = Severity.ERROR,
             location = location,
             message = msg,
+        )
+    }
+
+    fun reportException(location: SourceLocation, exception: Exception) {
+        diagnosticList += Diagnostic(
+            severity = Severity.EXCEPTION,
+            location = location,
+            message = "exception '${exception::class.simpleName}' occurred: ${exception.message ?: "<no message>"}",
         )
     }
 
@@ -50,16 +58,32 @@ class ErrorReporter {
     }
 
     private fun render(d: Diagnostic): String {
-        val lineText = d.location.source.line(d.location.line)
-        val underline = buildString {
-            repeat(d.location.column) { append(' ') }
-            repeat(maxOf(1, d.location.length)) { append("^") }
+        val sb = StringBuilder()
+        val location = d.location
+        sb.append("${location.source.name}:")
+        if (location.line > 0) {
+            sb.append("${location.line}:")
+        } else {
+            sb.append(":")
         }
-        return """
-        |${d.location.source.name}:${d.location.line}:${d.location.column + 1}: ${d.severity.name.lowercase()}
-        |$lineText
-        |$underline
-        |${d.message}
-        """.trimMargin()
+        if (location.column > 0) {
+            sb.append("${location.column + 1}: ")
+        } else {
+            sb.append(": ")
+        }
+        sb.appendLine(d.severity.name.lowercase())
+        if (location.line > 0) {
+            val lineText = location.source.line(location.line)
+            sb.appendLine(lineText)
+        }
+        if (location.column > 0 && location.length > 0) {
+            val underline = buildString {
+                repeat(location.column) { append(' ') }
+                repeat(maxOf(1, location.length)) { append("^") }
+            }
+            sb.appendLine(underline)
+        }
+        sb.appendLine(d.message)
+        return sb.toString()
     }
 }

@@ -1,8 +1,8 @@
 package org.erwinkok.conjvm.parser
 
+import java.io.BufferedInputStream
 import java.io.InputStream
 import java.util.zip.GZIPInputStream
-import java.util.zip.ZipException
 
 class SourceFile private constructor(
     val name: String,
@@ -24,13 +24,20 @@ class SourceFile private constructor(
 
     companion object {
         fun ofStream(name: String, inputStream: InputStream): SourceFile {
-            try {
-                GZIPInputStream(inputStream).use { gzip ->
-                    return SourceFile(name, String(gzip.readAllBytes()))
-                }
-            } catch (_: ZipException) {
-                return SourceFile(name, String(inputStream.readAllBytes()))
+            val buffered = if (inputStream.markSupported()) {
+                inputStream
+            } else {
+                BufferedInputStream(inputStream)
             }
+            buffered.mark(2)
+            val isGzip = buffered.read() == 0x1f && buffered.read() == 0x8b
+            buffered.reset()
+            val content = if (isGzip) {
+                GZIPInputStream(buffered).readBytes()
+            } else {
+                buffered.readBytes()
+            }
+            return SourceFile(name, content.toString(Charsets.UTF_8))
         }
 
         fun ofString(name: String, content: String): SourceFile {

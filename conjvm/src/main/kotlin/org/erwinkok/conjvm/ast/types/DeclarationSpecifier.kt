@@ -4,6 +4,7 @@ enum class StorageClass {
     TYPEDEF,
     EXTERN,
     STATIC,
+    THREAD_LOCAL,
     AUTO,
     REGISTER,
 }
@@ -18,6 +19,8 @@ sealed class TypeSpec {
     object DOUBLE : TypeSpec()
     object SIGNED : TypeSpec()
     object UNSIGNED : TypeSpec()
+    object BOOL : TypeSpec()
+    object COMPLEX : TypeSpec()
 
     data class TypedefName(val name: String) : TypeSpec()
     data class Struct(val name: String?) : TypeSpec()
@@ -26,8 +29,9 @@ sealed class TypeSpec {
 
 enum class TypeQualifier {
     CONST,
-    VOLATILE,
     RESTRICT,
+    VOLATILE,
+    ATOMIC,
 }
 
 enum class FunctionSpec {
