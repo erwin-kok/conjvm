@@ -30,6 +30,9 @@
  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+// $antlr-format alignTrailingComments true, columnLimit 150, minEmptyLines 1, maxEmptyLinesToKeep 1, reflowComments false, useTab false
+// $antlr-format allowShortRulesOnASingleLine false, allowShortBlocksOnASingleLine true, alignSemicolons hanging, alignColons hanging
+
 grammar C;
 
 @parser::header {
@@ -205,14 +208,14 @@ unary_expression
     ;
 
 prefix_operator
-    :   '++'
-    |   '--'
+    :   '++'                                                                                        #prefixIncrement
+    |   '--'                                                                                        #prefixDecrement
+    |   'sizeof' unary_expression? '(' {isTypeName()}? type_name ')'                                #prefixSizeof
     ;
 
 unary_core
-    :   postfix_expression                                                                          #simpleUnaryCore
-    |   unary_operator cast_expression                                                              #compoundUnaryCore
-    |   sizeof_type                                                                                 #sizeofUnaryCore
+    :   unary_operator cast_expression                                                              #compoundUnaryCore
+    |   postfix_expression                                                                          #simpleUnaryCore
     ;
 
 unary_operator
@@ -222,10 +225,6 @@ unary_operator
     |   '-'
     |   '~'
     |   '!'
-    ;
-
-sizeof_type
-    :   'sizeof' '(' type_name ')'
     ;
 
 postfix_expression

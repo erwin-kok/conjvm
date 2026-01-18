@@ -6,49 +6,31 @@
 
 # Introduction
 
-conjvm (“C on the JVM”) is an ANTLR4-based experimental C compiler targeting the Java Virtual Machine.
-The project explores translating and executing a subset of the C language on the JVM, focusing on compiler construction rather than full language compatibility.
+conjvm (“C on the JVM”) is an ANTLR4-based compiler for a well-defined subset of the C programming language, targeting execution on the Java Virtual Machine. The compiler translates C source code into JVM-compatible representations, enabling parsing,
+semantic analysis, intermediate representation construction, and execution on the JVM.
 
-It serves as a hands-on study of compiler technology, including C parsing, AST construction and transformation, intermediate representations (such as SSA), and code generation for the JVM.
+The project is primarily focused on compiler architecture and language implementation concerns, including grammar design, AST construction and transformation, semantic analysis, intermediate representations (including SSA-style forms), and
+JVM-oriented code generation.
 
-The project is not production-ready and intentionally supports only a subset of C. Its goal is learning and experimentation in compiler design, not completeness or performance guarantees.
+conjvm deliberately supports only a restricted subset of C and does not aim for full language compatibility or production use. The scope is intentionally constrained to allow precise reasoning about semantics, design tradeoffs, and implementation
+techniques commonly found in real-world compilers.
+
+## Language Scope
+
+Supported C Features:
 
 
-## Frontend
+Explicitly Not Supported:
+ 
+- _Generic
 
-```mermaid
-flowchart TD
-%% Define Phases Colors (Pastel) with black font
-    classDef parserPhase fill:#FFFACD,stroke:#555,stroke-width:1px,color:#000;    %% LemonChiffon
-    classDef declPhase fill:#B0E0E6,stroke:#555,stroke-width:1px,color:#000;      %% PowderBlue
-    classDef astPhase fill:#98FB98,stroke:#555,stroke-width:1px,color:#000;       %% PaleGreen
-    classDef normPhase fill:#FFB6C1,stroke:#555,stroke-width:1px,color:#000;      %% LightPink
 
-%% Nodes
-    A[<font color="black">C Source Code</font>]:::parserPhase
-B[<font color="black">ANTLR4 Lexer / Parser</font>]:::parserPhase
-C[<font color="black">Declaration Collection<br/>DeclarationListener + DeclarationParser</font>]:::declPhase
-D[<font color="black">Scopes & Namespaces Populated</font>]:::declPhase
-E[<font color="black">ANTLR4 ParseTree</font>]:::parserPhase
-F[<font color="black">AST Construction<br/>uses ParseTree + Declarations</font>]:::astPhase
-G[<font color="black">Type Building & Semantic Analysis</font>]:::astPhase
-H[<font color="black">AST Normalization<br/>e.g. for-loops converted to while-loops</font>]:::normPhase
-I[<font color="black">Backend</font><br/>]:::normPhase
+## Frontend architecture overview
 
-%% Arrows with labels
-A --> B
-B -- initial parse --> C
-C --> D
-D -- typedefs available --> B
-B -- full parse --> E
-D -- scope info --> F
-E --> F
-F --> G
-D -- type info --> G
-G --> H
-H --> I
-```
+<p align="center">
+<img src="./docs/frontend-diagram.png" width="263" height="415" alt="" title="Frontend diagram" class="center">
+</p>
 
-Frontend architecture overview.
-The compiler frontend uses ANTLR4 with a custom declaration-collection phase to correctly handle C typedefs and scope resolution. Typedef information is fed back into parsing to disambiguate between identifiers and typedefs, after which the AST is constructed, type-checked, and normalized.
+The compiler frontend uses ANTLR4 with a custom declaration-collection phase to correctly handle C typedefs and scope resolution. Typedef information is fed back into parsing to disambiguate between identifiers and typedefs, after which the AST is
+constructed, type-checked, and normalized.
 

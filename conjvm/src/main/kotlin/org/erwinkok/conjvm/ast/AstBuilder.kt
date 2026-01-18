@@ -305,7 +305,12 @@ class AstBuilder(
             ctx.prefix_operator()
                 .asReversed()
                 .fold(coreExpr) { acc, op ->
-                    UnaryExpression(ctx.location, UnaryType.parse(op.text), acc)
+                    when (op) {
+                        is CParser.PrefixIncrementContext -> UnaryExpression(ctx.location, UnaryType.PlusPlus, acc)
+                        is CParser.PrefixDecrementContext -> UnaryExpression(ctx.location, UnaryType.MinusMinus, acc)
+                        is CParser.PrefixSizeofContext -> error("sizeof operator is currently not supported")
+                        else -> error("Unexpected operator ${op.javaClass}")
+                    }
                 },
         )
     }
@@ -322,10 +327,6 @@ class AstBuilder(
                 visit(ctx.cast_expression()).cast<Expression>(),
             ),
         )
-    }
-
-    override fun visitSizeofUnaryCore(ctx: CParser.SizeofUnaryCoreContext?): Value {
-        error("sizeof(type_name) is currently not supported")
     }
 
     override fun visitPostfix_expression(ctx: CParser.Postfix_expressionContext): Value {
@@ -819,6 +820,7 @@ class AstBuilder(
             ctx.Typedef() != null -> StorageClass.TYPEDEF
             ctx.Extern() != null -> StorageClass.EXTERN
             ctx.Static() != null -> StorageClass.STATIC
+            ctx.ThreadLocal() != null -> StorageClass.THREAD_LOCAL
             ctx.Auto() != null -> StorageClass.AUTO
             ctx.Register() != null -> StorageClass.REGISTER
             else -> throw TypeException("Invalid storage class spec: ${ctx.text}")

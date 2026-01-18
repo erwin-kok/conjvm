@@ -4,7 +4,6 @@ import org.erwinkok.conjvm.ast.types.DeclarationSpecifier
 import org.erwinkok.conjvm.ast.types.Declarator
 import org.erwinkok.conjvm.ast.types.Parameter
 import org.erwinkok.conjvm.parser.SourceLocation
-import java.util.UUID
 
 enum class ScopeKind {
     FILE,
@@ -14,39 +13,87 @@ enum class ScopeKind {
     FOR,
 }
 
-sealed class DeclStub(val location: SourceLocation, val scope: Scope, val name: String?) {
-    class TypedefDecl(location: SourceLocation, scope: Scope, val declarationSpecifier: DeclarationSpecifier, val declarator: Declarator) : DeclStub(location, scope, declarator.name())
-    class VariableDecl(location: SourceLocation, scope: Scope, val declarationSpecifier: DeclarationSpecifier, val declarator: Declarator) : DeclStub(location, scope, declarator.name())
-    class FunctionDecl(location: SourceLocation, scope: Scope, val declarationSpecifier: DeclarationSpecifier, val declarator: Declarator, val parameters: List<Parameter>) : DeclStub(location, scope, declarator.name())
-    class EnumeratorDecl(location: SourceLocation, scope: Scope, name: String) : DeclStub(location, scope, name)
-}
-
-sealed class DeclTagStub(val location: SourceLocation, val scope: Scope, val name: String?) {
-    class StructDecl(location: SourceLocation, scope: Scope, name: String?, val memberScope: Scope) : DeclTagStub(location, scope, name) {
-        val uuid = UUID.randomUUID()
-        val declarations = mutableListOf<StructDeclaration>()
-
-        fun addStructDeclaration(structDeclaration: StructDeclaration) {
-            declarations.add(structDeclaration)
-        }
-    }
-
-    class EnumDecl(location: SourceLocation, scope: Scope, name: String?) : DeclTagStub(location, scope, name) {
-        val uuid = UUID.randomUUID()
-        val enumerators = mutableListOf<DeclStub.EnumeratorDecl>()
-
-        fun addEnumerator(enumerator: DeclStub.EnumeratorDecl) {
-            enumerators.add(enumerator)
-        }
-    }
-}
-
 class Scope(
     val kind: ScopeKind,
     val parent: Scope? = null,
     val children: MutableList<Scope> = mutableListOf(),
 ) {
+    // Namespaces
+    private val ordinary = mutableListOf<DeclStub>()
+    private val tags = mutableListOf<DeclTagStub>()
+
+    private val typedefs = mutableMapOf<String, MutableList<DeclStub.Typedef>>()
+    private val ordinaryMap = mutableMapOf<String, MutableList<DeclStub>>()
+    private val tagMap = mutableMapOf<String, MutableList<DeclTagStub>>()
+
+    var isSynthetic: Boolean = false
+    val isEmpty: Boolean
+        get() = ordinary.isEmpty() && tags.isEmpty() && typedefs.isEmpty() && ordinaryMap.isEmpty() && tagMap.isEmpty()
+
+    fun defineTypedef(location: SourceLocation, declarationSpecifier: DeclarationSpecifier, declarator: Declarator): DeclStub.Typedef {
+        val stub = DeclStub.Typedef(location, this, declarationSpecifier, declarator)
+        ordinary.add(stub)
+        val name = declarator.name()
+        typedefs.addToMapList(name, stub)
+        return stub
+    }
+
+    fun defineFunction(location: SourceLocation, declarationSpecifier: DeclarationSpecifier, declarator: Declarator, parameters: List<Parameter>): DeclStub.Function {
+        val stub = DeclStub.Function(location, this, declarationSpecifier, declarator, parameters)
+        ordinary.add(stub)
+        val name = declarator.name()
+        ordinaryMap.addToMapList(name, stub)
+        return stub
+    }
+
+    fun defineVariable(location: SourceLocation, declarationSpecifier: DeclarationSpecifier, declarator: Declarator): DeclStub.Variable {
+        val stub = DeclStub.Variable(location, this, declarationSpecifier, declarator)
+        ordinary.add(stub)
+        val name = declarator.name()
+        ordinaryMap.addToMapList(name, stub)
+        return stub
+    }
+
+    fun defineStructTag(location: SourceLocation, tag: String?, memberScope: Scope): DeclTagStub.Struct {
+        val stub = DeclTagStub.Struct(location, this, tag, memberScope)
+        tags.add(stub)
+        tagMap.addToMapList(tag, stub)
+        return stub
+    }
+
+    fun defineEnumTag(location: SourceLocation, tag: String?): DeclTagStub.Enum {
+        val stub = DeclTagStub.Enum(location, this, tag)
+        tags.add(stub)
+        tagMap.addToMapList(tag, stub)
+        return stub
+    }
+
+    fun defineEnumerator(location: SourceLocation, name: String): DeclStub.Enumerator {
+        val enumeratorDecl = DeclStub.Enumerator(location, this, name)
+        ordinary.add(enumeratorDecl)
+        ordinaryMap.addToMapList(name, enumeratorDecl)
+        return enumeratorDecl
+    }
+
+    fun lookupTypedef(name: String): List<DeclStub.Typedef> {
+        return typedefs[name] ?: parent?.lookupTypedef(name) ?: emptyList()
+    }
+
+    fun lookupOrdinary(name: String): List<DeclStub> {
+        return ordinaryMap[name] ?: parent?.lookupOrdinary(name) ?: emptyList()
+    }
+
+    fun lookupTag(name: String): List<DeclTagStub> {
+        return tagMap[name] ?: parent?.lookupTag(name) ?: emptyList()
+    }
+
     override fun toString(): String {
         return "$kind"
+    }
+
+    private fun <V> MutableMap<String, MutableList<V>>.addToMapList(name: String?, element: V) {
+        if (name != null) {
+            computeIfAbsent(name) { mutableListOf() }.add(element)
+        }
     }
 }
