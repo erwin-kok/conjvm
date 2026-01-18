@@ -15,16 +15,6 @@ JVM-oriented code generation.
 conjvm deliberately supports only a restricted subset of C and does not aim for full language compatibility or production use. The scope is intentionally constrained to allow precise reasoning about semantics, design tradeoffs, and implementation
 techniques commonly found in real-world compilers.
 
-## Language Scope
-
-Supported C Features:
-
-
-Explicitly Not Supported:
- 
-- _Generic
-
-
 ## Frontend architecture overview
 
 <p align="center">

@@ -18,53 +18,45 @@ class Parser(
     private val scopeManager = ScopeManager()
 
     fun parseCompilationUnit(source: SourceFile): CompilationUnitStatement? {
-        return try {
-            val parser = createParser(source)
-            val compilationUnitContext = parser.compilationUnit()
-            AstBuilder(reporter, source).visit(compilationUnitContext).cast<CompilationUnitStatement>()
-        } catch (e: ParseCancellationException) {
-            val location = SourceLocation(source, 0, 0, 0)
-            reporter.reportException(location, e)
-            null
+        return createParser(source) { parser, astBuilder ->
+            val parseTree = parser.compilationUnit()
+            astBuilder.visit(parseTree).cast<CompilationUnitStatement>()
         }
     }
 
     fun parseStatement(source: SourceFile): Statement? {
-        return try {
-            val parser = createParser(source)
-            val statementContext = parser.statement()
-            AstBuilder(reporter, source).visit(statementContext).cast<Statement>()
-        } catch (e: ParseCancellationException) {
-            val location = SourceLocation(source, 0, 0, 0)
-            reporter.reportException(location, e)
-            null
+        return createParser(source) { parser, astBuilder ->
+            val parseTree = parser.statement()
+            astBuilder.visit(parseTree).cast<Statement>()
         }
     }
 
     fun parseExpression(source: SourceFile): Expression? {
+        return createParser(source) { parser, astBuilder ->
+            val parseTree = parser.expression()
+            astBuilder.visit(parseTree).cast<Expression>()
+        }
+    }
+
+    private fun <T> createParser(source: SourceFile, action: (CParser, AstBuilder) -> T): T? {
         return try {
-            val parser = createParser(source)
-            val statementContext = parser.expression()
-            AstBuilder(reporter, source).visit(statementContext).cast<Expression>()
+            val input = CharStreams.fromString(source.text)
+            val lexer = CLexer(input)
+            lexer.removeErrorListeners()
+            lexer.addErrorListener(LexerErrorListener(reporter, source))
+            val tokens = CommonTokenStream(lexer)
+            val declarationListener = DeclarationListener(reporter, source, scopeManager)
+            val parser = CParser(tokens, declarationListener)
+            parser.addParseListener(declarationListener)
+            parser.removeErrorListeners()
+            parser.addErrorListener(ParserErrorListener(reporter, source))
+            parser.errorHandler = ParserErrorStrategy()
+            val astBuilder = AstBuilder(reporter, source, scopeManager)
+            action(parser, astBuilder)
         } catch (e: ParseCancellationException) {
             val location = SourceLocation(source, 0, 0, 0)
             reporter.reportException(location, e)
             null
         }
-    }
-
-    private fun createParser(source: SourceFile): CParser {
-        val input = CharStreams.fromString(source.text)
-        val lexer = CLexer(input)
-        lexer.removeErrorListeners()
-        lexer.addErrorListener(LexerErrorListener(reporter, source))
-        val tokens = CommonTokenStream(lexer)
-        val declarationListener = DeclarationListener(reporter, source, scopeManager)
-        val parser = CParser(tokens, declarationListener)
-        parser.addParseListener(declarationListener)
-        parser.removeErrorListeners()
-        parser.addErrorListener(ParserErrorListener(reporter, source))
-        parser.errorHandler = ParserErrorStrategy()
-        return parser
     }
 }

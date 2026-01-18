@@ -58,6 +58,7 @@ import org.erwinkok.conjvm.ast.types.TypeException
 import org.erwinkok.conjvm.ast.types.TypeName
 import org.erwinkok.conjvm.ast.types.TypeQualifier
 import org.erwinkok.conjvm.ast.types.TypeSpec
+import org.erwinkok.conjvm.declarations.ScopeManager
 import org.erwinkok.conjvm.parser.ErrorReporter
 import org.erwinkok.conjvm.parser.SourceFile
 import org.erwinkok.conjvm.parser.SourceLocation
@@ -67,6 +68,7 @@ import org.erwinkok.conjvm.utils.Value
 class AstBuilder(
     override val reporter: ErrorReporter,
     override val source: SourceFile,
+    private val scopeManager: ScopeManager,
 ) : CBaseVisitor<Value>(),
     ParserReporting {
     override fun visitCompilationUnit(ctx: CParser.CompilationUnitContext): Value {

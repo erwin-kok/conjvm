@@ -22,7 +22,7 @@ class TranslationTest {
     @Test
     fun translationTest() {
         val symbolTable = SymbolTable()
-        val source = SourceFile.ofString("input.c", "void func(void) { uint x = 4; }")
+        val source = SourceFile.ofString("input.c", "void func(void) { int x = 4; }")
         val errorReporter = ErrorReporter()
 
         val compilationUnit = Parser(errorReporter).parseCompilationUnit(source)

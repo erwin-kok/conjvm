@@ -96,10 +96,9 @@ class DeclarationListener(
             //
             // declaration_specifiers init_declarator_list? ';'
             //
-            // When something like "typedef int f;" is parsed, and since init_declarator_list can be null, ANTLR treats "f"
-            // as part of the declaration_specifiers (note this does not occur when multiple declarators are listed).
-            // In that case the declaration_specifiers contain the typedef name and init_declarator_list == null.
-            // Work around this situation.
+            // When something like "typedef unsigned int a, b;" is defined, no ambiguity occurs since "a, b" must be
+            // part of "init_declarator_list". However, when there is only a single declarator, the declarator can be
+            // treated as part of the declaration_specifiers since init_declarator_list might be null.
             val typedefName = declarationSpecifier.typeSpecs.filterIsInstance<TypeSpec.TypedefName>().lastOrNull()
             typedefName?.let {
                 scopeManager.defineTypedef(ctx.location, declarationSpecifier, Declarator.IdentifierDeclarator(ctx.location, it.name))

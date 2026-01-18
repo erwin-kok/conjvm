@@ -19,7 +19,7 @@ I[<font color="black">Backend</font><br/>]:::normPhase
 
 %% Arrows with labels
 A --> B
-B -- initial parse --> C
+B -- listening --> C
 C --> D
 D -- typedefs available --> B
 B -- full parse --> E
