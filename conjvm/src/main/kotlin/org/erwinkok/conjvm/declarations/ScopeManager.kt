@@ -1,6 +1,7 @@
 package org.erwinkok.conjvm.declarations
 
 import org.antlr.v4.runtime.ParserRuleContext
+import org.erwinkok.conjvm.CParser
 import org.erwinkok.conjvm.parser.ErrorReporter
 import org.erwinkok.conjvm.parser.SourceLocation
 
@@ -8,6 +9,9 @@ class ScopeManager(
     private val reporter: ErrorReporter,
 ) {
     private val scopeMap = mutableMapOf<ParserRuleContext, Scope>()
+    private val variableMap = mutableMapOf<ParserRuleContext, Entity.Variable>()
+    private val functionMap = mutableMapOf<ParserRuleContext, Entity.Function>()
+
     private val typeNameMap = mutableMapOf<ParserRuleContext, TypeName>()
 
     private val rootScope = Scope(ScopeKind.FILE, null)
@@ -42,25 +46,49 @@ class ScopeManager(
         location: SourceLocation,
         declarationSpecifier: DeclarationSpecifier,
         declarator: Declarator,
-    ): Entity.Typedef {
-        return currentScope.defineTypedef(location, declarationSpecifier, declarator)
+    ): Declaration.Typedef {
+        val typedef = Declaration.Typedef(location, currentScope, declarationSpecifier, declarator)
+        val name = typedef.name
+        if (name == null) {
+            reporter.reportError(location, "Typedef should have a name")
+        } else {
+            currentScope.addTypedefDeclaration(name, typedef)
+        }
+        return typedef
+    }
+
+    fun defineVariable(
+        ctx: ParserRuleContext,
+        location: SourceLocation,
+        declarationSpecifier: DeclarationSpecifier,
+        declarator: Declarator,
+        initializer: CParser.InitializerContext?,
+    ): Declaration.Variable {
+        val variable = Declaration.Variable(location, currentScope, declarationSpecifier, declarator, initializer)
+        val name = variable.name
+        if (name == null) {
+            reporter.reportError(location, "Variable should have a name")
+        } else {
+            variableMap[ctx] = currentScope.addVariableDeclaration(name, variable)
+        }
+        return variable
     }
 
     fun defineFunction(
+        ctx: ParserRuleContext,
         location: SourceLocation,
         declarationSpecifier: DeclarationSpecifier,
         declarator: Declarator,
         parameters: List<Parameter>,
-    ): Entity.Function {
-        return currentScope.defineFunction(location, declarationSpecifier, declarator, parameters)
-    }
-
-    fun defineVariable(
-        location: SourceLocation,
-        declarationSpecifier: DeclarationSpecifier,
-        declarator: Declarator,
-    ): Entity.Variable {
-        return currentScope.defineVariable(location, declarationSpecifier, declarator)
+    ): Declaration.Function {
+        val function = Declaration.Function(location, currentScope, declarationSpecifier, declarator, parameters)
+        val name = function.name
+        if (name == null) {
+            reporter.reportError(location, "Function should have a name")
+        } else {
+            functionMap[ctx] = currentScope.addFunctionDeclaration(name, function)
+        }
+        return function
     }
 
     fun defineStruct(
@@ -68,6 +96,10 @@ class ScopeManager(
         name: String?,
         structDeclarations: List<StructDeclaration>,
     ) {
+        val struct = Declaration.Struct(location, currentScope, name, structDeclarations)
+        if (name != null) {
+            currentScope.defineTag(name)
+        }
     }
 
     fun defineEnum(
@@ -75,13 +107,10 @@ class ScopeManager(
         name: String?,
         enumerators: List<Enumerator>,
     ) {
-    }
-
-    fun defineEnumerator(
-        location: SourceLocation,
-        name: String,
-    ): Entity.Enumerator {
-        return currentScope.defineEnumerator(location, name)
+        val enum = Declaration.Enum(location, currentScope, name, enumerators)
+        if (name != null) {
+            currentScope.defineTag(name)
+        }
     }
 
     fun <T> withScope(ctx: ParserRuleContext, kind: ScopeKind, block: (Scope) -> T): T {

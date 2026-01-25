@@ -1,8 +1,5 @@
 package org.erwinkok.conjvm.declarations
 
-import org.erwinkok.conjvm.parser.SourceLocation
-import java.util.UUID
-
 enum class Linkage {
     NONE,
     INTERNAL,
@@ -10,58 +7,48 @@ enum class Linkage {
 }
 
 sealed class Entity(
-    val location: SourceLocation,
     val scope: Scope,
     val name: String?,
 ) {
     class Typedef(
-        location: SourceLocation,
-        scope: Scope,
-        val declarationSpecifier: DeclarationSpecifier,
-        val declarator: Declarator,
-    ) : Entity(location, scope, declarator.name())
-
-    class Variable(
-        location: SourceLocation,
-        scope: Scope,
-        val declarationSpecifier: DeclarationSpecifier,
-        val declarator: Declarator,
-    ) : Entity(location, scope, declarator.name())
-
-    class Function(
-        location: SourceLocation,
-        scope: Scope,
-        val declarationSpecifier: DeclarationSpecifier,
-        val declarator: Declarator,
-        val parameters: List<Parameter>,
-    ) : Entity(location, scope, declarator.name())
-
-    class Enumerator(
-        location: SourceLocation,
         scope: Scope,
         name: String,
-    ) : Entity(location, scope, name)
+    ) : Entity(scope, name) {
+        val declarations = mutableListOf<Declaration.Typedef>()
+    }
 
-    sealed class Tag(
-        location: SourceLocation,
+    class Variable(
+        scope: Scope,
+        name: String,
+    ) : Entity(scope, name) {
+        val declarations = mutableListOf<Declaration.Variable>()
+        var hasDefinition = false
+        var isTentative = false
+        var linkage: Linkage = Linkage.NONE
+    }
+
+    class Function(
+        scope: Scope,
+        name: String,
+    ) : Entity(scope, name) {
+        val declarations = mutableListOf<Declaration.Function>()
+        var definition: Declaration.Function? = null
+        var linkage: Linkage = Linkage.EXTERNAL
+    }
+
+    class StructTag(
         scope: Scope,
         name: String?,
-    ) : Entity(location, scope, name) {
-        class Struct(
-            location: SourceLocation,
-            scope: Scope,
-            name: String?,
-            val memberScope: Scope,
-        ) : Tag(location, scope, name) {
-            val uuid = UUID.randomUUID()
-        }
+    ) : Entity(scope, name) {
+        val declarations = mutableListOf<Declaration.Struct>()
+        var definition: Declaration.Struct? = null
+    }
 
-        class Enum(
-            location: SourceLocation,
-            scope: Scope,
-            name: String?,
-        ) : Tag(location, scope, name) {
-            val uuid = UUID.randomUUID()
-        }
+    class EnumTag(
+        scope: Scope,
+        name: String?,
+    ) : Entity(scope, name) {
+        val declarations = mutableListOf<Declaration.Enum>()
+        var definition: Declaration.Enum? = null
     }
 }

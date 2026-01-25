@@ -2,14 +2,30 @@ package org.erwinkok.conjvm.declarations
 
 import org.erwinkok.conjvm.CParser
 import org.erwinkok.conjvm.parser.SourceLocation
-import java.util.UUID
 
-data class InitDeclarator(val declarator: Declarator, val initializer: CParser.InitializerContext? = null)
+data class InitDeclarator(
+    val declarator: Declarator,
+    val initializer: CParser.InitializerContext? = null,
+)
 
-data class StructDeclaration(val location: SourceLocation, val declarationSpecifier: DeclarationSpecifier, val declarators: List<StructDeclarator>?)
-data class StructDeclarator(val declarator: Declarator?, val bitWidth: CParser.Constant_expressionContext?)
+data class StructDeclaration(
+    val location: SourceLocation,
+    val declarationSpecifier: DeclarationSpecifier,
+    val declarators: List<StructDeclarator>?,
+) {
+    val isAnonymous = declarators.isNullOrEmpty()
+}
 
-data class Enumerator(val location: SourceLocation, val text: String, val value: CParser.Constant_expressionContext?)
+data class StructDeclarator(
+    val declarator: Declarator?,
+    val bitWidth: CParser.Constant_expressionContext?,
+)
+
+data class Enumerator(
+    val location: SourceLocation,
+    val text: String,
+    val value: CParser.Constant_expressionContext?,
+)
 
 sealed class Declaration(
     val location: SourceLocation,
@@ -42,28 +58,26 @@ sealed class Declaration(
         scope: Scope,
         val declarationSpecifier: DeclarationSpecifier,
         val declarator: Declarator,
-        val isDefinition: Boolean,
         val parameters: List<Parameter>,
     ) : Declaration(location, scope) {
         override val name = declarator.name()
     }
 
-    class Enumerator(
+    class Struct(
         location: SourceLocation,
         scope: Scope,
-        override val name: String,
-        val valueExpression: CParser.Constant_expressionContext? = null,
-    ) : Declaration(location, scope)
-
-    class StructMember(
-        location: SourceLocation,
-        scope: Scope,
-        val declarationSpecifier: DeclarationSpecifier,
-        val declarator: Declarator?, // null for anonymous bit-fields
-        val bitWidth: CParser.Constant_expressionContext?,
+        override val name: String?,
+        val structDeclarations: List<StructDeclaration>,
     ) : Declaration(location, scope) {
-        override val name = declarator?.name()
+        val isDefinition = structDeclarations.isNotEmpty()
     }
+
+    class Enum(
+        location: SourceLocation,
+        scope: Scope,
+        override val name: String?,
+        val enumerators: List<Enumerator>,
+    ) : Declaration(location, scope)
 
     class Label(
         location: SourceLocation,
@@ -71,27 +85,4 @@ sealed class Declaration(
         override val name: String,
         val isDefined: Boolean, // true for label:, false for goto
     ) : Declaration(location, scope)
-
-    sealed class Tag(
-        location: SourceLocation,
-        scope: Scope,
-        override val name: String?,
-    ) : Declaration(location, scope) {
-        class Struct(
-            location: SourceLocation,
-            scope: Scope,
-            name: String?,
-            val memberScope: Scope?,
-        ) : Tag(location, scope, name) {
-            val uuid = UUID.randomUUID()
-        }
-
-        class Enum(
-            location: SourceLocation,
-            scope: Scope,
-            name: String?,
-        ) : Tag(location, scope, name) {
-            val uuid = UUID.randomUUID()
-        }
-    }
 }

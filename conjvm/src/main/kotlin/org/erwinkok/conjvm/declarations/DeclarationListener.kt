@@ -37,16 +37,25 @@ class DeclarationListener(
         val declarationSpecifier = declarationParser.visit(ctx.declaration_specifiers()).cast<DeclarationSpecifier>()
         val declarator = declarationParser.visit(ctx.declarator()).cast<Declarator>()
         if (declarator is Declarator.FunctionDeclarator) {
-            scopeManager.defineFunction(ctx.location, declarationSpecifier, declarator, declarator.parameters)
+            scopeManager.defineFunction(
+                ctx = ctx,
+                location = ctx.location,
+                declarationSpecifier = declarationSpecifier,
+                declarator = declarator,
+                parameters = declarator.parameters,
+            )
             declarator.parameters.forEach { param ->
                 scopeManager.defineVariable(
+                    ctx = ctx,
                     location = ctx.location,
                     declarationSpecifier = param.declarationSpecifier,
                     declarator = param.declarator,
+                    initializer = null,
                 )
             }
         } else {
             scopeManager.defineFunction(
+                ctx = ctx,
                 location = ctx.location,
                 declarationSpecifier = declarationSpecifier,
                 declarator = declarator,
@@ -152,6 +161,7 @@ class DeclarationListener(
                     reporter.reportError(location, "function should not carry an initializer")
                 }
                 scopeManager.defineFunction(
+                    ctx = ctx,
                     location = location,
                     declarationSpecifier = declarationSpecifier,
                     declarator = declarator,
@@ -175,9 +185,11 @@ class DeclarationListener(
                     )
                 } else {
                     scopeManager.defineVariable(
+                        ctx = ctx,
                         location = location,
                         declarationSpecifier = declarationSpecifier,
                         declarator = declarator,
+                        initializer = initializer,
                     )
                 }
             }
@@ -218,6 +230,25 @@ class DeclarationListener(
         declarationSpecifier: DeclarationSpecifier,
         declarator: Declarator,
     ) {
+        // Multiple storage classes
+        if (declarationSpecifier.storage.size > 1) {
+            reporter.reportError(location, "multiple storage classes in declaration")
+        }
+
+        // Function can't have certain storage classes
+        if (declarator is Declarator.FunctionDeclarator) {
+            if (
+                declarationSpecifier.storage.contains(StorageClass.REGISTER) ||
+                declarationSpecifier.storage.contains(StorageClass.AUTO)
+            ) {
+                reporter.reportError(location, "invalid storage class for function")
+            }
+        }
+
+        // typedef with additional storage class
+        if (declarationSpecifier.hasTypedef && declarationSpecifier.storage.size > 1) {
+            reporter.reportError(location, "typedef cannot be combined with other storage classes")
+        }
     }
 
     private fun enterNewScope(ctx: ParserRuleContext, kind: ScopeKind): Scope {

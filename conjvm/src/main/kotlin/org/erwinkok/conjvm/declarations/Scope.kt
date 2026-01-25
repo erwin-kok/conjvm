@@ -1,7 +1,5 @@
 package org.erwinkok.conjvm.declarations
 
-import org.erwinkok.conjvm.parser.SourceLocation
-
 enum class ScopeKind {
     FILE,
     FUNCTION,
@@ -15,90 +13,155 @@ class Scope(
 ) {
     val children: MutableList<Scope> = mutableListOf()
 
-    // Namespaces
-    private val ordinary = mutableListOf<Entity>()
-    private val tags = mutableListOf<Entity.Tag>()
+    private val typedefs = mutableMapOf<String, Entity.Typedef>()
+    private val variables = mutableMapOf<String, Entity.Variable>()
+    private val functions = mutableMapOf<String, Entity.Function>()
+    private val structTags = mutableMapOf<String, Entity.StructTag>()
+    private val enumTags = mutableMapOf<String, Entity.EnumTag>()
 
-    private val typedefs = mutableMapOf<String, MutableList<Entity.Typedef>>()
-    private val ordinaryMap = mutableMapOf<String, MutableList<Entity>>()
-    private val tagMap = mutableMapOf<String, MutableList<Entity.Tag>>()
+    // Namespaces
+    private val ordinary = mutableSetOf<String>()
+    private val tags = mutableSetOf<String>()
 
     var isSynthetic: Boolean = false
     val isEmpty: Boolean
-        get() = ordinary.isEmpty() && tags.isEmpty() && typedefs.isEmpty() && ordinaryMap.isEmpty() && tagMap.isEmpty()
+        get() = ordinary.isEmpty() && tags.isEmpty()
 
-    fun defineTypedef(location: SourceLocation, declarationSpecifier: DeclarationSpecifier, declarator: Declarator): Entity.Typedef {
-        val stub = Entity.Typedef(location, this, declarationSpecifier, declarator)
-        ordinary.add(stub)
-        val name = declarator.name()
-        typedefs.addToMapList(name, stub)
-        return stub
+    fun addTypedefDeclaration(name: String, typedef: Declaration.Typedef): Entity.Typedef {
+        val entity = typedefs.getOrPut(name) { Entity.Typedef(this, name) }
+        entity.declarations.add(typedef)
+        ordinary.add(name)
+        return entity
     }
 
-    fun defineFunction(location: SourceLocation, declarationSpecifier: DeclarationSpecifier, declarator: Declarator, parameters: List<Parameter>): Entity.Function {
-        val stub = Entity.Function(location, this, declarationSpecifier, declarator, parameters)
-        ordinary.add(stub)
-        val name = declarator.name()
-        ordinaryMap.addToMapList(name, stub)
-        return stub
-    }
-
-    fun defineVariable(location: SourceLocation, declarationSpecifier: DeclarationSpecifier, declarator: Declarator): Entity.Variable {
-        val stub = Entity.Variable(location, this, declarationSpecifier, declarator)
-        ordinary.add(stub)
-        val name = declarator.name()
-        ordinaryMap.addToMapList(name, stub)
-        return stub
-    }
-
-    fun defineStructTag(location: SourceLocation, tag: String?, memberScope: Scope): Entity.Tag.Struct {
-        val stub = Entity.Tag.Struct(location, this, tag, memberScope)
-        tags.add(stub)
-        tagMap.addToMapList(tag, stub)
-        return stub
-    }
-
-    fun defineEnumTag(location: SourceLocation, tag: String?): Entity.Tag.Enum {
-        val stub = Entity.Tag.Enum(location, this, tag)
-        tags.add(stub)
-        tagMap.addToMapList(tag, stub)
-        return stub
-    }
-
-    fun defineEnumerator(location: SourceLocation, name: String): Entity.Enumerator {
-        val enumeratorDecl = Entity.Enumerator(location, this, name)
-        ordinary.add(enumeratorDecl)
-        ordinaryMap.addToMapList(name, enumeratorDecl)
-        return enumeratorDecl
-    }
-
-    fun lookupTypedef(name: String): List<Entity.Typedef> {
-        return typedefs[name] ?: parent?.lookupTypedef(name) ?: emptyList()
-    }
-
-    fun lookupOrdinary(name: String): List<Entity> {
-        return ordinaryMap[name] ?: parent?.lookupOrdinary(name) ?: emptyList()
-    }
-
-    fun lookupTag(name: String): List<Entity.Tag> {
-        return tagMap[name] ?: parent?.lookupTag(name) ?: emptyList()
+    fun lookupTypedef(name: String): Entity.Typedef? {
+        return typedefs[name] ?: parent?.lookupTypedef(name)
     }
 
     fun isTypedefName(name: String): Boolean {
-        return lookupTypedef(name).isNotEmpty()
+        return lookupTypedef(name) != null
     }
 
+    fun addVariableDeclaration(
+        name: String,
+        variable: Declaration.Variable,
+    ): Entity.Variable {
+        val entity = variables.getOrPut(name) { Entity.Variable(this, name) }
+        if (entity.declarations.isNotEmpty()) {
+            validateRedeclaration(entity.declarations.first(), variable)
+        }
+        if (entity.declarations.isEmpty()) {
+            entity.linkage = determineLinkage(variable, kind)
+        }
+        entity.declarations.add(variable)
+        ordinary.add(name)
+        val hasExternStorage = variable.declarationSpecifier.storage.contains(StorageClass.EXTERN)
+        when {
+            variable.initializer != null || variable.isSyntheticZeroInit -> {
+                entity.hasDefinition = true
+                entity.isTentative = false
+            }
+
+            kind == ScopeKind.FILE && !hasExternStorage -> {
+                // Only tentative if no extern and at file scope
+                if (!entity.hasDefinition) {
+                    entity.isTentative = true
+                }
+            }
+
+            hasExternStorage -> {
+                // extern declarations are never definitions
+                // Keep existing state
+            }
+        }
+        return entity
+    }
+
+    fun lookupVariable(name: String): Entity.Variable? {
+        return variables[name] ?: parent?.lookupVariable(name)
+    }
+
+    fun addFunctionDeclaration(
+        name: String,
+        function: Declaration.Function,
+    ): Entity.Function {
+        val entity = functions.getOrPut(name) { Entity.Function(this, name) }
+        entity.declarations.add(function)
+        ordinary.add(name)
+        return entity
+    }
+
+    fun lookupFunction(name: String): Entity.Function? {
+        return functions[name] ?: parent?.lookupFunction(name)
+    }
+
+    fun defineTag(name: String) {
+        tags.add(name)
+    }
+
+    fun lookupTag(name: String?): Boolean {
+        if (name == null) {
+            return false
+        }
+        if (tags.contains(name)) {
+            return true
+        }
+        return parent?.lookupTag(name) ?: false
+    }
+
+    /**
+     * Handles tentative definitions per C17 §6.9.2:
+     * A declaration with external linkage and no initializer
+     * is a tentative definition at file scope.
+     */
     fun resolveTentativeDefinitions() {
+        if (kind == ScopeKind.FILE) {
+            variables.values.forEach { entity ->
+                if (entity.isTentative && !entity.hasDefinition) {
+                    entity.hasDefinition = true
+                    entity.isTentative = false
+                    val firstDecl = entity.declarations.firstOrNull()
+                    if (firstDecl != null) {
+                        val syntheticDecl = Declaration.Variable(
+                            location = firstDecl.location,
+                            scope = this,
+                            declarationSpecifier = firstDecl.declarationSpecifier,
+                            declarator = firstDecl.declarator,
+                            initializer = null,
+                            isSyntheticZeroInit = true,
+                        )
+                        entity.declarations.add(syntheticDecl)
+                    }
+                }
+            }
+        }
         children.forEach { it.resolveTentativeDefinitions() }
     }
 
-    override fun toString(): String {
-        return "$kind"
+    private fun determineLinkage(decl: Declaration.Variable, scopeKind: ScopeKind): Linkage {
+        return when {
+            decl.declarationSpecifier.storage.contains(StorageClass.EXTERN) -> Linkage.EXTERNAL
+            decl.declarationSpecifier.storage.contains(StorageClass.STATIC) -> Linkage.INTERNAL
+            scopeKind == ScopeKind.FILE -> Linkage.EXTERNAL
+            else -> Linkage.NONE
+        }
     }
 
-    private fun <V> MutableMap<String, MutableList<V>>.addToMapList(name: String?, element: V) {
-        if (name != null) {
-            computeIfAbsent(name) { mutableListOf() }.add(element)
+    private fun validateRedeclaration(
+        existing: Declaration.Variable,
+        new: Declaration.Variable,
+    ) {
+        val existingStorage = existing.declarationSpecifier.storage
+        val newStorage = new.declarationSpecifier.storage
+        if (
+            existingStorage.contains(StorageClass.STATIC) &&
+            newStorage.contains(StorageClass.EXTERN)
+        ) {
+            // Error: conflicting storage classes
         }
+    }
+
+    override fun toString(): String {
+        return "$kind(vars=${variables.size}, funcs=${functions.size}, typedefs=${typedefs.size})"
     }
 }
