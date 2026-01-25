@@ -5,8 +5,11 @@ import org.erwinkok.conjvm.parser.SourceLocation
 import java.util.UUID
 
 data class InitDeclarator(val declarator: Declarator, val initializer: CParser.InitializerContext? = null)
+
 data class StructDeclaration(val location: SourceLocation, val declarationSpecifier: DeclarationSpecifier, val declarators: List<StructDeclarator>?)
 data class StructDeclarator(val declarator: Declarator?, val bitWidth: CParser.Constant_expressionContext?)
+
+data class Enumerator(val location: SourceLocation, val text: String, val value: CParser.Constant_expressionContext?)
 
 sealed class Declaration(
     val location: SourceLocation,

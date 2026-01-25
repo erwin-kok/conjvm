@@ -6,7 +6,6 @@ enum class ScopeKind {
     FILE,
     FUNCTION,
     BLOCK,
-    STRUCT,
     FOR,
 }
 

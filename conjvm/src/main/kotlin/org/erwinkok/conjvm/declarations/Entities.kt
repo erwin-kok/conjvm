@@ -54,11 +54,6 @@ sealed class Entity(
             val memberScope: Scope,
         ) : Tag(location, scope, name) {
             val uuid = UUID.randomUUID()
-            val declarations = mutableListOf<StructDeclaration>()
-
-            fun addStructDeclaration(structDeclaration: StructDeclaration) {
-                declarations.add(structDeclaration)
-            }
         }
 
         class Enum(
@@ -67,11 +62,6 @@ sealed class Entity(
             name: String?,
         ) : Tag(location, scope, name) {
             val uuid = UUID.randomUUID()
-            val enumerators = mutableListOf<Entity.Enumerator>()
-
-            fun addEnumerator(enumerator: Entity.Enumerator) {
-                enumerators.add(enumerator)
-            }
         }
     }
 }

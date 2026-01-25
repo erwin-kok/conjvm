@@ -5,6 +5,7 @@ import org.erwinkok.conjvm.CBaseListener
 import org.erwinkok.conjvm.CParser
 import org.erwinkok.conjvm.parser.ErrorReporter
 import org.erwinkok.conjvm.parser.SourceFile
+import org.erwinkok.conjvm.parser.SourceLocation
 import org.erwinkok.conjvm.utils.ParserReporting
 
 class DeclarationListener(
@@ -14,16 +15,16 @@ class DeclarationListener(
 ) : CBaseListener(),
     ParserReporting {
     private val declarationParser = DeclarationParser(reporter, source)
-    private val structStack = ArrayDeque<Entity.Tag.Struct>()
-    private val enumStack = ArrayDeque<Entity.Tag.Enum>()
+    private val structDeclarationsStack = ArrayDeque<MutableList<StructDeclaration>>()
+    private val enumeratorStack = ArrayDeque<MutableList<Enumerator>>()
 
     override fun enterCompilationUnit(ctx: CParser.CompilationUnitContext) {
         scopeManager.enterFileScope(ctx)
     }
 
     override fun exitCompilationUnit(ctx: CParser.CompilationUnitContext) {
-        require(structStack.isEmpty())
-        require(enumStack.isEmpty())
+        require(structDeclarationsStack.isEmpty())
+        require(enumeratorStack.isEmpty())
         scopeManager.exitFileScope(ctx)
         scopeManager.resolveTentativeDefinitions()
     }
@@ -64,10 +65,14 @@ class DeclarationListener(
     }
 
     override fun enterFor_statement(ctx: CParser.For_statementContext) {
+        // Because the parse tree is not yet complete here, we do not yet know whether new variables are
+        // declared or not (ForInitVarDeclContext).
+        // Hence, we don't know whether to create a new scope or not. Therefore, always create a new scope.
         enterNewScope(ctx, ScopeKind.FOR)
     }
 
     override fun exitFor_statement(ctx: CParser.For_statementContext) {
+        // Since we always create a scope, mark it synthetic when we didn't create new variables is null.
         if (ctx.init !is CParser.ForInitVarDeclContext) {
             scopeManager.markCurrentScopeSynthetic()
         }
@@ -95,45 +100,37 @@ class DeclarationListener(
     }
 
     override fun enterStruct_specifier(ctx: CParser.Struct_specifierContext) {
-        val name = ctx.Identifier()?.text
-        val memberScope = enterNewScope(ctx, ScopeKind.STRUCT)
-        val structDecl = scopeManager.defineStructTag(ctx.location, name, memberScope)
-        structStack.addLast(structDecl)
+        structDeclarationsStack.addLast(mutableListOf())
     }
 
     override fun exitStruct_specifier(ctx: CParser.Struct_specifierContext) {
-        structStack.removeLast()
-        if (ctx.struct_declaration_list() == null) {
-            scopeManager.markCurrentScopeSynthetic()
-        }
-        exitScope(ctx, ScopeKind.STRUCT)
+        val structDeclarations = structDeclarationsStack.removeLast()
+        val name = ctx.Identifier()?.text
+        scopeManager.defineStruct(ctx.location, name, structDeclarations)
     }
 
     override fun exitStruct_declaration(ctx: CParser.Struct_declarationContext) {
-        requireNotNull(structStack.lastOrNull())
+        requireNotNull(structDeclarationsStack.lastOrNull())
         val declarationSpecifier = declarationParser.visit(ctx.specifier_qualifier_list()).cast<DeclarationSpecifier>()
         val declarators = ctx.struct_declarator_list()?.let { declarationParser.visit(it).cast<List<StructDeclarator>>() }
         if (declarators != null) {
-            val structDecl = structStack.last()
-            structDecl.addStructDeclaration(StructDeclaration(ctx.location, declarationSpecifier, declarators))
+            structDeclarationsStack.last().add(StructDeclaration(ctx.location, declarationSpecifier, declarators))
         }
     }
 
     override fun enterEnum_specifier(ctx: CParser.Enum_specifierContext) {
-        val name = ctx.Identifier()?.text
-        val enumDecl = scopeManager.defineEnumTag(ctx.location, name)
-        enumStack.addLast(enumDecl)
+        enumeratorStack.addLast(mutableListOf())
     }
 
     override fun exitEnum_specifier(ctx: CParser.Enum_specifierContext) {
-        enumStack.removeLast()
+        val enumerators = enumeratorStack.removeLast()
+        val name = ctx.Identifier()?.text
+        scopeManager.defineEnum(ctx.location, name, enumerators)
     }
 
     override fun exitEnumerator(ctx: CParser.EnumeratorContext) {
-        requireNotNull(enumStack.lastOrNull())
-        val enumerator = scopeManager.defineEnumerator(ctx.location, ctx.Identifier().text)
-        val enumDecl = enumStack.last()
-        enumDecl.addEnumerator(enumerator)
+        requireNotNull(enumeratorStack.lastOrNull())
+        enumeratorStack.last().add(Enumerator(ctx.location, ctx.Identifier().text, ctx.constant_expression()))
     }
 
     fun isTypedefName(name: String): Boolean {
@@ -146,10 +143,16 @@ class DeclarationListener(
         declarator: Declarator,
         initializer: CParser.InitializerContext?,
     ) {
+        val location = ctx.location
+        validateDeclaration(location, declarationSpecifier, declarator)
+
         when (declarator) {
             is Declarator.FunctionDeclarator -> {
+                if (initializer != null) {
+                    reporter.reportError(location, "function should not carry an initializer")
+                }
                 scopeManager.defineFunction(
-                    location = ctx.location,
+                    location = location,
                     declarationSpecifier = declarationSpecifier,
                     declarator = declarator,
                     parameters = declarator.parameters,
@@ -163,16 +166,16 @@ class DeclarationListener(
                 val isTypedef = declarationSpecifier.hasTypedef
                 if (isTypedef) {
                     if (initializer != null) {
-                        reporter.reportError(ctx.location, "typedef should not carry an initializer")
+                        reporter.reportError(location, "typedef should not carry an initializer")
                     }
                     scopeManager.defineTypedef(
-                        location = ctx.location,
+                        location = location,
                         declarationSpecifier = declarationSpecifier,
                         declarator = declarator,
                     )
                 } else {
                     scopeManager.defineVariable(
-                        location = ctx.location,
+                        location = location,
                         declarationSpecifier = declarationSpecifier,
                         declarator = declarator,
                     )
@@ -180,11 +183,11 @@ class DeclarationListener(
             }
 
             is Declarator.AnonymousDeclarator -> {
-                reporter.reportError(ctx.location, "object declaration requires a name")
+                reporter.reportError(location, "object declaration requires a name")
             }
 
             is Declarator.BitFieldDeclarator -> {
-                reporter.reportError(ctx.location, "bit-field outside of struct")
+                reporter.reportError(location, "bit-field outside of struct")
             }
         }
     }
@@ -208,6 +211,13 @@ class DeclarationListener(
                 declarator = Declarator.IdentifierDeclarator(ctx.location, it.name),
             )
         }
+    }
+
+    private fun validateDeclaration(
+        location: SourceLocation,
+        declarationSpecifier: DeclarationSpecifier,
+        declarator: Declarator,
+    ) {
     }
 
     private fun enterNewScope(ctx: ParserRuleContext, kind: ScopeKind): Scope {

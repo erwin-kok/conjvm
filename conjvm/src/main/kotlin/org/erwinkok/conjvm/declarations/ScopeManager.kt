@@ -63,19 +63,18 @@ class ScopeManager(
         return currentScope.defineVariable(location, declarationSpecifier, declarator)
     }
 
-    fun defineStructTag(
+    fun defineStruct(
         location: SourceLocation,
-        text: String?,
-        memberScope: Scope,
-    ): Entity.Tag.Struct {
-        return currentScope.defineStructTag(location, text, memberScope)
+        name: String?,
+        structDeclarations: List<StructDeclaration>,
+    ) {
     }
 
-    fun defineEnumTag(
+    fun defineEnum(
         location: SourceLocation,
-        text: String?,
-    ): Entity.Tag.Enum {
-        return currentScope.defineEnumTag(location, text)
+        name: String?,
+        enumerators: List<Enumerator>,
+    ) {
     }
 
     fun defineEnumerator(
