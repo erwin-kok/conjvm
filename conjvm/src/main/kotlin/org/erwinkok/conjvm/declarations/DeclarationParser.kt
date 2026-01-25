@@ -62,8 +62,8 @@ class DeclarationParser(
     override fun visitSpecifier_qualifier_list(ctx: CParser.Specifier_qualifier_listContext): Value {
         val typeSpecs = mutableListOf<TypeSpec>()
         val qualifiers = mutableSetOf<TypeQualifier>()
-        ctx.type_specifier().map { typeSpecs += parseTypeSpec(it) }
-        ctx.type_qualifier().map { qualifiers += parseTypeQualifier(it) }
+        ctx.type_specifier().forEach { typeSpecs += parseTypeSpec(it) }
+        ctx.type_qualifier().forEach { qualifiers += parseTypeQualifier(it) }
         return Value.of(DeclarationSpecifier(emptySet(), typeSpecs, qualifiers, emptySet()))
     }
 

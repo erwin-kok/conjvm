@@ -16,71 +16,71 @@ class Scope(
     val children: MutableList<Scope> = mutableListOf(),
 ) {
     // Namespaces
-    private val ordinary = mutableListOf<DeclStub>()
-    private val tags = mutableListOf<DeclTagStub>()
+    private val ordinary = mutableListOf<Entity>()
+    private val tags = mutableListOf<Entity.Tag>()
 
-    private val typedefs = mutableMapOf<String, MutableList<DeclStub.Typedef>>()
-    private val ordinaryMap = mutableMapOf<String, MutableList<DeclStub>>()
-    private val tagMap = mutableMapOf<String, MutableList<DeclTagStub>>()
+    private val typedefs = mutableMapOf<String, MutableList<Entity.Typedef>>()
+    private val ordinaryMap = mutableMapOf<String, MutableList<Entity>>()
+    private val tagMap = mutableMapOf<String, MutableList<Entity.Tag>>()
 
     var isSynthetic: Boolean = false
     val isEmpty: Boolean
         get() = ordinary.isEmpty() && tags.isEmpty() && typedefs.isEmpty() && ordinaryMap.isEmpty() && tagMap.isEmpty()
 
-    fun defineTypedef(location: SourceLocation, declarationSpecifier: DeclarationSpecifier, declarator: Declarator): DeclStub.Typedef {
-        val stub = DeclStub.Typedef(location, this, declarationSpecifier, declarator)
+    fun defineTypedef(location: SourceLocation, declarationSpecifier: DeclarationSpecifier, declarator: Declarator): Entity.Typedef {
+        val stub = Entity.Typedef(location, this, declarationSpecifier, declarator)
         ordinary.add(stub)
         val name = declarator.name()
         typedefs.addToMapList(name, stub)
         return stub
     }
 
-    fun defineFunction(location: SourceLocation, declarationSpecifier: DeclarationSpecifier, declarator: Declarator, parameters: List<Parameter>): DeclStub.Function {
-        val stub = DeclStub.Function(location, this, declarationSpecifier, declarator, parameters)
+    fun defineFunction(location: SourceLocation, declarationSpecifier: DeclarationSpecifier, declarator: Declarator, parameters: List<Parameter>): Entity.Function {
+        val stub = Entity.Function(location, this, declarationSpecifier, declarator, parameters)
         ordinary.add(stub)
         val name = declarator.name()
         ordinaryMap.addToMapList(name, stub)
         return stub
     }
 
-    fun defineVariable(location: SourceLocation, declarationSpecifier: DeclarationSpecifier, declarator: Declarator): DeclStub.Variable {
-        val stub = DeclStub.Variable(location, this, declarationSpecifier, declarator)
+    fun defineVariable(location: SourceLocation, declarationSpecifier: DeclarationSpecifier, declarator: Declarator): Entity.Variable {
+        val stub = Entity.Variable(location, this, declarationSpecifier, declarator)
         ordinary.add(stub)
         val name = declarator.name()
         ordinaryMap.addToMapList(name, stub)
         return stub
     }
 
-    fun defineStructTag(location: SourceLocation, tag: String?, memberScope: Scope): DeclTagStub.Struct {
-        val stub = DeclTagStub.Struct(location, this, tag, memberScope)
+    fun defineStructTag(location: SourceLocation, tag: String?, memberScope: Scope): Entity.Tag.Struct {
+        val stub = Entity.Tag.Struct(location, this, tag, memberScope)
         tags.add(stub)
         tagMap.addToMapList(tag, stub)
         return stub
     }
 
-    fun defineEnumTag(location: SourceLocation, tag: String?): DeclTagStub.Enum {
-        val stub = DeclTagStub.Enum(location, this, tag)
+    fun defineEnumTag(location: SourceLocation, tag: String?): Entity.Tag.Enum {
+        val stub = Entity.Tag.Enum(location, this, tag)
         tags.add(stub)
         tagMap.addToMapList(tag, stub)
         return stub
     }
 
-    fun defineEnumerator(location: SourceLocation, name: String): DeclStub.Enumerator {
-        val enumeratorDecl = DeclStub.Enumerator(location, this, name)
+    fun defineEnumerator(location: SourceLocation, name: String): Entity.Enumerator {
+        val enumeratorDecl = Entity.Enumerator(location, this, name)
         ordinary.add(enumeratorDecl)
         ordinaryMap.addToMapList(name, enumeratorDecl)
         return enumeratorDecl
     }
 
-    fun lookupTypedef(name: String): List<DeclStub.Typedef> {
+    fun lookupTypedef(name: String): List<Entity.Typedef> {
         return typedefs[name] ?: parent?.lookupTypedef(name) ?: emptyList()
     }
 
-    fun lookupOrdinary(name: String): List<DeclStub> {
+    fun lookupOrdinary(name: String): List<Entity> {
         return ordinaryMap[name] ?: parent?.lookupOrdinary(name) ?: emptyList()
     }
 
-    fun lookupTag(name: String): List<DeclTagStub> {
+    fun lookupTag(name: String): List<Entity.Tag> {
         return tagMap[name] ?: parent?.lookupTag(name) ?: emptyList()
     }
 

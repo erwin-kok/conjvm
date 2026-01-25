@@ -75,12 +75,15 @@ class TranslationTest {
     @Test
     @Disabled
     fun translationTest3() {
-        val source = readResource("input.c.gz")
-
         val symbolTable = SymbolTable()
         val errorReporter = ErrorReporter()
+        val parser = Parser(errorReporter)
+        val setup = readResource("setup.c")
+        val x = parser.parseCompilationUnit(setup)
+        errorReporter.assertNoDiagnostics()
 
-        val compilationUnit = Parser(errorReporter).parseCompilationUnit(source)
+        val source = readResource("input.c")
+        val compilationUnit = parser.parseCompilationUnit(source)
         errorReporter.assertNoDiagnostics()
         requireNotNull(compilationUnit)
 

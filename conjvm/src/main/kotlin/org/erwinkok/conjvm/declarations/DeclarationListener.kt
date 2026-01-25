@@ -14,13 +14,16 @@ class DeclarationListener(
 ) : CBaseListener(),
     ParserReporting {
     private val declarationParser = DeclarationParser(reporter, source)
-    private val structStack = ArrayDeque<DeclTagStub.Struct>()
-    private val enumStack = ArrayDeque<DeclTagStub.Enum>()
+    private val structStack = ArrayDeque<Entity.Tag.Struct>()
+    private val enumStack = ArrayDeque<Entity.Tag.Enum>()
 
+    override fun enterCompilationUnit(ctx: CParser.CompilationUnitContext) {
+        scopeManager.enterFileScope(ctx)
+    }
     override fun exitCompilationUnit(ctx: CParser.CompilationUnitContext) {
         require(structStack.isEmpty())
         require(enumStack.isEmpty())
-        require(scopeManager.currentScope === scopeManager.rootScope) { "scope mismatch when parsing declarations" }
+        scopeManager.exitFileScope(ctx)
     }
 
     override fun enterFunction_definition(ctx: CParser.Function_definitionContext) {
@@ -164,8 +167,6 @@ class DeclarationListener(
     }
 
     private fun exitScope(ctx: ParserRuleContext, kind: ScopeKind) {
-        require(scopeManager.currentScope.kind == kind) { "scope kind mismatch. Expected $kind, but got ${scopeManager.currentScope.kind}" }
-        require(scopeManager.currentScope === scopeManager[ctx]) { "scope context mismatch. Expected ${scopeManager[ctx]!!::class.simpleName}, but got ${scopeManager.currentScope::class.simpleName}" }
-        scopeManager.popScope()
+        scopeManager.popScope(ctx, kind)
     }
 }
