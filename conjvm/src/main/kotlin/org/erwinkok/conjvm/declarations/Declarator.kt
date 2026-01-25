@@ -17,16 +17,37 @@ sealed class Declarator {
         is BitFieldDeclarator -> this.name
     }
 
-    data class IdentifierDeclarator(val location: SourceLocation, val name: String) : Declarator()
-    data class AnonymousDeclarator(val location: SourceLocation) : Declarator()
-    data class PointerDeclarator(val location: SourceLocation, val qualifiers: Set<TypeQualifier>, val pointee: Declarator) : Declarator()
-    data class FunctionDeclarator(val location: SourceLocation, val declarator: Declarator, val parameters: List<Parameter>) : Declarator()
+    data class IdentifierDeclarator(
+        val location: SourceLocation,
+        val name: String,
+    ) : Declarator()
+
+    data class AnonymousDeclarator(
+        val location: SourceLocation,
+    ) : Declarator()
+
+    data class PointerDeclarator(
+        val location: SourceLocation,
+        val qualifiers: Set<TypeQualifier>,
+        val pointee: Declarator,
+    ) : Declarator()
+
+    data class FunctionDeclarator(
+        val location: SourceLocation,
+        val declarator: Declarator,
+        val parameters: List<Parameter>,
+    ) : Declarator()
+
     data class ArrayDeclarator(
         val location: SourceLocation,
         val elementType: Declarator,
-        val size: Expression?,
+        val size: Expression?, // TODO
         val sizeCtx: CParser.Assignment_expressionContext? = null,
     ) : Declarator()
 
-    data class BitFieldDeclarator(val location: SourceLocation, val name: String, val width: Int) : Declarator()
+    data class BitFieldDeclarator(
+        val location: SourceLocation,
+        val name: String,
+        val width: Int,
+    ) : Declarator()
 }

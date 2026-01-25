@@ -10,9 +10,8 @@ class ScopeManager(
     private val scopeMap = mutableMapOf<ParserRuleContext, Scope>()
     private val typeNameMap = mutableMapOf<ParserRuleContext, TypeName>()
 
-    val rootScope = Scope(ScopeKind.FILE, null)
-    var currentScope = rootScope
-        private set
+    private val rootScope = Scope(ScopeKind.FILE, null)
+    private var currentScope = rootScope
 
     fun enterFileScope(ctx: ParserRuleContext) {
         scopeMap[ctx] = rootScope
@@ -39,39 +38,91 @@ class ScopeManager(
         currentScope = parent
     }
 
-    fun defineTypedef(location: SourceLocation, declarationSpecifier: DeclarationSpecifier, declarator: Declarator): Entity.Typedef {
+    fun defineTypedef(
+        location: SourceLocation,
+        declarationSpecifier: DeclarationSpecifier,
+        declarator: Declarator,
+    ): Entity.Typedef {
         return currentScope.defineTypedef(location, declarationSpecifier, declarator)
     }
 
-    fun defineFunction(location: SourceLocation, declarationSpecifier: DeclarationSpecifier, declarator: Declarator, parameters: List<Parameter>): Entity.Function {
+    fun defineFunction(
+        location: SourceLocation,
+        declarationSpecifier: DeclarationSpecifier,
+        declarator: Declarator,
+        parameters: List<Parameter>,
+    ): Entity.Function {
         return currentScope.defineFunction(location, declarationSpecifier, declarator, parameters)
     }
 
-    fun defineVariable(location: SourceLocation, declarationSpecifier: DeclarationSpecifier, declarator: Declarator): Entity.Variable {
+    fun defineVariable(
+        location: SourceLocation,
+        declarationSpecifier: DeclarationSpecifier,
+        declarator: Declarator,
+    ): Entity.Variable {
         return currentScope.defineVariable(location, declarationSpecifier, declarator)
     }
 
-    fun defineStructTag(location: SourceLocation, text: String?, memberScope: Scope): Entity.Tag.Struct {
+    fun defineStructTag(
+        location: SourceLocation,
+        text: String?,
+        memberScope: Scope,
+    ): Entity.Tag.Struct {
         return currentScope.defineStructTag(location, text, memberScope)
     }
 
-    fun defineEnumTag(location: SourceLocation, text: String?): Entity.Tag.Enum {
+    fun defineEnumTag(
+        location: SourceLocation,
+        text: String?,
+    ): Entity.Tag.Enum {
         return currentScope.defineEnumTag(location, text)
     }
 
-    fun defineEnumerator(location: SourceLocation, name: String): Entity.Enumerator {
+    fun defineEnumerator(
+        location: SourceLocation,
+        name: String,
+    ): Entity.Enumerator {
         return currentScope.defineEnumerator(location, name)
+    }
+
+    fun <T> withScope(ctx: ParserRuleContext, kind: ScopeKind, block: (Scope) -> T): T {
+        val scope = scopeMap[ctx] ?: error("Missing scope for ${ctx::class.simpleName}")
+        require(scope.kind == kind) { "scope kind mismatch" }
+        val prev = currentScope
+        currentScope = scope
+        try {
+            return block(scope)
+        } finally {
+            currentScope = prev
+        }
+    }
+
+    fun assertNoScope(ctx: ParserRuleContext) {
+        require(scopeMap[ctx] == null) { "Unexpected scope for ${ctx::class.simpleName}" }
+    }
+
+    fun markCurrentScopeSynthetic() {
+        require(currentScope.isEmpty)
+        currentScope.isSynthetic = true
     }
 
     fun registerTypeName(ctx: ParserRuleContext, typeName: TypeName) {
         typeNameMap[ctx] = typeName
     }
 
+    fun getTypeName(ctx: ParserRuleContext): TypeName? {
+        return typeNameMap[ctx]
+    }
+
+    fun isTypedefName(name: String): Boolean {
+        return currentScope.isTypedefName(name)
+    }
+
     operator fun get(ctx: ParserRuleContext): Scope? {
         return scopeMap[ctx]
     }
 
-    fun getTypeName(ctx: ParserRuleContext): TypeName? {
-        return typeNameMap[ctx]
+    fun resolveTentativeDefinitions() {
+        rootScope.resolveTentativeDefinitions()
     }
 }

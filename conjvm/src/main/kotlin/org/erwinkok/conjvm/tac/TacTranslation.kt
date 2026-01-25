@@ -61,7 +61,7 @@ class TacTranslation(
         tempFactory.clear()
         labelFactory.clear()
         val translatedBlock = translateBlockStatement(definition.statements)
-        val name = definition.declarator.name() ?: "anonymous"
+        val name = definition.declarator.name() ?: "anonymous" // TODO
         return TacResult(listOf(TacFunctionDefinition(name, translatedBlock)), null)
     }
 
@@ -212,7 +212,7 @@ class TacTranslation(
             it.init?.let { vd ->
                 val (ts, te) = translateExpression(vd)
                 requireNotNull(te)
-                val name = it.declarator.name() ?: "anonymous"
+                val name = it.declarator.name() ?: "anonymous" // TODO
                 allStatements.addAll(ts)
                 allStatements.add(TacStoreInstruction(TacIdentifier(name), te))
             }

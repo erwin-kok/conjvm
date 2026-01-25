@@ -13,8 +13,9 @@ enum class ScopeKind {
 class Scope(
     val kind: ScopeKind,
     val parent: Scope? = null,
-    val children: MutableList<Scope> = mutableListOf(),
 ) {
+    val children: MutableList<Scope> = mutableListOf()
+
     // Namespaces
     private val ordinary = mutableListOf<Entity>()
     private val tags = mutableListOf<Entity.Tag>()
@@ -82,6 +83,14 @@ class Scope(
 
     fun lookupTag(name: String): List<Entity.Tag> {
         return tagMap[name] ?: parent?.lookupTag(name) ?: emptyList()
+    }
+
+    fun isTypedefName(name: String): Boolean {
+        return lookupTypedef(name).isNotEmpty()
+    }
+
+    fun resolveTentativeDefinitions() {
+        children.forEach { it.resolveTentativeDefinitions() }
     }
 
     override fun toString(): String {

@@ -25,6 +25,7 @@ class DeclarationListener(
         require(structStack.isEmpty())
         require(enumStack.isEmpty())
         scopeManager.exitFileScope(ctx)
+        scopeManager.resolveTentativeDefinitions()
     }
 
     override fun enterFunction_definition(ctx: CParser.Function_definitionContext) {
@@ -37,10 +38,19 @@ class DeclarationListener(
         if (declarator is Declarator.FunctionDeclarator) {
             scopeManager.defineFunction(ctx.location, declarationSpecifier, declarator, declarator.parameters)
             declarator.parameters.forEach { param ->
-                scopeManager.defineVariable(ctx.location, param.declarationSpecifier, param.declarator)
+                scopeManager.defineVariable(
+                    location = ctx.location,
+                    declarationSpecifier = param.declarationSpecifier,
+                    declarator = param.declarator,
+                )
             }
         } else {
-            scopeManager.defineFunction(ctx.location, declarationSpecifier, declarator, emptyList())
+            scopeManager.defineFunction(
+                location = ctx.location,
+                declarationSpecifier = declarationSpecifier,
+                declarator = declarator,
+                parameters = emptyList(),
+            )
         }
         exitScope(ctx, ScopeKind.FUNCTION)
     }
@@ -59,8 +69,7 @@ class DeclarationListener(
 
     override fun exitFor_statement(ctx: CParser.For_statementContext) {
         if (ctx.init !is CParser.ForInitVarDeclContext) {
-            require(scopeManager.currentScope.isEmpty)
-            scopeManager.currentScope.isSynthetic = true
+            scopeManager.markCurrentScopeSynthetic()
         }
         exitScope(ctx, ScopeKind.FOR)
     }
@@ -72,37 +81,10 @@ class DeclarationListener(
         if (initDeclaratorList != null) {
             val declarators = declarationParser.visit(initDeclaratorList).cast<List<InitDeclarator>>()
             declarators.forEach { (declarator, initializer) ->
-                when (declarator) {
-                    is Declarator.FunctionDeclarator -> {
-                        scopeManager.defineFunction(ctx.location, declarationSpecifier, declarator, declarator.parameters)
-                    }
-
-                    is Declarator.PointerDeclarator,
-                    is Declarator.ArrayDeclarator,
-                    is Declarator.IdentifierDeclarator,
-                    is Declarator.AnonymousDeclarator,
-                    is Declarator.BitFieldDeclarator,
-                    -> {
-                        if (isTypedef) {
-                            scopeManager.defineTypedef(ctx.location, declarationSpecifier, declarator)
-                        } else {
-                            scopeManager.defineVariable(ctx.location, declarationSpecifier, declarator)
-                        }
-                    }
-                }
+                handleDeclarator(ctx, declarationSpecifier, declarator, initializer)
             }
         } else if (isTypedef) {
-            // The C grammar specifies the following:
-            //
-            // declaration_specifiers init_declarator_list? ';'
-            //
-            // When something like "typedef unsigned int a, b;" is defined, no ambiguity occurs since "a, b" must be
-            // part of "init_declarator_list". However, when there is only a single declarator, the declarator can be
-            // treated as part of the declaration_specifiers since init_declarator_list might be null.
-            val typedefName = declarationSpecifier.typeSpecs.filterIsInstance<TypeSpec.TypedefName>().lastOrNull()
-            typedefName?.let {
-                scopeManager.defineTypedef(ctx.location, declarationSpecifier, Declarator.IdentifierDeclarator(ctx.location, it.name))
-            }
+            handleTypedefWithoutInitDeclaratorList(ctx, declarationSpecifier)
         }
     }
 
@@ -122,8 +104,7 @@ class DeclarationListener(
     override fun exitStruct_specifier(ctx: CParser.Struct_specifierContext) {
         structStack.removeLast()
         if (ctx.struct_declaration_list() == null) {
-            require(scopeManager.currentScope.isEmpty)
-            scopeManager.currentScope.isSynthetic = true
+            scopeManager.markCurrentScopeSynthetic()
         }
         exitScope(ctx, ScopeKind.STRUCT)
     }
@@ -155,12 +136,78 @@ class DeclarationListener(
         enumDecl.addEnumerator(enumerator)
     }
 
-    override fun exitTypedef_name(ctx: CParser.Typedef_nameContext) {
-        super.enterTypedef_name(ctx)
+    fun isTypedefName(name: String): Boolean {
+        return scopeManager.isTypedefName(name)
     }
 
-    fun isTypedefName(name: String): Boolean {
-        return scopeManager.currentScope.lookupTypedef(name).isNotEmpty()
+    private fun handleDeclarator(
+        ctx: ParserRuleContext,
+        declarationSpecifier: DeclarationSpecifier,
+        declarator: Declarator,
+        initializer: CParser.InitializerContext?,
+    ) {
+        when (declarator) {
+            is Declarator.FunctionDeclarator -> {
+                scopeManager.defineFunction(
+                    location = ctx.location,
+                    declarationSpecifier = declarationSpecifier,
+                    declarator = declarator,
+                    parameters = declarator.parameters,
+                )
+            }
+
+            is Declarator.PointerDeclarator,
+            is Declarator.ArrayDeclarator,
+            is Declarator.IdentifierDeclarator,
+            -> {
+                val isTypedef = declarationSpecifier.hasTypedef
+                if (isTypedef) {
+                    if (initializer != null) {
+                        reporter.reportError(ctx.location, "typedef should not carry an initializer")
+                    }
+                    scopeManager.defineTypedef(
+                        location = ctx.location,
+                        declarationSpecifier = declarationSpecifier,
+                        declarator = declarator,
+                    )
+                } else {
+                    scopeManager.defineVariable(
+                        location = ctx.location,
+                        declarationSpecifier = declarationSpecifier,
+                        declarator = declarator,
+                    )
+                }
+            }
+
+            is Declarator.AnonymousDeclarator -> {
+                reporter.reportError(ctx.location, "object declaration requires a name")
+            }
+
+            is Declarator.BitFieldDeclarator -> {
+                reporter.reportError(ctx.location, "bit-field outside of struct")
+            }
+        }
+    }
+
+    private fun handleTypedefWithoutInitDeclaratorList(
+        ctx: CParser.DeclarationContext,
+        declarationSpecifier: DeclarationSpecifier,
+    ) {
+        // The C grammar specifies the following:
+        //
+        // declaration_specifiers init_declarator_list? ';'
+        //
+        // When something like "typedef unsigned int a, b;" is defined, no ambiguity occurs since "a, b" must be
+        // part of "init_declarator_list". However, when there is only a single declarator, the declarator can be
+        // treated as part of the declaration_specifiers since init_declarator_list might be null.
+        val typedefName = declarationSpecifier.typeSpecs.filterIsInstance<TypeSpec.TypedefName>().lastOrNull()
+        typedefName?.let {
+            scopeManager.defineTypedef(
+                location = ctx.location,
+                declarationSpecifier = declarationSpecifier,
+                declarator = Declarator.IdentifierDeclarator(ctx.location, it.name),
+            )
+        }
     }
 
     private fun enterNewScope(ctx: ParserRuleContext, kind: ScopeKind): Scope {
