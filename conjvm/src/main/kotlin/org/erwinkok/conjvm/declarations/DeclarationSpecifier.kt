@@ -1,4 +1,4 @@
-package org.erwinkok.conjvm.ast.types
+package org.erwinkok.conjvm.declarations
 
 enum class StorageClass {
     TYPEDEF,

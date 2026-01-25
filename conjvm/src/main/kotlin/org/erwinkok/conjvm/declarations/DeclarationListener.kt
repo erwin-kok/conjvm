@@ -3,10 +3,6 @@ package org.erwinkok.conjvm.declarations
 import org.antlr.v4.runtime.ParserRuleContext
 import org.erwinkok.conjvm.CBaseListener
 import org.erwinkok.conjvm.CParser
-import org.erwinkok.conjvm.ast.types.DeclarationSpecifier
-import org.erwinkok.conjvm.ast.types.Declarator
-import org.erwinkok.conjvm.ast.types.TypeName
-import org.erwinkok.conjvm.ast.types.TypeSpec
 import org.erwinkok.conjvm.parser.ErrorReporter
 import org.erwinkok.conjvm.parser.SourceFile
 import org.erwinkok.conjvm.utils.ParserReporting

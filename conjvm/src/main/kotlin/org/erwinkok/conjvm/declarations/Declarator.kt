@@ -1,4 +1,4 @@
-package org.erwinkok.conjvm.ast.types
+package org.erwinkok.conjvm.declarations
 
 import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.parser.SourceLocation

@@ -37,6 +37,11 @@ import org.erwinkok.conjvm.ast.statements.SwitchDefaultStatement
 import org.erwinkok.conjvm.ast.statements.SwitchStatement
 import org.erwinkok.conjvm.ast.statements.VariableDeclarationStatement
 import org.erwinkok.conjvm.ast.statements.WhileStatement
+import org.erwinkok.conjvm.declarations.DeclarationSpecifier
+import org.erwinkok.conjvm.declarations.Declarator
+import org.erwinkok.conjvm.declarations.StorageClass
+import org.erwinkok.conjvm.declarations.TypeQualifier
+import org.erwinkok.conjvm.declarations.TypeSpec
 import org.erwinkok.conjvm.parser.ErrorReporter
 import org.erwinkok.conjvm.parser.SourceLocation
 import java.util.IdentityHashMap

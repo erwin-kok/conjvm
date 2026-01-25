@@ -6,14 +6,7 @@ import org.erwinkok.conjvm.CParser.DeclSpecFuncSpecContext
 import org.erwinkok.conjvm.CParser.DeclSpecTypeQualContext
 import org.erwinkok.conjvm.CParser.DeclSpecTypeSpecContext
 import org.erwinkok.conjvm.CParser.StorageClassSpecContext
-import org.erwinkok.conjvm.ast.types.DeclarationSpecifier
-import org.erwinkok.conjvm.ast.types.Declarator
-import org.erwinkok.conjvm.ast.types.FunctionSpec
-import org.erwinkok.conjvm.ast.types.Parameter
-import org.erwinkok.conjvm.ast.types.StorageClass
 import org.erwinkok.conjvm.ast.types.TypeException
-import org.erwinkok.conjvm.ast.types.TypeQualifier
-import org.erwinkok.conjvm.ast.types.TypeSpec
 import org.erwinkok.conjvm.parser.ErrorReporter
 import org.erwinkok.conjvm.parser.SourceFile
 import org.erwinkok.conjvm.utils.ParserReporting

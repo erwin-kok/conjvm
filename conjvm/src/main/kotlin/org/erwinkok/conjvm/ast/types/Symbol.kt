@@ -1,5 +1,7 @@
 package org.erwinkok.conjvm.ast.types
 
+import org.erwinkok.conjvm.declarations.StorageClass
+
 data class VariableSymbol(
     val name: String,
     val type: QualType,

@@ -2,10 +2,6 @@ package org.erwinkok.conjvm.declarations
 
 import org.antlr.v4.runtime.ParserRuleContext
 import org.erwinkok.conjvm.CParser
-import org.erwinkok.conjvm.ast.types.DeclarationSpecifier
-import org.erwinkok.conjvm.ast.types.Declarator
-import org.erwinkok.conjvm.ast.types.Parameter
-import org.erwinkok.conjvm.ast.types.TypeName
 import org.erwinkok.conjvm.parser.SourceLocation
 
 class ScopeManager {

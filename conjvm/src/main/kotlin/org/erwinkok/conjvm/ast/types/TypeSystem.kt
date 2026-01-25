@@ -1,5 +1,7 @@
 package org.erwinkok.conjvm.ast.types
 
+import org.erwinkok.conjvm.declarations.TypeQualifier
+
 object TypeSystem {
     /* ============================================================
      * Builtin canonical types

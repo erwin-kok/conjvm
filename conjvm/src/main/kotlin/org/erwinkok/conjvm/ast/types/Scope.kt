@@ -1,5 +1,7 @@
 package org.erwinkok.conjvm.ast.types
 
+import org.erwinkok.conjvm.declarations.StorageClass
+
 class Scope(val parent: Scope? = null) {
     private val variableSymbols = mutableMapOf<String, VariableSymbol>()
     private val functionSymbols = mutableMapOf<String, FunctionSymbol>()

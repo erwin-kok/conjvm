@@ -1,5 +1,6 @@
 package org.erwinkok.conjvm.ast.types
 
+import org.erwinkok.conjvm.declarations.TypeQualifier
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse

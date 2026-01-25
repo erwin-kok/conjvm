@@ -1,5 +1,7 @@
 package org.erwinkok.conjvm.ast.types
 
+import org.erwinkok.conjvm.declarations.TypeQualifier
+
 data class QualType(
     val type: Type,
     val qualifiers: Set<TypeQualifier> = emptySet(),
