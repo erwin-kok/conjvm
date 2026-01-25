@@ -50,13 +50,11 @@ class DeclarationParser(
     }
 
     override fun visitInit_declarator_list(ctx: CParser.Init_declarator_listContext): Value {
-        return Value.of(ctx.init_declarator().map { visit(it).cast<Declarator>() })
+        return Value.of(ctx.init_declarator().map { visit(it).cast<InitDeclarator>() })
     }
 
     override fun visitInit_declarator(ctx: CParser.Init_declaratorContext): Value {
-        // Note: variable initializers are not evaluated when collecting declarations.
-        // These are filled in at a later stage.
-        return Value.of(visit(ctx.declarator()).cast<Declarator>())
+        return Value.of(InitDeclarator(visit(ctx.declarator()).cast<Declarator>(), ctx.initializer()))
     }
 
     override fun visitSpecifier_qualifier_list(ctx: CParser.Specifier_qualifier_listContext): Value {
@@ -73,9 +71,7 @@ class DeclarationParser(
 
     override fun visitStruct_declarator(ctx: CParser.Struct_declaratorContext): Value {
         val declarator = ctx.declarator()?.let { visit(it).cast<Declarator>() }
-        // Note: bitWidths are not evaluated when collecting declarations.
-        // These are filled in at a later stage.
-        return Value.of(StructDeclarator(declarator, null))
+        return Value.of(StructDeclarator(declarator, ctx.constant_expression()))
     }
 
     override fun visitDeclarator(ctx: CParser.DeclaratorContext): Value {
@@ -103,9 +99,7 @@ class DeclarationParser(
 
     override fun visitDirectDeclArray(ctx: CParser.DirectDeclArrayContext): Value {
         val inner = visit(ctx.direct_declarator()).cast<Declarator>()
-        // Note: array sizes are not evaluated when collecting declarations.
-        // These are filled in at a later stage.
-        return Value.of(Declarator.ArrayDeclarator(ctx.location, inner, null))
+        return Value.of(Declarator.ArrayDeclarator(ctx.location, inner, null, sizeCtx = ctx.assignment_expression()))
     }
 
     override fun visitDirectDeclBitField(ctx: CParser.DirectDeclBitFieldContext): Value {
@@ -168,9 +162,7 @@ class DeclarationParser(
 
     override fun visitDirectAbsDeclArray(ctx: CParser.DirectAbsDeclArrayContext): Value {
         val inner = Declarator.AnonymousDeclarator(ctx.location)
-        // Note: array sizes are not evaluated when collecting declarations.
-        // These are filled in at a later stage.
-        return Value.of(Declarator.ArrayDeclarator(ctx.location, inner, null))
+        return Value.of(Declarator.ArrayDeclarator(ctx.location, inner, null, sizeCtx = ctx.assignment_expression()))
     }
 
     override fun visitDirectAbsDeclFunctionSimple(ctx: CParser.DirectAbsDeclFunctionSimpleContext): Value {
@@ -181,9 +173,7 @@ class DeclarationParser(
 
     override fun visitDirectAbsDeclArrayCompound(ctx: CParser.DirectAbsDeclArrayCompoundContext): Value {
         val inner = visit(ctx.direct_abstract_declarator()).cast<Declarator>()
-        // Note: array sizes are not evaluated when collecting declarations.
-        // These are filled in at a later stage.
-        return Value.of(Declarator.ArrayDeclarator(ctx.location, inner, null))
+        return Value.of(Declarator.ArrayDeclarator(ctx.location, inner, null, sizeCtx = ctx.assignment_expression()))
     }
 
     override fun visitDirectAbsDeclFunctionCompound(ctx: CParser.DirectAbsDeclFunctionCompoundContext): Value {

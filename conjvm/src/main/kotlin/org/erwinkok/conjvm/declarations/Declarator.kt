@@ -1,5 +1,6 @@
 package org.erwinkok.conjvm.declarations
 
+import org.erwinkok.conjvm.CParser
 import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.parser.SourceLocation
 
@@ -20,6 +21,12 @@ sealed class Declarator {
     data class AnonymousDeclarator(val location: SourceLocation) : Declarator()
     data class PointerDeclarator(val location: SourceLocation, val qualifiers: Set<TypeQualifier>, val pointee: Declarator) : Declarator()
     data class FunctionDeclarator(val location: SourceLocation, val declarator: Declarator, val parameters: List<Parameter>) : Declarator()
-    data class ArrayDeclarator(val location: SourceLocation, val elementType: Declarator, val size: Expression?) : Declarator()
+    data class ArrayDeclarator(
+        val location: SourceLocation,
+        val elementType: Declarator,
+        val size: Expression?,
+        val sizeCtx: CParser.Assignment_expressionContext? = null,
+    ) : Declarator()
+
     data class BitFieldDeclarator(val location: SourceLocation, val name: String, val width: Int) : Declarator()
 }

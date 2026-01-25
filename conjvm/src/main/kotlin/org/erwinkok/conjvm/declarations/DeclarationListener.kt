@@ -20,6 +20,7 @@ class DeclarationListener(
     override fun enterCompilationUnit(ctx: CParser.CompilationUnitContext) {
         scopeManager.enterFileScope(ctx)
     }
+
     override fun exitCompilationUnit(ctx: CParser.CompilationUnitContext) {
         require(structStack.isEmpty())
         require(enumStack.isEmpty())
@@ -69,8 +70,8 @@ class DeclarationListener(
         val isTypedef = declarationSpecifier.hasTypedef
         val initDeclaratorList = ctx.init_declarator_list()
         if (initDeclaratorList != null) {
-            val declarators = declarationParser.visit(initDeclaratorList).cast<List<Declarator>>()
-            declarators.forEach { declarator ->
+            val declarators = declarationParser.visit(initDeclaratorList).cast<List<InitDeclarator>>()
+            declarators.forEach { (declarator, initializer) ->
                 when (declarator) {
                     is Declarator.FunctionDeclarator -> {
                         scopeManager.defineFunction(ctx.location, declarationSpecifier, declarator, declarator.parameters)

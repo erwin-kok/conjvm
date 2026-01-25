@@ -15,7 +15,7 @@ import org.erwinkok.conjvm.declarations.ScopeManager
 class Parser(
     private val reporter: ErrorReporter,
 ) {
-    private val scopeManager = ScopeManager()
+    private val scopeManager = ScopeManager(reporter)
 
     fun parseCompilationUnit(source: SourceFile): CompilationUnitStatement? {
         return createParser(source) { parser, astBuilder ->
