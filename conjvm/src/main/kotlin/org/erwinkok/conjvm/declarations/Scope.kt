@@ -13,155 +13,131 @@ class Scope(
 ) {
     val children: MutableList<Scope> = mutableListOf()
 
-    private val typedefs = mutableMapOf<String, Entity.Typedef>()
-    private val variables = mutableMapOf<String, Entity.Variable>()
-    private val functions = mutableMapOf<String, Entity.Function>()
-    private val structTags = mutableMapOf<String, Entity.StructTag>()
-    private val enumTags = mutableMapOf<String, Entity.EnumTag>()
+    private val _typedefs = mutableMapOf<String, Entity.Typedef>()
+    private val _variables = mutableMapOf<String, Entity.Variable>()
+    private val _functions = mutableMapOf<String, Entity.Function>()
+    private val _structs = mutableMapOf<String, Entity.Struct>()
+    private val _enums = mutableMapOf<String, Entity.Enum>()
+    private val _labels = mutableMapOf<String, Entity.Label>()
 
     // Namespaces
-    private val ordinary = mutableSetOf<String>()
-    private val tags = mutableSetOf<String>()
+    private val ordinaryNamespace = mutableSetOf<String>()
+    private val tagNamespace = mutableSetOf<String>()
+    private val labelNamespace = mutableSetOf<String>()
 
     var isSynthetic: Boolean = false
+    val typedefs: List<Entity.Typedef>
+        get() = _typedefs.values.toList()
+    val variables: List<Entity.Variable>
+        get() = _variables.values.toList()
+    val functions: List<Entity.Function>
+        get() = _functions.values.toList()
+    val structs: List<Entity.Struct>
+        get() = _structs.values.toList()
+    val enums: List<Entity.Enum>
+        get() = _enums.values.toList()
+    val labels: List<Entity.Label>
+        get() = _labels.values.toList()
     val isEmpty: Boolean
-        get() = ordinary.isEmpty() && tags.isEmpty()
+        get() = ordinaryNamespace.isEmpty() && tagNamespace.isEmpty() && labelNamespace.isEmpty()
 
-    fun addTypedefDeclaration(name: String, typedef: Declaration.Typedef): Entity.Typedef {
-        val entity = typedefs.getOrPut(name) { Entity.Typedef(this, name) }
-        entity.declarations.add(typedef)
-        ordinary.add(name)
+    fun getOrCreateTypedefEntity(name: String): Entity.Typedef {
+        val entity = _typedefs.getOrPut(name) { Entity.Typedef(this, name) }
+        ordinaryNamespace.add(name)
         return entity
     }
 
-    fun lookupTypedef(name: String): Entity.Typedef? {
-        return typedefs[name] ?: parent?.lookupTypedef(name)
+    fun lookupTypedefEntity(name: String): Entity.Typedef? {
+        return _typedefs[name] ?: parent?.lookupTypedefEntity(name)
     }
 
     fun isTypedefName(name: String): Boolean {
-        return lookupTypedef(name) != null
+        return lookupTypedefEntity(name) != null
     }
 
-    fun addVariableDeclaration(
-        name: String,
-        variable: Declaration.Variable,
-    ): Entity.Variable {
-        val entity = variables.getOrPut(name) { Entity.Variable(this, name) }
-        if (entity.declarations.isNotEmpty()) {
-            validateRedeclaration(entity.declarations.first(), variable)
-        }
-        if (entity.declarations.isEmpty()) {
-            entity.linkage = determineLinkage(variable, kind)
-        }
-        entity.declarations.add(variable)
-        ordinary.add(name)
-        val hasExternStorage = variable.declarationSpecifier.storage.contains(StorageClass.EXTERN)
-        when {
-            variable.initializer != null || variable.isSyntheticZeroInit -> {
-                entity.hasDefinition = true
-                entity.isTentative = false
-            }
-
-            kind == ScopeKind.FILE && !hasExternStorage -> {
-                // Only tentative if no extern and at file scope
-                if (!entity.hasDefinition) {
-                    entity.isTentative = true
-                }
-            }
-
-            hasExternStorage -> {
-                // extern declarations are never definitions
-                // Keep existing state
-            }
-        }
+    fun getOrCreateVariableEntity(name: String): Entity.Variable {
+        val entity = _variables.getOrPut(name) { Entity.Variable(this, name) }
+        ordinaryNamespace.add(name)
         return entity
     }
 
-    fun lookupVariable(name: String): Entity.Variable? {
-        return variables[name] ?: parent?.lookupVariable(name)
+    fun lookupVariableEntity(name: String): Entity.Variable? {
+        return _variables[name] ?: parent?.lookupVariableEntity(name)
     }
 
-    fun addFunctionDeclaration(
-        name: String,
-        function: Declaration.Function,
-    ): Entity.Function {
-        val entity = functions.getOrPut(name) { Entity.Function(this, name) }
-        entity.declarations.add(function)
-        ordinary.add(name)
+    fun getOrCreateFunctionEntity(name: String): Entity.Function {
+        val entity = _functions.getOrPut(name) { Entity.Function(this, name) }
+        ordinaryNamespace.add(name)
         return entity
     }
 
-    fun lookupFunction(name: String): Entity.Function? {
-        return functions[name] ?: parent?.lookupFunction(name)
+    fun lookupFunctionEntity(name: String): Entity.Function? {
+        return _functions[name] ?: parent?.lookupFunctionEntity(name)
     }
 
-    fun defineTag(name: String) {
-        tags.add(name)
+    fun getOrCreateStructEntity(name: String?): Entity.Struct {
+        return if (name == null) {
+            Entity.Struct(this, name)
+        } else {
+            val entity = _structs.getOrPut(name) { Entity.Struct(this, name) }
+            tagNamespace.add(name)
+            entity
+        }
+    }
+
+    fun lookupStructEntity(name: String?): Entity.Struct? {
+        if (name == null) {
+            return null
+        }
+        return _structs[name] ?: parent?.lookupStructEntity(name)
+    }
+
+    fun getOrCreateEnumEntity(name: String?): Entity.Enum {
+        return if (name == null) {
+            Entity.Enum(this, name)
+        } else {
+            val entity = _enums.getOrPut(name) { Entity.Enum(this, name) }
+            tagNamespace.add(name)
+            entity
+        }
+    }
+
+    fun lookupEnumEntity(name: String?): Entity.Enum? {
+        if (name == null) {
+            return null
+        }
+        return _enums[name] ?: parent?.lookupEnumEntity(name)
+    }
+
+    fun lookupOrdinary(name: String): Boolean {
+        if (ordinaryNamespace.contains(name)) {
+            return true
+        }
+        return parent?.lookupOrdinary(name) ?: false
     }
 
     fun lookupTag(name: String?): Boolean {
         if (name == null) {
             return false
         }
-        if (tags.contains(name)) {
+        if (tagNamespace.contains(name)) {
             return true
         }
         return parent?.lookupTag(name) ?: false
     }
 
-    /**
-     * Handles tentative definitions per C17 §6.9.2:
-     * A declaration with external linkage and no initializer
-     * is a tentative definition at file scope.
-     */
-    fun resolveTentativeDefinitions() {
-        if (kind == ScopeKind.FILE) {
-            variables.values.forEach { entity ->
-                if (entity.isTentative && !entity.hasDefinition) {
-                    entity.hasDefinition = true
-                    entity.isTentative = false
-                    val firstDecl = entity.declarations.firstOrNull()
-                    if (firstDecl != null) {
-                        val syntheticDecl = Declaration.Variable(
-                            location = firstDecl.location,
-                            scope = this,
-                            declarationSpecifier = firstDecl.declarationSpecifier,
-                            declarator = firstDecl.declarator,
-                            initializer = null,
-                            isSyntheticZeroInit = true,
-                        )
-                        entity.declarations.add(syntheticDecl)
-                    }
-                }
-            }
-        }
-        children.forEach { it.resolveTentativeDefinitions() }
+    fun getOrCreateLabelEntity(name: String): Entity.Label {
+        val entity = _labels.getOrPut(name) { Entity.Label(this, name) }
+        labelNamespace.add(name)
+        return entity
     }
 
-    private fun determineLinkage(decl: Declaration.Variable, scopeKind: ScopeKind): Linkage {
-        return when {
-            decl.declarationSpecifier.storage.contains(StorageClass.EXTERN) -> Linkage.EXTERNAL
-            decl.declarationSpecifier.storage.contains(StorageClass.STATIC) -> Linkage.INTERNAL
-            scopeKind == ScopeKind.FILE -> Linkage.EXTERNAL
-            else -> Linkage.NONE
-        }
-    }
-
-    private fun validateRedeclaration(
-        existing: Declaration.Variable,
-        new: Declaration.Variable,
-    ) {
-        val existingStorage = existing.declarationSpecifier.storage
-        val newStorage = new.declarationSpecifier.storage
-        if (
-            existingStorage.contains(StorageClass.STATIC) &&
-            newStorage.contains(StorageClass.EXTERN)
-        ) {
-            // Error: conflicting storage classes
-        }
+    fun lookupLabel(name: String): Entity.Label? {
+        // Labels are function-scoped only, don't search parent
+        return _labels[name]
     }
 
     override fun toString(): String {
-        return "$kind(vars=${variables.size}, funcs=${functions.size}, typedefs=${typedefs.size})"
+        return "$kind(vars=${_variables.size}, funcs=${_functions.size}, typedefs=${_typedefs.size})"
     }
 }

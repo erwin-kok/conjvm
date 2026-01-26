@@ -43,6 +43,7 @@ class DeclarationListener(
                 declarationSpecifier = declarationSpecifier,
                 declarator = declarator,
                 parameters = declarator.parameters,
+                isDefinition = true,
             )
             declarator.parameters.forEach { param ->
                 scopeManager.defineVariable(
@@ -60,6 +61,7 @@ class DeclarationListener(
                 declarationSpecifier = declarationSpecifier,
                 declarator = declarator,
                 parameters = emptyList(),
+                isDefinition = true,
             )
         }
         exitScope(ctx, ScopeKind.FUNCTION)
@@ -115,7 +117,12 @@ class DeclarationListener(
     override fun exitStruct_specifier(ctx: CParser.Struct_specifierContext) {
         val structDeclarations = structDeclarationsStack.removeLast()
         val name = ctx.Identifier()?.text
-        scopeManager.defineStruct(ctx.location, name, structDeclarations)
+        scopeManager.defineStruct(
+            ctx = ctx,
+            location = ctx.location,
+            name = name,
+            structDeclarations = structDeclarations,
+        )
     }
 
     override fun exitStruct_declaration(ctx: CParser.Struct_declarationContext) {
@@ -134,7 +141,12 @@ class DeclarationListener(
     override fun exitEnum_specifier(ctx: CParser.Enum_specifierContext) {
         val enumerators = enumeratorStack.removeLast()
         val name = ctx.Identifier()?.text
-        scopeManager.defineEnum(ctx.location, name, enumerators)
+        scopeManager.defineEnum(
+            ctx = ctx,
+            location = ctx.location,
+            name = name,
+            enumerators = enumerators,
+        )
     }
 
     override fun exitEnumerator(ctx: CParser.EnumeratorContext) {
@@ -166,6 +178,7 @@ class DeclarationListener(
                     declarationSpecifier = declarationSpecifier,
                     declarator = declarator,
                     parameters = declarator.parameters,
+                    isDefinition = false,
                 )
             }
 

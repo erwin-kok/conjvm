@@ -22,9 +22,8 @@ sealed class Entity(
         name: String,
     ) : Entity(scope, name) {
         val declarations = mutableListOf<Declaration.Variable>()
-        var hasDefinition = false
-        var isTentative = false
-        var linkage: Linkage = Linkage.NONE
+        var definition: Declaration.Variable? = null
+        var linkage = Linkage.NONE
     }
 
     class Function(
@@ -33,10 +32,10 @@ sealed class Entity(
     ) : Entity(scope, name) {
         val declarations = mutableListOf<Declaration.Function>()
         var definition: Declaration.Function? = null
-        var linkage: Linkage = Linkage.EXTERNAL
+        var linkage = Linkage.EXTERNAL
     }
 
-    class StructTag(
+    class Struct(
         scope: Scope,
         name: String?,
     ) : Entity(scope, name) {
@@ -44,11 +43,17 @@ sealed class Entity(
         var definition: Declaration.Struct? = null
     }
 
-    class EnumTag(
+    class Enum(
         scope: Scope,
         name: String?,
     ) : Entity(scope, name) {
         val declarations = mutableListOf<Declaration.Enum>()
-        var definition: Declaration.Enum? = null
+    }
+
+    class Label(
+        scope: Scope,
+        name: String?,
+    ) : Entity(scope, name) {
+        val declarations = mutableListOf<Declaration.Label>()
     }
 }
