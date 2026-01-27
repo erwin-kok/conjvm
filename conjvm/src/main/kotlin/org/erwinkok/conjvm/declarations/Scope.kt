@@ -41,6 +41,11 @@ class Scope(
     val isEmpty: Boolean
         get() = ordinaryNamespace.isEmpty() && tagNamespace.isEmpty() && labelNamespace.isEmpty()
 
+    fun markAsSynthetic() {
+        require(isEmpty)
+        isSynthetic = true
+    }
+
     fun getOrCreateTypedefEntity(name: String): Entity.Typedef {
         val entity = _typedefs.getOrPut(name) { Entity.Typedef(this, name) }
         ordinaryNamespace.add(name)

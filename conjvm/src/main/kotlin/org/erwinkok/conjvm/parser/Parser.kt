@@ -10,12 +10,12 @@ import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.ast.statements.CompilationUnitStatement
 import org.erwinkok.conjvm.ast.statements.Statement
 import org.erwinkok.conjvm.declarations.DeclarationListener
-import org.erwinkok.conjvm.declarations.ScopeManager
+import org.erwinkok.conjvm.declarations.EntityTable
 
 class Parser(
     private val reporter: ErrorReporter,
 ) {
-    private val scopeManager = ScopeManager(reporter)
+    private val entityTable = EntityTable()
 
     fun parseCompilationUnit(source: SourceFile): CompilationUnitStatement? {
         return createParser(source) { parser, astBuilder ->
@@ -45,13 +45,13 @@ class Parser(
             lexer.removeErrorListeners()
             lexer.addErrorListener(LexerErrorListener(reporter, source))
             val tokens = CommonTokenStream(lexer)
-            val declarationListener = DeclarationListener(reporter, source, scopeManager)
+            val declarationListener = DeclarationListener(reporter, source, entityTable)
             val parser = CParser(tokens, declarationListener)
             parser.addParseListener(declarationListener)
             parser.removeErrorListeners()
             parser.addErrorListener(ParserErrorListener(reporter, source))
             parser.errorHandler = ParserErrorStrategy()
-            val astBuilder = AstBuilder(reporter, source, scopeManager)
+            val astBuilder = AstBuilder(reporter, source, entityTable)
             action(parser, astBuilder)
         } catch (e: ParseCancellationException) {
             val location = SourceLocation(source, 0, 0, 0)

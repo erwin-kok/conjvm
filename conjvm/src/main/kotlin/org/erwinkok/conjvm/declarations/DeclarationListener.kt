@@ -11,22 +11,25 @@ import org.erwinkok.conjvm.utils.ParserReporting
 class DeclarationListener(
     override val reporter: ErrorReporter,
     override val source: SourceFile,
-    private val scopeManager: ScopeManager,
+    private val entityTable: EntityTable,
 ) : CBaseListener(),
     ParserReporting {
     private val declarationParser = DeclarationParser(reporter, source)
     private val structDeclarationsStack = ArrayDeque<MutableList<StructDeclaration>>()
     private val enumeratorStack = ArrayDeque<MutableList<Enumerator>>()
+    private val rootScope = Scope(ScopeKind.FILE, null)
+    private var currentScope = rootScope
 
     override fun enterCompilationUnit(ctx: CParser.CompilationUnitContext) {
-        scopeManager.enterFileScope(ctx)
+        entityTable.registerScope(ctx, rootScope)
     }
 
     override fun exitCompilationUnit(ctx: CParser.CompilationUnitContext) {
         require(structDeclarationsStack.isEmpty())
         require(enumeratorStack.isEmpty())
-        scopeManager.exitFileScope(ctx)
-        scopeManager.resolveTentativeDefinitions()
+        require(currentScope === rootScope) { "scope mismatch at file exit" }
+        require(currentScope === entityTable.getScope(ctx)) { "scope context mismatch" }
+        resolveTentativeDefinitions(rootScope)
     }
 
     override fun enterFunction_definition(ctx: CParser.Function_definitionContext) {
@@ -37,32 +40,38 @@ class DeclarationListener(
         val declarationSpecifier = declarationParser.visit(ctx.declaration_specifiers()).cast<DeclarationSpecifier>()
         val declarator = declarationParser.visit(ctx.declarator()).cast<Declarator>()
         if (declarator is Declarator.FunctionDeclarator) {
-            scopeManager.defineFunction(
+            defineFunction(
                 ctx = ctx,
-                location = ctx.location,
+                scope = currentScope,
                 declarationSpecifier = declarationSpecifier,
                 declarator = declarator,
                 parameters = declarator.parameters,
                 isDefinition = true,
-            )
+            )?.let {
+                entityTable.registerFunction(ctx, it)
+            }
             declarator.parameters.forEach { param ->
-                scopeManager.defineVariable(
+                defineVariable(
                     ctx = ctx,
-                    location = ctx.location,
+                    scope = currentScope,
                     declarationSpecifier = param.declarationSpecifier,
                     declarator = param.declarator,
                     initializer = null,
-                )
+                )?.let {
+                    entityTable.registerVariable(ctx, it)
+                }
             }
         } else {
-            scopeManager.defineFunction(
+            defineFunction(
                 ctx = ctx,
-                location = ctx.location,
+                scope = currentScope,
                 declarationSpecifier = declarationSpecifier,
                 declarator = declarator,
                 parameters = emptyList(),
                 isDefinition = true,
-            )
+            )?.let {
+                entityTable.registerFunction(ctx, it)
+            }
         }
         exitScope(ctx, ScopeKind.FUNCTION)
     }
@@ -85,7 +94,7 @@ class DeclarationListener(
     override fun exitFor_statement(ctx: CParser.For_statementContext) {
         // Since we always create a scope, mark it synthetic when we didn't create new variables is null.
         if (ctx.init !is CParser.ForInitVarDeclContext) {
-            scopeManager.markCurrentScopeSynthetic()
+            currentScope.markAsSynthetic()
         }
         exitScope(ctx, ScopeKind.FOR)
     }
@@ -107,7 +116,7 @@ class DeclarationListener(
     override fun exitType_name(ctx: CParser.Type_nameContext) {
         val declarationSpecifier = declarationParser.visit(ctx.specifier_qualifier_list()).cast<DeclarationSpecifier>()
         val declarator = ctx.abstract_declarator()?.let { declarationParser.visit(it).cast<Declarator>() } ?: Declarator.AnonymousDeclarator(ctx.location)
-        scopeManager.registerTypeName(ctx, TypeName(ctx.location, declarationSpecifier, declarator))
+        entityTable.registerTypeName(ctx, TypeName(ctx.location, declarationSpecifier, declarator))
     }
 
     override fun enterStruct_specifier(ctx: CParser.Struct_specifierContext) {
@@ -117,12 +126,13 @@ class DeclarationListener(
     override fun exitStruct_specifier(ctx: CParser.Struct_specifierContext) {
         val structDeclarations = structDeclarationsStack.removeLast()
         val name = ctx.Identifier()?.text
-        scopeManager.defineStruct(
+        val struct = defineStruct(
             ctx = ctx,
-            location = ctx.location,
+            scope = currentScope,
             name = name,
             structDeclarations = structDeclarations,
         )
+        entityTable.registerStruct(ctx, struct)
     }
 
     override fun exitStruct_declaration(ctx: CParser.Struct_declarationContext) {
@@ -141,12 +151,13 @@ class DeclarationListener(
     override fun exitEnum_specifier(ctx: CParser.Enum_specifierContext) {
         val enumerators = enumeratorStack.removeLast()
         val name = ctx.Identifier()?.text
-        scopeManager.defineEnum(
+        val enum = defineEnum(
             ctx = ctx,
-            location = ctx.location,
+            scope = currentScope,
             name = name,
             enumerators = enumerators,
         )
+        entityTable.registerEnum(ctx, enum)
     }
 
     override fun exitEnumerator(ctx: CParser.EnumeratorContext) {
@@ -155,7 +166,7 @@ class DeclarationListener(
     }
 
     fun isTypedefName(name: String): Boolean {
-        return scopeManager.isTypedefName(name)
+        return currentScope.isTypedefName(name)
     }
 
     private fun handleDeclarator(
@@ -172,14 +183,16 @@ class DeclarationListener(
                 if (initializer != null) {
                     reporter.reportError(location, "function should not carry an initializer")
                 }
-                scopeManager.defineFunction(
+                defineFunction(
                     ctx = ctx,
-                    location = location,
+                    scope = currentScope,
                     declarationSpecifier = declarationSpecifier,
                     declarator = declarator,
                     parameters = declarator.parameters,
                     isDefinition = false,
-                )
+                )?.let {
+                    entityTable.registerFunction(ctx, it)
+                }
             }
 
             is Declarator.PointerDeclarator,
@@ -191,19 +204,24 @@ class DeclarationListener(
                     if (initializer != null) {
                         reporter.reportError(location, "typedef should not carry an initializer")
                     }
-                    scopeManager.defineTypedef(
-                        location = location,
+                    defineTypedef(
+                        ctx = ctx,
+                        scope = currentScope,
                         declarationSpecifier = declarationSpecifier,
                         declarator = declarator,
-                    )
+                    )?.let {
+                        entityTable.registerTypedef(ctx, it)
+                    }
                 } else {
-                    scopeManager.defineVariable(
+                    defineVariable(
                         ctx = ctx,
-                        location = location,
+                        scope = currentScope,
                         declarationSpecifier = declarationSpecifier,
                         declarator = declarator,
                         initializer = initializer,
-                    )
+                    )?.let {
+                        entityTable.registerVariable(ctx, it)
+                    }
                 }
             }
 
@@ -230,11 +248,14 @@ class DeclarationListener(
         // treated as part of the declaration_specifiers since init_declarator_list might be null.
         val typedefName = declarationSpecifier.typeSpecs.filterIsInstance<TypeSpec.TypedefName>().lastOrNull()
         typedefName?.let {
-            scopeManager.defineTypedef(
-                location = ctx.location,
+            defineTypedef(
+                ctx = ctx,
+                scope = currentScope,
                 declarationSpecifier = declarationSpecifier,
                 declarator = Declarator.IdentifierDeclarator(ctx.location, it.name),
-            )
+            )?.let {
+                entityTable.registerTypedef(ctx, it)
+            }
         }
     }
 
@@ -265,10 +286,215 @@ class DeclarationListener(
     }
 
     private fun enterNewScope(ctx: ParserRuleContext, kind: ScopeKind): Scope {
-        return scopeManager.createNewScope(ctx, kind)
+        val newScope = Scope(kind, currentScope)
+        currentScope.children.add(newScope)
+        currentScope = newScope
+        entityTable.registerScope(ctx, newScope)
+        return newScope
     }
 
     private fun exitScope(ctx: ParserRuleContext, kind: ScopeKind) {
-        scopeManager.popScope(ctx, kind)
+        require(currentScope.kind == kind) { "scope kind mismatch. Expected $kind, but got ${currentScope.kind}" }
+        require(currentScope === entityTable.getScope(ctx)) { "scope context mismatch" }
+        val parent = currentScope.parent
+        requireNotNull(parent)
+        currentScope = parent
+    }
+
+    private fun defineTypedef(
+        ctx: ParserRuleContext,
+        scope: Scope,
+        declarationSpecifier: DeclarationSpecifier,
+        declarator: Declarator,
+    ): Entity.Typedef? {
+        val typedef = Declaration.Typedef(ctx.location, scope, declarationSpecifier, declarator)
+        val name = typedef.name
+        if (name == null) {
+            reporter.reportError(ctx.location, "Typedef should have a name")
+            return null
+        }
+        val entity = scope.getOrCreateTypedefEntity(name)
+        entity.declarations.add(typedef)
+        return entity
+    }
+
+    private fun defineVariable(
+        ctx: ParserRuleContext,
+        scope: Scope,
+        declarationSpecifier: DeclarationSpecifier,
+        declarator: Declarator,
+        initializer: CParser.InitializerContext?,
+    ): Entity.Variable? {
+        val variable = Declaration.Variable(ctx.location, scope, declarationSpecifier, declarator, initializer)
+        val name = variable.name
+        if (name == null) {
+            reporter.reportError(ctx.location, "Variable should have a name")
+            return null
+        }
+        val entity = scope.getOrCreateVariableEntity(name)
+        if (entity.declarations.isEmpty()) {
+            entity.linkage = determineLinkage(variable, scope.kind)
+        } else {
+            // Validate linkage consistency on redeclaration
+            val newLinkage = determineLinkage(variable, scope.kind)
+            if (!isLinkageCompatible(entity.linkage, newLinkage)) {
+                reporter.reportError(
+                    ctx.location,
+                    "conflicting linkage for '$name'",
+                )
+            }
+        }
+        entity.declarations.add(variable)
+        if (variable.initializer != null) {
+            val definition = entity.definition
+            if (definition != null) {
+                reporter.reportError(
+                    ctx.location,
+                    "redefinition of variable '$name'; previous definition at ${definition.location}",
+                )
+                return null
+            } else {
+                entity.definition = variable
+            }
+        }
+        return entity
+    }
+
+    private fun defineFunction(
+        ctx: ParserRuleContext,
+        scope: Scope,
+        declarationSpecifier: DeclarationSpecifier,
+        declarator: Declarator,
+        parameters: List<Parameter>,
+        isDefinition: Boolean,
+    ): Entity.Function? {
+        val function = Declaration.Function(ctx.location, scope, declarationSpecifier, declarator, parameters)
+        val name = function.name
+        if (name == null) {
+            reporter.reportError(ctx.location, "Function should have a name")
+            return null
+        }
+        val entity = scope.getOrCreateFunctionEntity(name)
+        if (entity.declarations.isEmpty()) {
+            entity.linkage = when {
+                declarationSpecifier.storage.contains(StorageClass.STATIC) -> Linkage.INTERNAL
+                declarationSpecifier.storage.contains(StorageClass.EXTERN) -> Linkage.EXTERNAL
+                else -> Linkage.EXTERNAL // Functions default to external linkage
+            }
+        }
+        entity.declarations.add(function)
+        if (isDefinition) {
+            val definition = entity.definition
+            if (definition != null) {
+                reporter.reportError(
+                    ctx.location,
+                    "redefinition of function '$name'; previous definition at ${definition.location}",
+                )
+            } else {
+                entity.definition = function
+            }
+        }
+        return entity
+    }
+
+    private fun defineStruct(
+        ctx: ParserRuleContext,
+        scope: Scope,
+        name: String?,
+        structDeclarations: List<StructDeclaration>,
+    ): Entity.Struct {
+        val struct = Declaration.Struct(ctx.location, scope, name, structDeclarations)
+        val entity = scope.getOrCreateStructEntity(name)
+        entity.declarations.add(struct)
+        if (struct.isDefinition) {
+            val definition = entity.definition
+            if (definition != null) {
+                reporter.reportError(
+                    ctx.location,
+                    "redefinition of struct '$name'; previous definition at ${definition.location}",
+                )
+            } else {
+                entity.definition = struct
+            }
+        }
+        return entity
+    }
+
+    private fun defineEnum(
+        ctx: ParserRuleContext,
+        scope: Scope,
+        name: String?,
+        enumerators: List<Enumerator>,
+    ): Entity.Enum {
+        val enum = Declaration.Enum(ctx.location, scope, name, enumerators)
+        val entity = scope.getOrCreateEnumEntity(name)
+        entity.declarations.add(enum)
+        return entity
+    }
+
+    private fun defineLabel(
+        ctx: ParserRuleContext,
+        scope: Scope,
+        name: String,
+        isDefinition: Boolean,
+    ): Entity.Label {
+        val label = Declaration.Label(ctx.location, scope, name, isDefinition)
+        val entity = scope.getOrCreateLabelEntity(name)
+        entity.declarations.add(label)
+        return entity
+    }
+
+    private fun determineLinkage(decl: Declaration.Variable, scopeKind: ScopeKind): Linkage {
+        return when {
+            decl.declarationSpecifier.storage.contains(StorageClass.EXTERN) -> Linkage.EXTERNAL
+            decl.declarationSpecifier.storage.contains(StorageClass.STATIC) -> Linkage.INTERNAL
+            scopeKind == ScopeKind.FILE -> Linkage.EXTERNAL
+            else -> Linkage.NONE
+        }
+    }
+
+    private fun isLinkageCompatible(existing: Linkage, new: Linkage): Boolean {
+        // C17 §6.2.2: If the same identifier appears with both internal and external
+        // linkage in the same translation unit, the behavior is undefined.
+        return when (existing) {
+            new -> true
+            Linkage.EXTERNAL if new == Linkage.NONE -> false
+            Linkage.NONE if new == Linkage.EXTERNAL -> false
+            Linkage.INTERNAL if new == Linkage.EXTERNAL -> false
+            Linkage.EXTERNAL if new == Linkage.INTERNAL -> false
+            else -> true
+        }
+    }
+
+    /**
+     * Handles tentative definitions per C17 §6.9.2:
+     * A declaration with external linkage and no initializer
+     * is a tentative definition at file scope.
+     */
+    fun resolveTentativeDefinitions(scope: Scope) {
+        if (scope.kind == ScopeKind.FILE) {
+            scope.variables.forEach { entity ->
+                if (entity.definition == null && entity.linkage == Linkage.EXTERNAL) {
+                    val declaration = entity.declarations.firstOrNull()
+                    if (declaration != null) {
+                        val hasExtern = declaration.declarationSpecifier.storage
+                            .contains(StorageClass.EXTERN)
+                        if (!hasExtern) {
+                            val syntheticDeclaration = Declaration.Variable(
+                                location = declaration.location,
+                                scope = scope,
+                                declarationSpecifier = declaration.declarationSpecifier,
+                                declarator = declaration.declarator,
+                                initializer = null,
+                                isSyntheticZeroInit = true,
+                            )
+                            entity.declarations.add(syntheticDeclaration)
+                            entity.definition = syntheticDeclaration
+                        }
+                    }
+                }
+            }
+        }
+        scope.children.forEach { resolveTentativeDefinitions(it) }
     }
 }
