@@ -48,6 +48,7 @@ sealed class Entity(
         name: String?,
     ) : Entity(scope, name) {
         val declarations = mutableListOf<Declaration.Enum>()
+        var definition: Declaration.Enum? = null
     }
 
     class Label(

@@ -77,7 +77,9 @@ sealed class Declaration(
         scope: Scope,
         override val name: String?,
         val enumerators: List<Enumerator>,
-    ) : Declaration(location, scope)
+    ) : Declaration(location, scope) {
+        val isDefinition = enumerators.isNotEmpty()
+    }
 
     class Label(
         location: SourceLocation,

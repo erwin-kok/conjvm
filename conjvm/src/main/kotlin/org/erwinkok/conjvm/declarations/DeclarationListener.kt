@@ -39,10 +39,13 @@ class DeclarationListener(
     override fun exitFunction_definition(ctx: CParser.Function_definitionContext) {
         val declarationSpecifier = declarationParser.visit(ctx.declaration_specifiers()).cast<DeclarationSpecifier>()
         val declarator = declarationParser.visit(ctx.declarator()).cast<Declarator>()
+        val parentScope = currentScope.parent
+        requireNotNull(parentScope) { "Function definition must have parent scope" }
+        require(parentScope.kind == ScopeKind.FILE) { "Function can only be defined at file scope" }
         if (declarator is Declarator.FunctionDeclarator) {
             defineFunction(
                 ctx = ctx,
-                scope = currentScope,
+                scope = parentScope,
                 declarationSpecifier = declarationSpecifier,
                 declarator = declarator,
                 parameters = declarator.parameters,
@@ -64,7 +67,7 @@ class DeclarationListener(
         } else {
             defineFunction(
                 ctx = ctx,
-                scope = currentScope,
+                scope = parentScope,
                 declarationSpecifier = declarationSpecifier,
                 declarator = declarator,
                 parameters = emptyList(),
@@ -73,6 +76,7 @@ class DeclarationListener(
                 entityTable.registerFunction(ctx, it)
             }
         }
+        validateLabels(currentScope)
         exitScope(ctx, ScopeKind.FUNCTION)
     }
 
@@ -352,7 +356,6 @@ class DeclarationListener(
                     ctx.location,
                     "redefinition of variable '$name'; previous definition at ${definition.location}",
                 )
-                return null
             } else {
                 entity.definition = variable
             }
@@ -429,6 +432,17 @@ class DeclarationListener(
         val enum = Declaration.Enum(ctx.location, scope, name, enumerators)
         val entity = scope.getOrCreateEnumEntity(name)
         entity.declarations.add(enum)
+        if (enum.isDefinition) {
+            val definition = entity.definition
+            if (definition != null) {
+                reporter.reportError(
+                    ctx.location,
+                    "redefinition of enum '$name'; previous definition at ${definition.location}",
+                )
+            } else {
+                entity.definition = enum
+            }
+        }
         return entity
     }
 
@@ -437,9 +451,27 @@ class DeclarationListener(
         scope: Scope,
         name: String,
         isDefinition: Boolean,
-    ): Entity.Label {
+    ): Entity.Label? {
         val label = Declaration.Label(ctx.location, scope, name, isDefinition)
-        val entity = scope.getOrCreateLabelEntity(name)
+        var functionScope: Scope? = scope
+        while (functionScope != null && functionScope.kind != ScopeKind.FUNCTION) {
+            functionScope = functionScope.parent
+        }
+        if (functionScope == null) {
+            reporter.reportError(ctx.location, "label outside of function")
+            return null
+        }
+        val entity = functionScope.getOrCreateLabelEntity(name)
+        if (isDefinition) {
+            val existingDef = entity.declarations.firstOrNull { it.isDefined }
+            if (existingDef != null) {
+                reporter.reportError(
+                    ctx.location,
+                    "redefinition of label '$name'; previous definition at ${existingDef.location}",
+                )
+                return null
+            }
+        }
         entity.declarations.add(label)
         return entity
     }
@@ -496,5 +528,22 @@ class DeclarationListener(
             }
         }
         scope.children.forEach { resolveTentativeDefinitions(it) }
+    }
+
+    private fun validateLabels(functionScope: Scope) {
+        require(functionScope.kind == ScopeKind.FUNCTION) { "Expected function scope" }
+        functionScope.labels.forEach { entity ->
+            val hasDefinition = entity.declarations.any { it.isDefined }
+            if (!hasDefinition) {
+                entity.declarations.forEach { decl ->
+                    if (!decl.isDefined) {
+                        reporter.reportError(
+                            decl.location,
+                            "use of undeclared label '${entity.name}'",
+                        )
+                    }
+                }
+            }
+        }
     }
 }
