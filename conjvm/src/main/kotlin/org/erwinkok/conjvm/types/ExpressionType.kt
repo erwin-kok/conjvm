@@ -1,4 +1,4 @@
-package org.erwinkok.conjvm.ast.types
+package org.erwinkok.conjvm.types
 
 data class ExpressionType(val type: QualType, val isLValue: Boolean) {
     val isError: Boolean = this.type.isError

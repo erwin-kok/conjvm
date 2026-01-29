@@ -1,4 +1,4 @@
-package org.erwinkok.conjvm.ast.types
+package org.erwinkok.conjvm.types
 
 import org.erwinkok.conjvm.declarations.StorageClass
 

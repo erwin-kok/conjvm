@@ -1,17 +1,17 @@
 package org.erwinkok.conjvm.translation
 
-import org.erwinkok.conjvm.ast.types.Field
-import org.erwinkok.conjvm.ast.types.QualType
-import org.erwinkok.conjvm.ast.types.Scope
-import org.erwinkok.conjvm.ast.types.SymbolTable
-import org.erwinkok.conjvm.ast.types.Type
-import org.erwinkok.conjvm.ast.types.TypeSystem
-import org.erwinkok.conjvm.ast.types.TypeVisitor
 import org.erwinkok.conjvm.parser.ErrorReporter
 import org.erwinkok.conjvm.parser.Parser
 import org.erwinkok.conjvm.parser.SourceFile
 import org.erwinkok.conjvm.tac.TacCodeWriter
 import org.erwinkok.conjvm.tac.TacTranslation
+import org.erwinkok.conjvm.types.Field
+import org.erwinkok.conjvm.types.QualType
+import org.erwinkok.conjvm.types.Scope
+import org.erwinkok.conjvm.types.SymbolTable
+import org.erwinkok.conjvm.types.Type
+import org.erwinkok.conjvm.types.TypeSystem
+import org.erwinkok.conjvm.types.TypeVisitor
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test

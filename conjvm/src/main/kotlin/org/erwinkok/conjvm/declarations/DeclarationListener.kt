@@ -12,12 +12,12 @@ class DeclarationListener(
     override val reporter: ErrorReporter,
     override val source: SourceFile,
     private val entityTable: EntityTable,
+    private val rootScope: Scope,
 ) : CBaseListener(),
     ParserReporting {
     private val declarationParser = DeclarationParser(reporter, source)
     private val structDeclarationsStack = ArrayDeque<MutableList<StructDeclaration>>()
     private val enumeratorStack = ArrayDeque<MutableList<Enumerator>>()
-    private val rootScope = Scope(ScopeKind.FILE, null)
     private var currentScope = rootScope
 
     override fun enterCompilationUnit(ctx: CParser.CompilationUnitContext) {

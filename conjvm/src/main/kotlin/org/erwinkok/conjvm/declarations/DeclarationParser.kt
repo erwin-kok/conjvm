@@ -6,7 +6,6 @@ import org.erwinkok.conjvm.CParser.DeclSpecFuncSpecContext
 import org.erwinkok.conjvm.CParser.DeclSpecTypeQualContext
 import org.erwinkok.conjvm.CParser.DeclSpecTypeSpecContext
 import org.erwinkok.conjvm.CParser.StorageClassSpecContext
-import org.erwinkok.conjvm.ast.types.TypeException
 import org.erwinkok.conjvm.parser.ErrorReporter
 import org.erwinkok.conjvm.parser.SourceFile
 import org.erwinkok.conjvm.utils.ParserReporting
@@ -190,7 +189,7 @@ class DeclarationParser(
             ctx.ThreadLocal() != null -> StorageClass.THREAD_LOCAL
             ctx.Auto() != null -> StorageClass.AUTO
             ctx.Register() != null -> StorageClass.REGISTER
-            else -> throw TypeException("Invalid storage class spec: ${ctx.text}")
+            else -> throw DeclarationException("Invalid storage class spec: ${ctx.text}")
         }
     }
 
@@ -216,7 +215,7 @@ class DeclarationParser(
             ctx.Unsigned() != null -> TypeSpec.UNSIGNED
             ctx.Bool() != null -> TypeSpec.BOOL
             ctx.Complex() != null -> TypeSpec.COMPLEX
-            else -> throw TypeException("Invalid type spec: ${ctx.text}")
+            else -> throw DeclarationException("Invalid type spec: ${ctx.text}")
         }
     }
 
@@ -226,14 +225,14 @@ class DeclarationParser(
             ctx.Restrict() != null -> TypeQualifier.RESTRICT
             ctx.Volatile() != null -> TypeQualifier.VOLATILE
             ctx.Atomic() != null -> TypeQualifier.ATOMIC
-            else -> throw TypeException("Invalid type spec: ${ctx.text}")
+            else -> throw DeclarationException("Invalid type spec: ${ctx.text}")
         }
     }
 
     private fun parseFunctionSpec(ctx: CParser.Function_specifierContext): FunctionSpec {
         return when {
             ctx.Inline() != null -> FunctionSpec.INLINE
-            else -> throw TypeException("Invalid function spec: ${ctx.text}")
+            else -> throw DeclarationException("Invalid function spec: ${ctx.text}")
         }
     }
 }

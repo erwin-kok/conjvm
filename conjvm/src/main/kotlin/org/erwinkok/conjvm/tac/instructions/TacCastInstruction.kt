@@ -1,8 +1,8 @@
 package org.erwinkok.conjvm.tac.instructions
 
-import org.erwinkok.conjvm.ast.types.QualType
 import org.erwinkok.conjvm.tac.values.TacTemp
 import org.erwinkok.conjvm.tac.values.TacValue
+import org.erwinkok.conjvm.types.QualType
 
 class TacCastInstruction(val dst: TacTemp, val type: QualType, val value: TacValue) : TacInstruction {
     override fun toString(): String {

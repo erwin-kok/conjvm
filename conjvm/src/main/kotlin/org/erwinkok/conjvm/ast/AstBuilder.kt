@@ -49,7 +49,6 @@ import org.erwinkok.conjvm.ast.statements.SwitchStatement
 import org.erwinkok.conjvm.ast.statements.VariableDeclarationStatement
 import org.erwinkok.conjvm.ast.statements.VariableDeclarator
 import org.erwinkok.conjvm.ast.statements.WhileStatement
-import org.erwinkok.conjvm.ast.types.TypeException
 import org.erwinkok.conjvm.declarations.DeclarationSpecifier
 import org.erwinkok.conjvm.declarations.Declarator
 import org.erwinkok.conjvm.declarations.EntityTable
@@ -62,6 +61,7 @@ import org.erwinkok.conjvm.declarations.TypeSpec
 import org.erwinkok.conjvm.parser.ErrorReporter
 import org.erwinkok.conjvm.parser.SourceFile
 import org.erwinkok.conjvm.parser.SourceLocation
+import org.erwinkok.conjvm.types.TypeException
 import org.erwinkok.conjvm.utils.ParserReporting
 import org.erwinkok.conjvm.utils.Value
 

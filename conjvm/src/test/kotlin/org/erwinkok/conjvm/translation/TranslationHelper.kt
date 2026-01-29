@@ -3,13 +3,13 @@ package org.erwinkok.conjvm.translation
 import org.antlr.v4.runtime.misc.ParseCancellationException
 import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.ExpressionStatement
-import org.erwinkok.conjvm.ast.types.QualType
-import org.erwinkok.conjvm.ast.types.SymbolTable
-import org.erwinkok.conjvm.ast.types.Type
-import org.erwinkok.conjvm.ast.types.TypeVisitor
 import org.erwinkok.conjvm.parser.ErrorReporter
 import org.erwinkok.conjvm.parser.Parser
 import org.erwinkok.conjvm.parser.SourceFile
+import org.erwinkok.conjvm.types.QualType
+import org.erwinkok.conjvm.types.SymbolTable
+import org.erwinkok.conjvm.types.Type
+import org.erwinkok.conjvm.types.TypeVisitor
 import org.junit.jupiter.api.Assertions.assertEquals
 
 fun ErrorReporter.assertNoDiagnostics() {

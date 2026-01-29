@@ -1,3 +1,3 @@
-package org.erwinkok.conjvm.ast.types
+package org.erwinkok.conjvm.types
 
 class TypeException(msg: String) : RuntimeException(msg)
