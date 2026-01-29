@@ -726,7 +726,7 @@ class TypeVisitor(
 
             is Declarator.ArrayDeclarator -> {
                 val inner = applyDeclarator(baseType, declarator.elementType)
-                QualType(Type.Array(inner, evalSize(declarator.size)))
+                QualType(Type.Array(inner, 12345)) // TODO: fix size
             }
 
             is Declarator.FunctionDeclarator -> {
@@ -747,12 +747,5 @@ class TypeVisitor(
                 QualType(Type.BitField(baseType, declarator.width))
             }
         }
-    }
-
-    private fun evalSize(size: Expression?): Long? {
-        if (size == null) return null
-        if (size is ConstantIntExpression) return size.value.toLong()
-        if (size is ConstantLongExpression) return size.value
-        throw TypeException("array size '$size' must be a compile time constant")
     }
 }

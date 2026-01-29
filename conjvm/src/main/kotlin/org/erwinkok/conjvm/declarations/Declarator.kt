@@ -1,7 +1,6 @@
 package org.erwinkok.conjvm.declarations
 
 import org.erwinkok.conjvm.CParser
-import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.parser.SourceLocation
 
 data class TypeName(val location: SourceLocation, val declarationSpecifier: DeclarationSpecifier, val abstractDeclarator: Declarator)
@@ -41,8 +40,7 @@ sealed class Declarator {
     data class ArrayDeclarator(
         val location: SourceLocation,
         val elementType: Declarator,
-        val size: Expression?, // TODO
-        val sizeCtx: CParser.Assignment_expressionContext? = null,
+        val sizeCtx: CParser.Assignment_expressionContext?,
     ) : Declarator()
 
     data class BitFieldDeclarator(

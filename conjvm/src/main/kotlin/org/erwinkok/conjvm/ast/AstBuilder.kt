@@ -1,5 +1,7 @@
 package org.erwinkok.conjvm.ast
 
+import org.antlr.v4.runtime.ParserRuleContext
+import org.antlr.v4.runtime.Token
 import org.erwinkok.conjvm.CBaseVisitor
 import org.erwinkok.conjvm.CParser
 import org.erwinkok.conjvm.CParser.DeclSpecFuncSpecContext
@@ -148,143 +150,43 @@ class AstBuilder(
     }
 
     override fun visitLogical_or_expression(ctx: CParser.Logical_or_expressionContext): Value {
-        return Value.of(
-            ctx.op.zip(ctx.right)
-                .fold(visit(ctx.left).cast<Expression>()) { acc, (op, right) ->
-                    BinaryExpression(
-                        ctx.location,
-                        BinaryExpressionType.parse(op.text),
-                        acc,
-                        visit(right).cast<Expression>(),
-                    )
-                },
-        )
+        return Value.of(buildLeftAssociativeBinaryExpression(ctx, ctx.left, ctx.op, ctx.right))
     }
 
     override fun visitLogical_and_expression(ctx: CParser.Logical_and_expressionContext): Value {
-        return Value.of(
-            ctx.op.zip(ctx.right)
-                .fold(visit(ctx.left).cast<Expression>()) { acc, (op, right) ->
-                    BinaryExpression(
-                        ctx.location,
-                        BinaryExpressionType.parse(op.text),
-                        acc,
-                        visit(right).cast<Expression>(),
-                    )
-                },
-        )
+        return Value.of(buildLeftAssociativeBinaryExpression(ctx, ctx.left, ctx.op, ctx.right))
     }
 
     override fun visitInclusive_or_expression(ctx: CParser.Inclusive_or_expressionContext): Value {
-        return Value.of(
-            ctx.op.zip(ctx.right)
-                .fold(visit(ctx.left).cast<Expression>()) { acc, (op, right) ->
-                    BinaryExpression(
-                        ctx.location,
-                        BinaryExpressionType.parse(op.text),
-                        acc,
-                        visit(right).cast<Expression>(),
-                    )
-                },
-        )
+        return Value.of(buildLeftAssociativeBinaryExpression(ctx, ctx.left, ctx.op, ctx.right))
     }
 
     override fun visitExclusive_or_expression(ctx: CParser.Exclusive_or_expressionContext): Value {
-        return Value.of(
-            ctx.op.zip(ctx.right)
-                .fold(visit(ctx.left).cast<Expression>()) { acc, (op, right) ->
-                    BinaryExpression(
-                        ctx.location,
-                        BinaryExpressionType.parse(op.text),
-                        acc,
-                        visit(right).cast<Expression>(),
-                    )
-                },
-        )
+        return Value.of(buildLeftAssociativeBinaryExpression(ctx, ctx.left, ctx.op, ctx.right))
     }
 
     override fun visitAnd_expression(ctx: CParser.And_expressionContext): Value {
-        return Value.of(
-            ctx.op.zip(ctx.right)
-                .fold(visit(ctx.left).cast<Expression>()) { acc, (op, right) ->
-                    BinaryExpression(
-                        ctx.location,
-                        BinaryExpressionType.parse(op.text),
-                        acc,
-                        visit(right).cast<Expression>(),
-                    )
-                },
-        )
+        return Value.of(buildLeftAssociativeBinaryExpression(ctx, ctx.left, ctx.op, ctx.right))
     }
 
     override fun visitEquality_expression(ctx: CParser.Equality_expressionContext): Value {
-        return Value.of(
-            ctx.op.zip(ctx.right)
-                .fold(visit(ctx.left).cast<Expression>()) { acc, (op, right) ->
-                    BinaryExpression(
-                        ctx.location,
-                        BinaryExpressionType.parse(op.text),
-                        acc,
-                        visit(right).cast<Expression>(),
-                    )
-                },
-        )
+        return Value.of(buildLeftAssociativeBinaryExpression(ctx, ctx.left, ctx.op, ctx.right))
     }
 
     override fun visitRelational_expression(ctx: CParser.Relational_expressionContext): Value {
-        return Value.of(
-            ctx.op.zip(ctx.right)
-                .fold(visit(ctx.left).cast<Expression>()) { acc, (op, right) ->
-                    BinaryExpression(
-                        ctx.location,
-                        BinaryExpressionType.parse(op.text),
-                        acc,
-                        visit(right).cast<Expression>(),
-                    )
-                },
-        )
+        return Value.of(buildLeftAssociativeBinaryExpression(ctx, ctx.left, ctx.op, ctx.right))
     }
 
     override fun visitShift_expression(ctx: CParser.Shift_expressionContext): Value {
-        return Value.of(
-            ctx.op.zip(ctx.right)
-                .fold(visit(ctx.left).cast<Expression>()) { acc, (op, right) ->
-                    BinaryExpression(
-                        ctx.location,
-                        BinaryExpressionType.parse(op.text),
-                        acc,
-                        visit(right).cast<Expression>(),
-                    )
-                },
-        )
+        return Value.of(buildLeftAssociativeBinaryExpression(ctx, ctx.left, ctx.op, ctx.right))
     }
 
     override fun visitAdditive_expression(ctx: CParser.Additive_expressionContext): Value {
-        return Value.of(
-            ctx.op.zip(ctx.right)
-                .fold(visit(ctx.left).cast<Expression>()) { acc, (op, right) ->
-                    BinaryExpression(
-                        ctx.location,
-                        BinaryExpressionType.parse(op.text),
-                        acc,
-                        visit(right).cast<Expression>(),
-                    )
-                },
-        )
+        return Value.of(buildLeftAssociativeBinaryExpression(ctx, ctx.left, ctx.op, ctx.right))
     }
 
     override fun visitMultiplicative_expression(ctx: CParser.Multiplicative_expressionContext): Value {
-        return Value.of(
-            ctx.op.zip(ctx.right)
-                .fold(visit(ctx.left).cast<Expression>()) { acc, (op, right) ->
-                    BinaryExpression(
-                        ctx.location,
-                        BinaryExpressionType.parse(op.text),
-                        acc,
-                        visit(right).cast<Expression>(),
-                    )
-                },
-        )
+        return Value.of(buildLeftAssociativeBinaryExpression(ctx, ctx.left, ctx.op, ctx.right))
     }
 
     override fun visitSimpleCast(ctx: CParser.SimpleCastContext): Value {
@@ -706,8 +608,8 @@ class AstBuilder(
 
     override fun visitDirectDeclArray(ctx: CParser.DirectDeclArrayContext): Value {
         val inner = visit(ctx.direct_declarator()).cast<Declarator>()
-        val size = ctx.assignment_expression()?.let { visit(it).cast<Expression>() }
-        return Value.of(Declarator.ArrayDeclarator(ctx.location, inner, size))
+        val sizeCtx = ctx.assignment_expression()
+        return Value.of(Declarator.ArrayDeclarator(ctx.location, inner, sizeCtx))
     }
 
     override fun visitDirectDeclBitField(ctx: CParser.DirectDeclBitFieldContext): Value {
@@ -776,8 +678,8 @@ class AstBuilder(
 
     override fun visitDirectAbsDeclArray(ctx: CParser.DirectAbsDeclArrayContext): Value {
         val inner = Declarator.AnonymousDeclarator(ctx.location)
-        val size = ctx.assignment_expression()?.let { visit(it).cast<Expression>() }
-        return Value.of(Declarator.ArrayDeclarator(ctx.location, inner, size))
+        val sizeCtx = ctx.assignment_expression()
+        return Value.of(Declarator.ArrayDeclarator(ctx.location, inner, sizeCtx))
     }
 
     override fun visitDirectAbsDeclFunctionSimple(ctx: CParser.DirectAbsDeclFunctionSimpleContext): Value {
@@ -788,8 +690,8 @@ class AstBuilder(
 
     override fun visitDirectAbsDeclArrayCompound(ctx: CParser.DirectAbsDeclArrayCompoundContext): Value {
         val inner = visit(ctx.direct_abstract_declarator()).cast<Declarator>()
-        val size = ctx.assignment_expression()?.let { visit(it).cast<Expression>() }
-        return Value.of(Declarator.ArrayDeclarator(ctx.location, inner, size))
+        val sizeCtx = ctx.assignment_expression()
+        return Value.of(Declarator.ArrayDeclarator(ctx.location, inner, sizeCtx))
     }
 
     override fun visitDirectAbsDeclFunctionCompound(ctx: CParser.DirectAbsDeclFunctionCompoundContext): Value {
@@ -800,6 +702,24 @@ class AstBuilder(
 
     override fun visitInitializer(ctx: CParser.InitializerContext): Value {
         return visit(ctx.assignment_expression())
+    }
+
+    private fun buildLeftAssociativeBinaryExpression(
+        ctx: ParserRuleContext,
+        left: ParserRuleContext,
+        operators: List<Token>,
+        rights: List<ParserRuleContext>,
+    ): Expression {
+        var result = visit(left).cast<Expression>()
+        for ((op, right) in operators.zip(rights)) {
+            result = BinaryExpression(
+                ctx.location,
+                BinaryExpressionType.parse(op.text),
+                result,
+                visit(right).cast<Expression>(),
+            )
+        }
+        return result
     }
 
     private fun Value.toBlockStatement(location: SourceLocation): BlockStatement {
