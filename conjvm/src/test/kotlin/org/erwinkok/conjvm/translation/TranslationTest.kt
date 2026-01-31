@@ -55,9 +55,9 @@ class TranslationTest {
     @Disabled
     fun translationTest3() {
         val reporter = ErrorReporter()
-        val parser = Parser(reporter)
-
         val source = readResource("input.c.gz")
+        val parser = Parser(reporter, source)
+
         val result = Compiler(reporter).compile(listOf(source))
         reporter.assertNoDiagnostics()
         requireNotNull(result)

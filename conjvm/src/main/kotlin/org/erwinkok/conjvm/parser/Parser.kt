@@ -5,6 +5,7 @@ import org.antlr.v4.runtime.CommonTokenStream
 import org.antlr.v4.runtime.misc.ParseCancellationException
 import org.erwinkok.conjvm.CLexer
 import org.erwinkok.conjvm.CParser
+import org.erwinkok.conjvm.compiler.CompilerPhase
 import org.erwinkok.conjvm.declarations.DeclarationListener
 import org.erwinkok.conjvm.declarations.DeclarationResult
 import org.erwinkok.conjvm.declarations.EntityTable
@@ -12,13 +13,15 @@ import org.erwinkok.conjvm.declarations.Scope
 import org.erwinkok.conjvm.declarations.ScopeKind
 
 class Parser(
-    private val reporter: ErrorReporter,
-) {
-    fun parseCompilationUnit(source: SourceFile): DeclarationResult? {
+    override val reporter: ErrorReporter,
+    override val source: SourceFile,
+) : CompilerPhase {
+    private val entityTable = EntityTable()
+    private val rootScope = Scope(ScopeKind.FILE, null)
+    private val parser = createParser()
+
+    fun parseCompilationUnit(): DeclarationResult? {
         return try {
-            val entityTable = EntityTable()
-            val rootScope = Scope(ScopeKind.FILE, null)
-            val parser = createParser(source, entityTable, rootScope)
             val parseTree = parser.compilationUnit()
             DeclarationResult(
                 sourceFile = source,
@@ -33,11 +36,8 @@ class Parser(
         }
     }
 
-    fun parseStatement(source: SourceFile): DeclarationResult? {
+    fun parseStatement(): DeclarationResult? {
         return try {
-            val entityTable = EntityTable()
-            val rootScope = Scope(ScopeKind.FILE, null)
-            val parser = createParser(source, entityTable, rootScope)
             val parseTree = parser.statement()
             DeclarationResult(
                 sourceFile = source,
@@ -52,11 +52,8 @@ class Parser(
         }
     }
 
-    fun parseExpression(source: SourceFile): DeclarationResult? {
+    fun parseExpression(): DeclarationResult? {
         return try {
-            val entityTable = EntityTable()
-            val rootScope = Scope(ScopeKind.FILE, null)
-            val parser = createParser(source, entityTable, rootScope)
             val parseTree = parser.expression()
             DeclarationResult(
                 sourceFile = source,
@@ -71,7 +68,7 @@ class Parser(
         }
     }
 
-    private fun createParser(source: SourceFile, entityTable: EntityTable, rootScope: Scope): CParser {
+    private fun createParser(): CParser {
         val input = CharStreams.fromString(source.text)
         val lexer = CLexer(input)
         lexer.removeErrorListeners()

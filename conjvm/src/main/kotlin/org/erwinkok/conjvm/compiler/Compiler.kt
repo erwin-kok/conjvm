@@ -1,7 +1,6 @@
 package org.erwinkok.conjvm.compiler
 
 import org.erwinkok.conjvm.ast.AstBuilder
-import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.ast.statements.CompilationUnitStatement
 import org.erwinkok.conjvm.ast.statements.Statement
 import org.erwinkok.conjvm.parser.ErrorReporter
@@ -17,11 +16,10 @@ class Compiler(
 ) {
     fun compile(sourceFiles: List<SourceFile>): List<Map<String, TacFunctionDefinition>>? {
         val result = sourceFiles.map { sourceFile ->
-            val declarationResult = Parser(reporter).parseCompilationUnit(sourceFile)
+            val declarationResult = Parser(reporter, sourceFile).parseCompilationUnit()
             if (declarationResult == null || reporter.hasErrors) {
                 return null
             }
-
             val astBuilder = AstBuilder(reporter, sourceFile, declarationResult.entityTable)
             val compilationUnit = astBuilder.visit(declarationResult.parseTree).cast<CompilationUnitStatement>()
             if (reporter.hasErrors) {
@@ -42,21 +40,11 @@ class Compiler(
 
     fun compileStatement(statement: String): Statement? {
         val sourceFile = SourceFile.ofString("<statement>", statement)
-        val declarationResult = Parser(reporter).parseStatement(sourceFile)
+        val declarationResult = Parser(reporter, sourceFile).parseStatement()
         if (declarationResult == null || reporter.hasErrors) {
             return null
         }
         val astBuilder = AstBuilder(reporter, sourceFile, declarationResult.entityTable)
         return astBuilder.visit(declarationResult.parseTree).cast<Statement>()
-    }
-
-    fun compileExpression(expression: String): Expression? {
-        val sourceFile = SourceFile.ofString("<expression>", expression)
-        val declarationResult = Parser(reporter).parseExpression(sourceFile)
-        if (declarationResult == null || reporter.hasErrors) {
-            return null
-        }
-        val astBuilder = AstBuilder(reporter, sourceFile, declarationResult.entityTable)
-        return astBuilder.visit(declarationResult.parseTree).cast<Expression>()
     }
 }

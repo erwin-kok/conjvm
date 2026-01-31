@@ -28,6 +28,8 @@ fun ErrorReporter.assertNoDiagnostics() {
     }
 }
 
+class NoOp(reporter: ErrorReporter) : BaseTranslationVisitor(reporter)
+
 fun QualType.debugString(): String {
     val q = qualifiers.sorted().joinToString(" ") { it.name.lowercase() }
     val base = when (val t = type) {
@@ -43,7 +45,7 @@ fun parseBlock(inputText: String): QualType {
     val reporter = ErrorReporter()
     try {
         val source = SourceFile.ofString("<statement>", "{$inputText}")
-        val declarationResult = Parser(reporter).parseStatement(source)
+        val declarationResult = Parser(reporter, source).parseStatement()
         requireNotNull(declarationResult)
         reporter.assertNoDiagnostics()
         val astBuilder = AstBuilder(reporter, source, declarationResult.entityTable)
@@ -62,6 +64,17 @@ fun parseBlock(inputText: String): QualType {
     }
 }
 
+fun parseStatement(sourceFile: SourceFile, translationVisitor: List<TranslationStep> = listOf(::NoOp)): Statement? {
+    val reporter = ErrorReporter()
+    val parser = Parser(reporter, sourceFile)
+    val declarationResult = parser.parseStatement()
+    requireNotNull(declarationResult)
+    reporter.assertNoDiagnostics()
+    val astBuilder = AstBuilder(reporter, sourceFile, declarationResult.entityTable)
+    val statement = astBuilder.visit(declarationResult.parseTree).cast<Statement>()
+    return AstTranslator(reporter).translate(statement, translationVisitor)
+}
+
 fun readResource(name: String): SourceFile {
     val classLoader = TranslationTest::class.java.classLoader
     val inputStream = classLoader.getResourceAsStream(name)
@@ -69,22 +82,8 @@ fun readResource(name: String): SourceFile {
     return SourceFile.ofStream(name, inputStream)
 }
 
-class NoOp(reporter: ErrorReporter) : BaseTranslationVisitor(reporter)
-
 fun assertTranslatedAstEquals(inputText: String, expectedText: String, translationVisitor: List<TranslationStep> = listOf(::NoOp)) {
-    val reporter = ErrorReporter()
-    val parser = Parser(reporter)
-    val inputSource = SourceFile.ofString("test", inputText)
-    val declarationResult = parser.parseStatement(inputSource)
-    requireNotNull(declarationResult)
-    val astBuilder = AstBuilder(reporter, inputSource, declarationResult.entityTable)
-    val statement = astBuilder.visit(declarationResult.parseTree).cast<Statement>()
-    val translatedStatement = AstTranslator(reporter).translate(statement, translationVisitor)
-    val expectedSource = SourceFile.ofString("expected", expectedText)
-    val expectedResult = parser.parseStatement(expectedSource)
-    requireNotNull(expectedResult)
-    val astBuilder2 = AstBuilder(reporter, inputSource, expectedResult.entityTable)
-    val statement2 = astBuilder2.visit(expectedResult.parseTree).cast<Statement>()
-    assertEquals(statement2, translatedStatement)
-    reporter.assertNoDiagnostics()
+    val actual = parseStatement(SourceFile.ofString("test", inputText), translationVisitor)
+    val expected = parseStatement(SourceFile.ofString("expected", expectedText), translationVisitor)
+    assertEquals(expected, actual)
 }
