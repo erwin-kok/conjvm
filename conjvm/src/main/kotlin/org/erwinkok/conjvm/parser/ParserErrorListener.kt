@@ -16,7 +16,7 @@ class ParserErrorListener(
         } else {
             1
         }
-        val location = SourceLocation(
+        val location = SourceFileLocation(
             source = source,
             line = line,
             column = charPositionInLine,

@@ -3,6 +3,7 @@ package org.erwinkok.conjvm.utils
 import org.antlr.v4.runtime.ParserRuleContext
 import org.erwinkok.conjvm.parser.ErrorReporter
 import org.erwinkok.conjvm.parser.SourceFile
+import org.erwinkok.conjvm.parser.SourceFileLocation
 import org.erwinkok.conjvm.parser.SourceLocation
 
 interface ParserReporting {
@@ -11,7 +12,7 @@ interface ParserReporting {
 
     val ParserRuleContext.location: SourceLocation
         get() {
-            return SourceLocation(
+            return SourceFileLocation(
                 source = source,
                 line = this.start.line,
                 column = this.start.charPositionInLine,

@@ -30,7 +30,7 @@ class Parser(
                 parseTree = parseTree,
             )
         } catch (e: ParseCancellationException) {
-            val location = SourceLocation(source, 0, 0, 0)
+            val location = SourceFileLocation(source, 0, 0, 0)
             reporter.reportException(location, e)
             null
         }
@@ -46,7 +46,7 @@ class Parser(
                 parseTree = parseTree,
             )
         } catch (e: ParseCancellationException) {
-            val location = SourceLocation(source, 0, 0, 0)
+            val location = SourceFileLocation(source, 0, 0, 0)
             reporter.reportException(location, e)
             null
         }
@@ -62,7 +62,7 @@ class Parser(
                 parseTree = parseTree,
             )
         } catch (e: ParseCancellationException) {
-            val location = SourceLocation(source, 0, 0, 0)
+            val location = SourceFileLocation(source, 0, 0, 0)
             reporter.reportException(location, e)
             null
         }

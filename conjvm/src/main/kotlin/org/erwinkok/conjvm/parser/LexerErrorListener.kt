@@ -9,7 +9,7 @@ class LexerErrorListener(
     private val source: SourceFile,
 ) : BaseErrorListener() {
     override fun syntaxError(recognizer: Recognizer<*, *>, offendingSymbol: Any?, line: Int, charPositionInLine: Int, msg: String, e: RecognitionException) {
-        val location = SourceLocation(
+        val location = SourceFileLocation(
             source = source,
             line = line,
             column = charPositionInLine,
