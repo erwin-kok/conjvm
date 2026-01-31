@@ -5,11 +5,8 @@ import org.antlr.v4.runtime.CommonTokenStream
 import org.antlr.v4.runtime.misc.ParseCancellationException
 import org.erwinkok.conjvm.CLexer
 import org.erwinkok.conjvm.CParser
-import org.erwinkok.conjvm.ast.AstBuilder
-import org.erwinkok.conjvm.ast.expressions.Expression
-import org.erwinkok.conjvm.ast.statements.CompilationUnitStatement
-import org.erwinkok.conjvm.ast.statements.Statement
 import org.erwinkok.conjvm.declarations.DeclarationListener
+import org.erwinkok.conjvm.declarations.DeclarationResult
 import org.erwinkok.conjvm.declarations.EntityTable
 import org.erwinkok.conjvm.declarations.Scope
 import org.erwinkok.conjvm.declarations.ScopeKind
@@ -17,14 +14,18 @@ import org.erwinkok.conjvm.declarations.ScopeKind
 class Parser(
     private val reporter: ErrorReporter,
 ) {
-    fun parseCompilationUnit(source: SourceFile): CompilationUnitStatement? {
+    fun parseCompilationUnit(source: SourceFile): DeclarationResult? {
         return try {
             val entityTable = EntityTable()
             val rootScope = Scope(ScopeKind.FILE, null)
             val parser = createParser(source, entityTable, rootScope)
             val parseTree = parser.compilationUnit()
-            val astBuilder = AstBuilder(reporter, source, entityTable)
-            astBuilder.visit(parseTree).cast<CompilationUnitStatement>()
+            DeclarationResult(
+                sourceFile = source,
+                entityTable = entityTable,
+                rootScope = rootScope,
+                parseTree = parseTree,
+            )
         } catch (e: ParseCancellationException) {
             val location = SourceLocation(source, 0, 0, 0)
             reporter.reportException(location, e)
@@ -32,14 +33,18 @@ class Parser(
         }
     }
 
-    fun parseStatement(source: SourceFile): Statement? {
+    fun parseStatement(source: SourceFile): DeclarationResult? {
         return try {
             val entityTable = EntityTable()
             val rootScope = Scope(ScopeKind.FILE, null)
             val parser = createParser(source, entityTable, rootScope)
             val parseTree = parser.statement()
-            val astBuilder = AstBuilder(reporter, source, entityTable)
-            astBuilder.visit(parseTree).cast<Statement>()
+            DeclarationResult(
+                sourceFile = source,
+                entityTable = entityTable,
+                rootScope = rootScope,
+                parseTree = parseTree,
+            )
         } catch (e: ParseCancellationException) {
             val location = SourceLocation(source, 0, 0, 0)
             reporter.reportException(location, e)
@@ -47,14 +52,18 @@ class Parser(
         }
     }
 
-    fun parseExpression(source: SourceFile): Expression? {
+    fun parseExpression(source: SourceFile): DeclarationResult? {
         return try {
             val entityTable = EntityTable()
             val rootScope = Scope(ScopeKind.FILE, null)
             val parser = createParser(source, entityTable, rootScope)
             val parseTree = parser.expression()
-            val astBuilder = AstBuilder(reporter, source, entityTable)
-            astBuilder.visit(parseTree).cast<Expression>()
+            DeclarationResult(
+                sourceFile = source,
+                entityTable = entityTable,
+                rootScope = rootScope,
+                parseTree = parseTree,
+            )
         } catch (e: ParseCancellationException) {
             val location = SourceLocation(source, 0, 0, 0)
             reporter.reportException(location, e)

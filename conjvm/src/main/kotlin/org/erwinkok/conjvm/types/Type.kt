@@ -2,16 +2,19 @@ package org.erwinkok.conjvm.types
 
 import java.util.UUID
 
-data class Field(val name: String, val type: QualType)
+data class StructMember(val name: String, val type: QualType)
 
 sealed class Type {
     object Error : Type()
     object Void : Type()
     object Bool : Type()
+
+    // Floating point types
     object Float : Type()
     object Double : Type()
     object LongDouble : Type()
 
+    // Integer types
     data class Char(val signed: Boolean) : Type()
     data class Short(val signed: Boolean) : Type()
     data class Int(val signed: Boolean) : Type()
@@ -21,7 +24,7 @@ sealed class Type {
     data class Struct(
         val id: UUID,
         val tag: String?, // null = anonymous
-        val fields: List<Field>?, // null = incomplete type
+        val fields: List<StructMember>?, // null = incomplete type
     ) : Type()
 
     data class Pointer(val pointee: QualType) : Type()

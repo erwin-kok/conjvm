@@ -1,8 +1,10 @@
 package org.erwinkok.conjvm.translation
 
 import org.antlr.v4.runtime.misc.ParseCancellationException
+import org.erwinkok.conjvm.ast.AstBuilder
 import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.ExpressionStatement
+import org.erwinkok.conjvm.ast.statements.Statement
 import org.erwinkok.conjvm.parser.ErrorReporter
 import org.erwinkok.conjvm.parser.Parser
 import org.erwinkok.conjvm.parser.SourceFile
@@ -38,11 +40,12 @@ fun parseBlock(inputText: String): QualType {
     val reporter = ErrorReporter()
     try {
         val source = SourceFile.ofString("<statement>", "{$inputText}")
-        val symbolTable = SymbolTable()
-        val statement = Parser(reporter).parseStatement(source)
+        val declarationResult = Parser(reporter).parseStatement(source)
+        requireNotNull(declarationResult)
         reporter.assertNoDiagnostics()
-        require(statement is BlockStatement)
-        val typeVisitor = TypeVisitor(symbolTable, reporter)
+        val astBuilder = AstBuilder(reporter, source, declarationResult.entityTable)
+        val statement = astBuilder.visit(declarationResult.parseTree).cast<BlockStatement>()
+        val typeVisitor = TypeVisitor(SymbolTable(), reporter)
         typeVisitor.visit(statement)
         val last = statement.statements.lastOrNull()
         requireNotNull(last)
@@ -69,11 +72,16 @@ fun assertTranslatedAstEquals(inputText: String, expectedText: String, translati
     val reporter = ErrorReporter()
     val parser = Parser(reporter)
     val inputSource = SourceFile.ofString("test", inputText)
-    val statement = parser.parseStatement(inputSource)
-    requireNotNull(statement)
+    val declarationResult = parser.parseStatement(inputSource)
+    requireNotNull(declarationResult)
+    val astBuilder = AstBuilder(reporter, inputSource, declarationResult.entityTable)
+    val statement = astBuilder.visit(declarationResult.parseTree).cast<Statement>()
     val translatedStatement = AstTranslator(reporter).translate(statement, translationVisitor)
     val expectedSource = SourceFile.ofString("expected", expectedText)
-    val expectedStatement = parser.parseStatement(expectedSource)
-    assertEquals(expectedStatement, translatedStatement)
+    val expectedResult = parser.parseStatement(expectedSource)
+    requireNotNull(expectedResult)
+    val astBuilder2 = AstBuilder(reporter, inputSource, expectedResult.entityTable)
+    val statement2 = astBuilder2.visit(expectedResult.parseTree).cast<Statement>()
+    assertEquals(statement2, translatedStatement)
     reporter.assertNoDiagnostics()
 }

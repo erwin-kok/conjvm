@@ -9,9 +9,12 @@ class EntityTable {
     private val typedefMap = mutableMapOf<ParserRuleContext, Entity.Typedef>()
     private val variableMap = mutableMapOf<ParserRuleContext, Entity.Variable>()
     private val functionMap = mutableMapOf<ParserRuleContext, Entity.Function>()
-    private val structMap = mutableMapOf<ParserRuleContext, Entity.Struct>()
-    private val enumMap = mutableMapOf<ParserRuleContext, Entity.Enum>()
+    private val structCtxMap = mutableMapOf<ParserRuleContext, Entity.Struct>()
+    private val enumCtxMap = mutableMapOf<ParserRuleContext, Entity.Enum>()
     private val labelMap = mutableMapOf<ParserRuleContext, Entity.Label>()
+
+    private val structMap = mutableMapOf<String, Entity.Struct>()
+    private val enumMap = mutableMapOf<String, Entity.Enum>()
 
     fun registerScope(ctx: ParserRuleContext, scope: Scope) {
         scopeMap[ctx] = scope
@@ -41,25 +44,29 @@ class EntityTable {
         functionMap[ctx] = entity
     }
 
-    fun registerStruct(ctx: ParserRuleContext, entity: Entity.Struct) {
-        structMap[ctx] = entity
+    fun registerStruct(ctx: ParserRuleContext, name: String?, entity: Entity.Struct) {
+        structCtxMap[ctx] = entity
+        if (name != null) {
+            structMap[name] = entity
+        }
     }
 
-    fun registerEnum(ctx: ParserRuleContext, entity: Entity.Enum) {
-        enumMap[ctx] = entity
+    fun getStructByName(name: String): Entity.Struct? {
+        return structMap[name]
+    }
+
+    fun registerEnum(ctx: ParserRuleContext, name: String?, entity: Entity.Enum) {
+        enumCtxMap[ctx] = entity
+        if (name != null) {
+            enumMap[name] = entity
+        }
+    }
+
+    fun getEnumByName(name: String): Entity.Enum? {
+        return enumMap[name]
     }
 
     fun registerLabel(ctx: ParserRuleContext, entity: Entity.Label) {
         labelMap[ctx] = entity
-    }
-
-    fun <T> withScope(ctx: ParserRuleContext, kind: ScopeKind, block: (Scope) -> T): T {
-        val scope = scopeMap[ctx] ?: error("Missing scope for ${ctx::class.simpleName}")
-        require(scope.kind == kind) { "scope kind mismatch" }
-        return block(scope)
-    }
-
-    fun assertNoScope(ctx: ParserRuleContext) {
-        require(scopeMap[ctx] == null) { "Unexpected scope for ${ctx::class.simpleName}" }
     }
 }

@@ -210,27 +210,27 @@ class AstBuilder(
                 .asReversed()
                 .fold(coreExpr) { acc, op ->
                     when (op) {
-                        is CParser.PrefixIncrementContext -> UnaryExpression(ctx.location, UnaryType.PlusPlus, acc)
-                        is CParser.PrefixDecrementContext -> UnaryExpression(ctx.location, UnaryType.MinusMinus, acc)
+                        is CParser.PrefixIncrementContext -> UnaryExpression(op.location, UnaryType.PlusPlus, acc)
+                        is CParser.PrefixDecrementContext -> UnaryExpression(op.location, UnaryType.MinusMinus, acc)
                         is CParser.PrefixSizeofContext -> error("sizeof operator is currently not supported")
-                        else -> error("Unexpected operator ${op.javaClass}")
+                        else -> error("Unexpected prefix operator ${op.javaClass}")
                     }
                 },
         )
     }
 
-    override fun visitSimpleUnaryCore(ctx: CParser.SimpleUnaryCoreContext): Value {
-        return Value.of(visit(ctx.postfix_expression()).cast<Expression>())
+    override fun visitCompoundUnaryCore(ctx: CParser.CompoundUnaryCoreContext): Value {
+        val operator = UnaryType.parse(ctx.unary_operator().text)
+        val operand = visit(ctx.cast_expression()).cast<Expression>()
+        return Value.of(UnaryExpression(ctx.location, operator, operand))
     }
 
-    override fun visitCompoundUnaryCore(ctx: CParser.CompoundUnaryCoreContext): Value {
-        return Value.of(
-            UnaryExpression(
-                ctx.location,
-                UnaryType.parse(ctx.unary_operator().text),
-                visit(ctx.cast_expression()).cast<Expression>(),
-            ),
-        )
+    override fun visitSimpleUnaryCore(ctx: CParser.SimpleUnaryCoreContext): Value {
+        return visit(ctx.postfix_expression())
+    }
+
+    override fun visitSizeofUnaryCore(ctx: CParser.SizeofUnaryCoreContext): Value? {
+        error("sizeof operator is currently not supported")
     }
 
     override fun visitPostfix_expression(ctx: CParser.Postfix_expressionContext): Value {

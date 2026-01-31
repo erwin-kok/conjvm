@@ -210,12 +210,13 @@ unary_expression
 prefix_operator
     :   '++'                                                                                        #prefixIncrement
     |   '--'                                                                                        #prefixDecrement
-    |   'sizeof' unary_expression? '(' {isTypeName()}? type_name ')'                                #prefixSizeof
+    |   'sizeof'                                                                                    #prefixSizeof
     ;
 
 unary_core
     :   unary_operator cast_expression                                                              #compoundUnaryCore
     |   postfix_expression                                                                          #simpleUnaryCore
+    |   'sizeof' '(' type_name ')'                                                                  #sizeofUnaryCore
     ;
 
 unary_operator
