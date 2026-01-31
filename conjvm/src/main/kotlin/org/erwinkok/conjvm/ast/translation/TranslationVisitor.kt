@@ -1,4 +1,4 @@
-package org.erwinkok.conjvm.translation
+package org.erwinkok.conjvm.ast.translation
 
 import org.erwinkok.conjvm.ast.AstExpressionVisitor
 import org.erwinkok.conjvm.ast.AstStatementVisitor

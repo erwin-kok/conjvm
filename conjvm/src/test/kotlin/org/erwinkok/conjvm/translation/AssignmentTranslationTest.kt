@@ -1,5 +1,6 @@
 package org.erwinkok.conjvm.translation
 
+import org.erwinkok.conjvm.ast.translation.AssignmentTranslation
 import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.TestFactory
 import java.util.stream.Stream

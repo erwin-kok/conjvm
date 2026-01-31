@@ -5,6 +5,9 @@ import org.erwinkok.conjvm.ast.AstBuilder
 import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.ExpressionStatement
 import org.erwinkok.conjvm.ast.statements.Statement
+import org.erwinkok.conjvm.ast.translation.AstTranslator
+import org.erwinkok.conjvm.ast.translation.BaseTranslationVisitor
+import org.erwinkok.conjvm.ast.translation.TranslationStep
 import org.erwinkok.conjvm.parser.ErrorReporter
 import org.erwinkok.conjvm.parser.Parser
 import org.erwinkok.conjvm.parser.SourceFile

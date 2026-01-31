@@ -1,4 +1,4 @@
-package org.erwinkok.conjvm.translation
+package org.erwinkok.conjvm.ast.translation
 
 import org.erwinkok.conjvm.ast.expressions.AssignmentExpression
 import org.erwinkok.conjvm.ast.expressions.AssignmentExpressionType
