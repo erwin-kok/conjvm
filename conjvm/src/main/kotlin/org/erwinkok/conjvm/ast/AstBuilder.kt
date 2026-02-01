@@ -53,7 +53,6 @@ import org.erwinkok.conjvm.ast.statements.VariableDeclarator
 import org.erwinkok.conjvm.ast.statements.WhileStatement
 import org.erwinkok.conjvm.declarations.DeclarationSpecifier
 import org.erwinkok.conjvm.declarations.Declarator
-import org.erwinkok.conjvm.declarations.EntityTable
 import org.erwinkok.conjvm.declarations.FunctionSpec
 import org.erwinkok.conjvm.declarations.Parameter
 import org.erwinkok.conjvm.declarations.StorageClass
@@ -64,13 +63,14 @@ import org.erwinkok.conjvm.parser.ErrorReporter
 import org.erwinkok.conjvm.parser.SourceFile
 import org.erwinkok.conjvm.parser.SourceLocation
 import org.erwinkok.conjvm.types.TypeException
+import org.erwinkok.conjvm.types.TypeResolutionResult
 import org.erwinkok.conjvm.utils.ParserReporting
 import org.erwinkok.conjvm.utils.Value
 
 class AstBuilder(
     override val reporter: ErrorReporter,
     override val source: SourceFile,
-    private val entityTable: EntityTable,
+    private val typeResolution: TypeResolutionResult,
 ) : CBaseVisitor<Value>(),
     ParserReporting {
     override fun visitCompilationUnit(ctx: CParser.CompilationUnitContext): Value {
@@ -80,7 +80,7 @@ class AstBuilder(
             when (decl) {
                 is CParser.DeclrVarDeclContext -> varDecls.add(visit(decl).cast<VariableDeclarationStatement>())
                 is CParser.DeclrFunctionDefContext -> funcDefs.add(visit(decl).cast<FunctionDefinitionStatement>())
-                is CParser.DeclrStrayContext -> {} // ignore stray semicolon
+                is CParser.DeclrStrayContext -> Unit // ignore stray semicolon
             }
         }
         return Value.of(

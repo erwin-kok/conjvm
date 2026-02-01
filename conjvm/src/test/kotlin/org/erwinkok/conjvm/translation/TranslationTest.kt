@@ -15,10 +15,8 @@ class TranslationTest {
     fun translationTest() {
         val source = SourceFile.ofString("input.c", "void func(void) { int x = 4; }")
         val reporter = ErrorReporter()
-        val result = Compiler(reporter).compile(listOf(source))
+        val functions = Compiler(reporter).compile(listOf(source))
         reporter.assertNoDiagnostics()
-        requireNotNull(result)
-        val functions = result.firstOrNull()
         requireNotNull(functions)
         val writer = StringWriter()
         val tacCodeWriter = TacCodeWriter(writer)
@@ -58,10 +56,8 @@ class TranslationTest {
         val source = readResource("input.c.gz")
         val parser = Parser(reporter, source)
 
-        val result = Compiler(reporter).compile(listOf(source))
+        val functions = Compiler(reporter).compile(listOf(source))
         reporter.assertNoDiagnostics()
-        requireNotNull(result)
-        val functions = result.firstOrNull()
         requireNotNull(functions)
 
         val expected = readResource("reference.c.gz")

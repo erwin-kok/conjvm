@@ -53,7 +53,7 @@ class TypeVisitor(
     AstExpressionVisitor<ExpressionType> {
     private val cache = IdentityHashMap<Expression, ExpressionType>()
     private var currentReturn: QualType = TypeSystem.voidType
-    private var scope = Scope()
+    private var scope = ScopeX()
 
     val globalScope = scope
 
@@ -571,7 +571,7 @@ class TypeVisitor(
     }
 
     private fun enterScope() {
-        scope = Scope(scope)
+        scope = ScopeX(scope)
     }
 
     private fun leaveScope() {
@@ -611,7 +611,7 @@ class TypeVisitor(
         defineVariableInScope(statement, scope)
     }
 
-    private fun defineVariableInScope(statement: VariableDeclarationStatement, s: Scope) {
+    private fun defineVariableInScope(statement: VariableDeclarationStatement, s: ScopeX) {
         for (varDecl in statement.variableDeclarators) {
             try {
                 val qt = resolveType(statement.declarationSpecifier, varDecl.declarator)
@@ -645,19 +645,6 @@ class TypeVisitor(
     private fun buildBaseType(declSpec: DeclarationSpecifier): QualType {
         val specs = declSpec.typeSpecs
 
-        // Typedef handling
-        val typedefs = specs.filterIsInstance<TypeSpec.TypedefName>()
-        if (typedefs.isNotEmpty()) {
-            if (typedefs.size != 1) {
-                throw TypeException("multiple typedef names in declaration")
-            }
-            if (specs.size > 1) {
-                throw TypeException("typedef name mixed with type specifiers")
-            }
-            val name = typedefs.single().name
-            val qt = symbols.resolve(name) ?: throw TypeException("unknown qualified name $name")
-            return qt.copy(qualifiers = qt.qualifiers + declSpec.qualifiers)
-        }
         // Determine signed/unsigned
         val signed = specs.contains(TypeSpec.SIGNED) || !specs.contains(TypeSpec.UNSIGNED)
         // Count integer modifiers

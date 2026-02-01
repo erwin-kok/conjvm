@@ -14,6 +14,7 @@ import org.erwinkok.conjvm.parser.SourceFile
 import org.erwinkok.conjvm.types.QualType
 import org.erwinkok.conjvm.types.SymbolTable
 import org.erwinkok.conjvm.types.Type
+import org.erwinkok.conjvm.types.TypeResolutionResult
 import org.erwinkok.conjvm.types.TypeVisitor
 import org.junit.jupiter.api.Assertions.assertEquals
 
@@ -48,7 +49,8 @@ fun parseBlock(inputText: String): QualType {
         val declarationResult = Parser(reporter, source).parseStatement()
         requireNotNull(declarationResult)
         reporter.assertNoDiagnostics()
-        val astBuilder = AstBuilder(reporter, source, declarationResult.entityTable)
+        val typeResolution = TypeResolutionResult(declarationResult.sourceFile, declarationResult.entityTable, declarationResult.rootScope, declarationResult.parseTree, SymbolTable())
+        val astBuilder = AstBuilder(reporter, source, typeResolution)
         val statement = astBuilder.visit(declarationResult.parseTree).cast<BlockStatement>()
         val typeVisitor = TypeVisitor(SymbolTable(), reporter)
         typeVisitor.visit(statement)
@@ -70,7 +72,8 @@ fun parseStatement(sourceFile: SourceFile, translationVisitor: List<TranslationS
     val declarationResult = parser.parseStatement()
     requireNotNull(declarationResult)
     reporter.assertNoDiagnostics()
-    val astBuilder = AstBuilder(reporter, sourceFile, declarationResult.entityTable)
+    val typeResolution = TypeResolutionResult(declarationResult.sourceFile, declarationResult.entityTable, declarationResult.rootScope, declarationResult.parseTree, SymbolTable())
+    val astBuilder = AstBuilder(reporter, sourceFile, typeResolution)
     val statement = astBuilder.visit(declarationResult.parseTree).cast<Statement>()
     return AstTranslator(reporter).translate(statement, translationVisitor)
 }
