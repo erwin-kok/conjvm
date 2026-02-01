@@ -388,7 +388,7 @@ class TypeVisitor(
             reporter.reportError(expression.location, "'${expression.base}' is not a struct")
             return errorType(expression)
         }
-        val field = structType.fields?.find { it.name == expression.field }
+        val field = structType.members?.find { it.name == expression.field }
         if (field == null) {
             reporter.reportError(expression.location, "could not find field '${expression.field}' in struct '${expression.base}'")
             return errorType(expression)

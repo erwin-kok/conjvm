@@ -5,6 +5,7 @@ import java.util.UUID
 data class StructMember(val name: String, val type: QualType)
 
 sealed class Type {
+    // Error type for error recovery.
     object Error : Type()
     object Void : Type()
     object Bool : Type()
@@ -21,20 +22,47 @@ sealed class Type {
     data class Long(val signed: Boolean) : Type()
     data class LongLong(val signed: Boolean) : Type()
 
-    data class Struct(
-        val id: UUID,
-        val tag: String?, // null = anonymous
-        val fields: List<StructMember>?, // null = incomplete type
-    ) : Type()
-
     data class Pointer(val pointee: QualType) : Type()
     data class Array(val elementType: QualType, val size: kotlin.Long?) : Type()
     data class Function(val returnType: QualType, val parameters: List<QualType>) : Type()
     data class BitField(val base: QualType, val width: kotlin.Int) : Type()
-    data class Typedef(val name: String, val underlying: QualType) : Type() {
+
+    data class Struct(
+        val id: UUID,
+        val tag: String?,
+        val members: List<StructMember>?, // null = incomplete type
+    ) : Type() {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is Struct) return false
+            return this.id == other.id
+        }
+
+        override fun hashCode(): kotlin.Int = id.hashCode()
+    }
+
+    data class Enum(
+        val id: UUID,
+        val tag: String?,
+        val constants: Map<String, Long>?, // null = incomplete
+    ) : Type() {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is Enum) return false
+            return this.id == other.id
+        }
+
+        override fun hashCode(): kotlin.Int = id.hashCode()
+    }
+
+    data class Typedef(
+        val name: String,
+        val underlying: QualType,
+    ) : Type() {
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other !is Typedef) return false
+            // Typedef equality is based on canonical type
             return this.underlying.canonical == other.underlying.canonical
         }
 
@@ -44,15 +72,28 @@ sealed class Type {
     fun isCompatibleWith(other: Type): Boolean {
         if (this === other) return true
         return when (this) {
+            // Primitive types
             is Char if other is Char -> this.signed == other.signed
             is Short if other is Short -> this.signed == other.signed
             is Int if other is Int -> this.signed == other.signed
             is Long if other is Long -> this.signed == other.signed
             is LongLong if other is LongLong -> this.signed == other.signed
+
+            // Composite types
             is Pointer if other is Pointer -> pointerCompatible(this, other)
             is Array if other is Array -> arrayCompatible(this, other)
             is Function if other is Function -> functionCompatible(this, other)
+
+            // Nominal types (compare by identity)
             is Struct if other is Struct -> this.id == other.id
+            is Enum if other is Enum -> this.id == other.id
+
+            // Typedefs should have been canonicalized already
+            is Typedef -> error("Typedef should not appear in compatibility check")
+
+            // Error types are compatible with everything
+            is Error -> true
+
             else -> false
         }
     }
@@ -61,15 +102,17 @@ sealed class Type {
         is Error -> "<error>"
         is Void -> "void"
         is Bool -> "bool"
+
+        is Float -> "float"
+        is Double -> "double"
+        is LongDouble -> "long double"
+
         is Char -> if (this.signed) "signed char" else "unsigned char"
         is Short -> if (this.signed) "short" else "unsigned short"
         is Int -> if (this.signed) "int" else "unsigned int"
         is Long -> if (this.signed) "long" else "unsigned long"
         is LongLong -> if (this.signed) "long long" else "unsigned long long"
-        is Float -> "float"
-        is Double -> "double"
-        is LongDouble -> "long double"
-        is Struct -> this.tag?.let { "struct $it" } ?: "<anonymous struct>"
+
         is Pointer -> "${this.pointee.type}*".let {
             if (this.pointee.qualifiers.isNotEmpty()) {
                 this.pointee.qualifiers.joinToString(" ", postfix = " ") + it
@@ -90,6 +133,9 @@ sealed class Type {
         is BitField -> {
             "${this.base.type} : [${this.width}]"
         }
+
+        is Struct -> this.tag?.let { "struct $it" } ?: "<anonymous struct>"
+        is Enum -> this.tag?.let { "enum $it" } ?: "<anonymous enum>"
 
         is Typedef -> this.name
     }

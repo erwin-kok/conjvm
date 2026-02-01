@@ -136,7 +136,7 @@ class DeclarationListener(
             name = name,
             structDeclarations = structDeclarations,
         )
-        entityTable.registerStruct(ctx, name, struct)
+        entityTable.registerStruct(ctx, struct)
     }
 
     override fun exitStruct_declaration(ctx: CParser.Struct_declarationContext) {
@@ -161,7 +161,7 @@ class DeclarationListener(
             name = name,
             enumerators = enumerators,
         )
-        entityTable.registerEnum(ctx, name, enum)
+        entityTable.registerEnum(ctx, enum)
     }
 
     override fun exitEnumerator(ctx: CParser.EnumeratorContext) {

@@ -2,18 +2,21 @@ package org.erwinkok.conjvm.types
 
 import org.erwinkok.conjvm.declarations.StorageClass
 
+// TODO: remove
 data class VariableSymbolX(
     val name: String,
     val type: QualType,
     val storage: Set<StorageClass>,
 )
 
+// TODO: remove
 data class FunctionSymbolX(
     val name: String,
     val type: QualType,
     val storage: Set<StorageClass>,
 )
 
+// TODO: remove
 class ScopeX(val parent: ScopeX? = null) {
     private val variableSymbols = mutableMapOf<String, VariableSymbolX>()
     private val functionSymbols = mutableMapOf<String, FunctionSymbolX>()

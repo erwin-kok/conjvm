@@ -108,12 +108,12 @@ class QualTypeTest {
         val s1 = Type.Struct(
             UUID.randomUUID(),
             tag = "S",
-            fields = listOf(StructMember("x", QualType(Type.Int(true)))),
+            members = listOf(StructMember("x", QualType(Type.Int(true)))),
         )
         val s2 = Type.Struct(
             UUID.randomUUID(),
             tag = "S",
-            fields = listOf(StructMember("x", QualType(Type.Int(true)))),
+            members = listOf(StructMember("x", QualType(Type.Int(true)))),
         )
         assertNotEquals(s1, s2)
     }

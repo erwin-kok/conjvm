@@ -379,7 +379,9 @@ class AstBuilder(
     }
 
     override fun visitExprStatAssign(ctx: CParser.ExprStatAssignContext): Value {
-        val ex = ctx.expression()?.let { ExpressionStatement(ctx.location, visit(it).cast<Expression>()) } ?: CompoundStatement(ctx.location, emptyList())
+        val ex = ctx.expression()?.let {
+            ExpressionStatement(ctx.location, visit(it).cast<Expression>())
+        } ?: CompoundStatement(ctx.location, emptyList())
         return Value.of(ex)
     }
 
@@ -787,5 +789,9 @@ class AstBuilder(
             ctx.Inline() != null -> FunctionSpec.INLINE
             else -> throw TypeException("Invalid function spec: ${ctx.text}")
         }
+    }
+
+    private fun lookupIdentifier(location: SourceLocation, name: String): Expression {
+        TODO()
     }
 }
