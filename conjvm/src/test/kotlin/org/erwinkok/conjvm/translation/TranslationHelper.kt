@@ -2,7 +2,7 @@ package org.erwinkok.conjvm.translation
 
 import org.antlr.v4.runtime.misc.ParseCancellationException
 import org.erwinkok.conjvm.ast.AstBuilder
-import org.erwinkok.conjvm.ast.statements.BlockStatement
+import org.erwinkok.conjvm.ast.statements.CompoundStatement
 import org.erwinkok.conjvm.ast.statements.ExpressionStatement
 import org.erwinkok.conjvm.ast.statements.Statement
 import org.erwinkok.conjvm.ast.translation.AstTranslator
@@ -51,7 +51,7 @@ fun parseBlock(inputText: String): QualType {
         reporter.assertNoDiagnostics()
         val typeResolution = TypeResolutionResult(declarationResult.sourceFile, declarationResult.entityTable, declarationResult.rootScope, declarationResult.parseTree, SymbolTable())
         val astBuilder = AstBuilder(reporter, source, typeResolution)
-        val statement = astBuilder.visit(declarationResult.parseTree).cast<BlockStatement>()
+        val statement = astBuilder.visit(declarationResult.parseTree).cast<CompoundStatement>()
         val typeVisitor = TypeVisitor(SymbolTable(), reporter)
         typeVisitor.visit(statement)
         val last = statement.statements.lastOrNull()

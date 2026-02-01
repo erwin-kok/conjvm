@@ -3,7 +3,11 @@ package org.erwinkok.conjvm.ast.expressions
 import org.erwinkok.conjvm.ast.AstExpressionVisitor
 import org.erwinkok.conjvm.parser.SourceLocation
 
-class ArrayAccessExpression(location: SourceLocation, val base: Expression, val index: Expression) : Expression(location) {
+class ArrayAccessExpression(
+    location: SourceLocation,
+    val base: Expression,
+    val index: Expression,
+) : Expression(location) {
     override fun <R> accept(visitor: AstExpressionVisitor<R>): R = visitor.visitArrayAccess(this)
 
     override fun toString(): String {

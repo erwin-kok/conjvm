@@ -3,7 +3,11 @@ package org.erwinkok.conjvm.ast.expressions
 import org.erwinkok.conjvm.ast.AstExpressionVisitor
 import org.erwinkok.conjvm.parser.SourceLocation
 
-class FieldAccessExpression(location: SourceLocation, val base: Expression, val field: String) : Expression(location) {
+class FieldAccessExpression(
+    location: SourceLocation,
+    val base: Expression,
+    val field: String,
+) : Expression(location) {
     override fun <R> accept(visitor: AstExpressionVisitor<R>): R = visitor.visitFieldAccess(this)
 
     override fun toString(): String {

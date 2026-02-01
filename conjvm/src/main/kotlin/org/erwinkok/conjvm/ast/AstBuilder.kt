@@ -28,9 +28,9 @@ import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryType
-import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.BreakStatement
 import org.erwinkok.conjvm.ast.statements.CompilationUnitStatement
+import org.erwinkok.conjvm.ast.statements.CompoundStatement
 import org.erwinkok.conjvm.ast.statements.ContinueStatement
 import org.erwinkok.conjvm.ast.statements.DoWhileStatement
 import org.erwinkok.conjvm.ast.statements.ExpressionStatement
@@ -100,7 +100,7 @@ class AstBuilder(
                 ctx.location,
                 declarationSpecifier,
                 declarator,
-                visit(ctx.block_statement()).cast<BlockStatement>(),
+                visit(ctx.block_statement()).cast<CompoundStatement>(),
             ),
         )
     }
@@ -353,7 +353,7 @@ class AstBuilder(
 
     override fun visitBlock_statement(ctx: CParser.Block_statementContext): Value {
         return Value.of(
-            BlockStatement(
+            CompoundStatement(
                 ctx.location,
                 ctx.block_item().map { visit(it).cast<Statement>() },
             ),
@@ -379,7 +379,7 @@ class AstBuilder(
     }
 
     override fun visitExprStatAssign(ctx: CParser.ExprStatAssignContext): Value {
-        val ex = ctx.expression()?.let { ExpressionStatement(ctx.location, visit(it).cast<Expression>()) } ?: BlockStatement(ctx.location, emptyList())
+        val ex = ctx.expression()?.let { ExpressionStatement(ctx.location, visit(it).cast<Expression>()) } ?: CompoundStatement(ctx.location, emptyList())
         return Value.of(ex)
     }
 
@@ -425,7 +425,7 @@ class AstBuilder(
             SwitchCaseStatement(
                 ctx.location,
                 visit(ctx.constant_expression()).cast<ConstantExpression>(),
-                BlockStatement(ctx.location, ctx.statement().map { visit(it).cast<Statement>() }),
+                CompoundStatement(ctx.location, ctx.statement().map { visit(it).cast<Statement>() }),
             ),
         )
     }
@@ -434,7 +434,7 @@ class AstBuilder(
         return Value.of(
             SwitchDefaultStatement(
                 ctx.location,
-                BlockStatement(ctx.location, ctx.statement().map { visit(it).cast<Statement>() }),
+                CompoundStatement(ctx.location, ctx.statement().map { visit(it).cast<Statement>() }),
             ),
         )
     }
@@ -722,8 +722,8 @@ class AstBuilder(
         return result
     }
 
-    private fun Value.toBlockStatement(location: SourceLocation): BlockStatement {
-        return this.tryCast<BlockStatement>() ?: BlockStatement(location, listOf(this.cast<Statement>()))
+    private fun Value.toBlockStatement(location: SourceLocation): CompoundStatement {
+        return this.tryCast<CompoundStatement>() ?: CompoundStatement(location, listOf(this.cast<Statement>()))
     }
 
     private fun parseConstant(location: SourceLocation, input: String): ConstantExpression {

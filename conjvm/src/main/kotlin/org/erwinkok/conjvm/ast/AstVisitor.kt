@@ -16,9 +16,9 @@ import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
-import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.BreakStatement
 import org.erwinkok.conjvm.ast.statements.CompilationUnitStatement
+import org.erwinkok.conjvm.ast.statements.CompoundStatement
 import org.erwinkok.conjvm.ast.statements.ContinueStatement
 import org.erwinkok.conjvm.ast.statements.DoWhileStatement
 import org.erwinkok.conjvm.ast.statements.ExpressionStatement
@@ -57,7 +57,7 @@ interface AstExpressionVisitor<out R> {
 interface AstStatementVisitor<out R> {
     fun visit(node: Statement): R = node.accept(this)
 
-    fun visitBlock(statement: BlockStatement): R
+    fun visitBlock(statement: CompoundStatement): R
     fun visitBreak(statement: BreakStatement): R
     fun visitCompilationUnit(statement: CompilationUnitStatement): R
     fun visitContinue(statement: ContinueStatement): R

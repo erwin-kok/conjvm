@@ -3,7 +3,12 @@ package org.erwinkok.conjvm.ast.expressions
 import org.erwinkok.conjvm.ast.AstExpressionVisitor
 import org.erwinkok.conjvm.parser.SourceLocation
 
-class TernaryExpression(location: SourceLocation, val condition: Expression, val thenExpression: Expression, val elseExpression: Expression) : Expression(location) {
+class TernaryExpression(
+    location: SourceLocation,
+    val condition: Expression,
+    val thenExpression: Expression,
+    val elseExpression: Expression,
+) : Expression(location) {
     override fun <R> accept(visitor: AstExpressionVisitor<R>): R = visitor.visitTernary(this)
 
     override fun equals(other: Any?): Boolean {

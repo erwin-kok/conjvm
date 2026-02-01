@@ -3,7 +3,10 @@ package org.erwinkok.conjvm.ast.expressions
 import org.erwinkok.conjvm.ast.AstExpressionVisitor
 import org.erwinkok.conjvm.parser.SourceLocation
 
-class ConstantLongExpression(location: SourceLocation, val value: Long) : ConstantExpression(location) {
+class ConstantLongExpression(
+    location: SourceLocation,
+    val value: Long,
+) : ConstantExpression(location) {
     override fun <R> accept(visitor: AstExpressionVisitor<R>): R = visitor.visitConstantLong(this)
 
     override fun equals(other: Any?): Boolean {

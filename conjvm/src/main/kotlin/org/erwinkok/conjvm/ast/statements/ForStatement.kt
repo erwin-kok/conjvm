@@ -7,7 +7,9 @@ import org.erwinkok.conjvm.parser.SourceLocation
 
 sealed class ForInit
 
-class ForInitAssignmentExpression(val assignments: List<AssignmentExpression>) : ForInit() {
+class ForInitAssignmentExpression(
+    val assignments: List<AssignmentExpression>,
+) : ForInit() {
     override fun equals(other: Any?): Boolean {
         if (other === this) {
             return true
@@ -26,7 +28,9 @@ class ForInitAssignmentExpression(val assignments: List<AssignmentExpression>) :
     }
 }
 
-class ForInitVariableDeclaration(val variableDeclaration: VariableDeclarationStatement) : ForInit() {
+class ForInitVariableDeclaration(
+    val variableDeclaration: VariableDeclarationStatement,
+) : ForInit() {
     override fun equals(other: Any?): Boolean {
         if (other === this) {
             return true
@@ -50,7 +54,7 @@ class ForStatement(
     val init: ForInit?,
     val condition: Expression?,
     val iterators: List<Expression>?,
-    val statements: BlockStatement,
+    val statements: CompoundStatement,
 ) : Statement(location) {
     override fun <R> accept(visitor: AstStatementVisitor<R>): R = visitor.visitFor(this)
 

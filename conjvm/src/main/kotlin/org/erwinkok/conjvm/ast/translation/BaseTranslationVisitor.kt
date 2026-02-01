@@ -16,9 +16,9 @@ import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
-import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.BreakStatement
 import org.erwinkok.conjvm.ast.statements.CompilationUnitStatement
+import org.erwinkok.conjvm.ast.statements.CompoundStatement
 import org.erwinkok.conjvm.ast.statements.ContinueStatement
 import org.erwinkok.conjvm.ast.statements.DoWhileStatement
 import org.erwinkok.conjvm.ast.statements.ExpressionStatement
@@ -133,7 +133,7 @@ abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : T
         return TranslationResult(ts, UnaryExpression(expression.location, expression.type, te))
     }
 
-    override fun translateBlock(statement: BlockStatement): TranslationResult {
+    override fun translateBlock(statement: CompoundStatement): TranslationResult {
         return TranslationResult(
             listOf(translateBlockStatement(statement)),
             null,
@@ -270,14 +270,14 @@ abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : T
         )
     }
 
-    protected fun translateBlockStatement(statement: BlockStatement): BlockStatement {
+    protected fun translateBlockStatement(statement: CompoundStatement): CompoundStatement {
         val allStatements = mutableListOf<Statement>()
         for (s in statement.statements) {
             val (ts, te) = translate(s)
             require(te == null)
             allStatements.addAll(ts)
         }
-        return BlockStatement(statement.location, allStatements)
+        return CompoundStatement(statement.location, allStatements)
     }
 
     private fun translateVariableDeclarator(allStatements: MutableList<Statement>, varDecl: VariableDeclarator): VariableDeclarator {

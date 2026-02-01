@@ -15,9 +15,9 @@ import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
-import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.BreakStatement
 import org.erwinkok.conjvm.ast.statements.CompilationUnitStatement
+import org.erwinkok.conjvm.ast.statements.CompoundStatement
 import org.erwinkok.conjvm.ast.statements.ContinueStatement
 import org.erwinkok.conjvm.ast.statements.DoWhileStatement
 import org.erwinkok.conjvm.ast.statements.ExpressionStatement
@@ -134,7 +134,7 @@ class CodeWriter(val writer: Writer) : AstVisitor<String> {
         return "${expression.type}$nodeResult"
     }
 
-    override fun visitBlock(statement: BlockStatement): String {
+    override fun visitBlock(statement: CompoundStatement): String {
         appendIndent()
         writer.appendLine("{")
         withIncreasedIdent {

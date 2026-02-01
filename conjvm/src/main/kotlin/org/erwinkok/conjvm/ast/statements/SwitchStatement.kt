@@ -7,7 +7,11 @@ import org.erwinkok.conjvm.parser.SourceLocation
 
 abstract class SwitchSection
 
-data class SwitchCaseStatement(val location: SourceLocation, val test: ConstantExpression, val blockStatement: BlockStatement) : SwitchSection() {
+data class SwitchCaseStatement(
+    val location: SourceLocation,
+    val test: ConstantExpression,
+    val blockStatement: CompoundStatement,
+) : SwitchSection() {
     override fun equals(other: Any?): Boolean {
         if (other === this) {
             return true
@@ -29,7 +33,7 @@ data class SwitchCaseStatement(val location: SourceLocation, val test: ConstantE
     }
 }
 
-data class SwitchDefaultStatement(val location: SourceLocation, val blockStatement: BlockStatement) : SwitchSection() {
+data class SwitchDefaultStatement(val location: SourceLocation, val blockStatement: CompoundStatement) : SwitchSection() {
     override fun equals(other: Any?): Boolean {
         if (other === this) {
             return true

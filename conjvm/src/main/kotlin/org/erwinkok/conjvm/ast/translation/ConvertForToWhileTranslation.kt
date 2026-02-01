@@ -2,7 +2,7 @@ package org.erwinkok.conjvm.ast.translation
 
 import org.erwinkok.conjvm.ast.expressions.ConstantLongExpression
 import org.erwinkok.conjvm.ast.expressions.Expression
-import org.erwinkok.conjvm.ast.statements.BlockStatement
+import org.erwinkok.conjvm.ast.statements.CompoundStatement
 import org.erwinkok.conjvm.ast.statements.ContinueStatement
 import org.erwinkok.conjvm.ast.statements.ExpressionStatement
 import org.erwinkok.conjvm.ast.statements.ForInit
@@ -42,10 +42,10 @@ class ConvertForToWhileTranslation(reporter: ErrorReporter) : BaseTranslationVis
         val whileStatement = WhileStatement(
             statement.location,
             cte,
-            BlockStatement(statement.location, whileBodyStatements),
+            CompoundStatement(statement.location, whileBodyStatements),
         )
         allStatements.add(whileStatement)
-        return TranslationResult(listOf(BlockStatement(statement.location, allStatements)), null)
+        return TranslationResult(listOf(CompoundStatement(statement.location, allStatements)), null)
     }
 
     private fun translateForInit(location: SourceLocation, statement: ForInit?): List<Statement> {
@@ -97,11 +97,11 @@ class ConvertForToWhileTranslation(reporter: ErrorReporter) : BaseTranslationVis
         }
         return when (stmt) {
             is ContinueStatement -> {
-                BlockStatement(location, iterators + stmt)
+                CompoundStatement(location, iterators + stmt)
             }
 
-            is BlockStatement ->
-                BlockStatement(
+            is CompoundStatement ->
+                CompoundStatement(
                     location,
                     stmt.statements.map { rewriteContinues(location, it, iterators) },
                 )
@@ -130,7 +130,7 @@ class ConvertForToWhileTranslation(reporter: ErrorReporter) : BaseTranslationVis
         }
     }
 
-    private fun toBlockStatement(statement: Statement): BlockStatement {
-        return statement as? BlockStatement ?: BlockStatement(statement.location, listOf(statement))
+    private fun toBlockStatement(statement: Statement): CompoundStatement {
+        return statement as? CompoundStatement ?: CompoundStatement(statement.location, listOf(statement))
     }
 }

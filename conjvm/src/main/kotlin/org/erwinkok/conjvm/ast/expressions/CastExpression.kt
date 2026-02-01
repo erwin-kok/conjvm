@@ -5,7 +5,11 @@ import org.erwinkok.conjvm.declarations.TypeName
 import org.erwinkok.conjvm.parser.SourceLocation
 import org.erwinkok.conjvm.types.QualType
 
-class CastExpression(location: SourceLocation, val targetType: TypeName, val expression: Expression) : Expression(location) {
+class CastExpression(
+    location: SourceLocation,
+    val targetType: TypeName,
+    val expression: Expression,
+) : Expression(location) {
     var targetQualType: QualType? = null
 
     override fun <R> accept(visitor: AstExpressionVisitor<R>): R = visitor.visitCast(this)

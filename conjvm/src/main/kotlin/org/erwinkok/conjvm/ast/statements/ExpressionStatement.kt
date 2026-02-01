@@ -4,7 +4,10 @@ import org.erwinkok.conjvm.ast.AstStatementVisitor
 import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.parser.SourceLocation
 
-class ExpressionStatement(location: SourceLocation, val expression: Expression) : Statement(location) {
+class ExpressionStatement(
+    location: SourceLocation,
+    val expression: Expression,
+) : Statement(location) {
     override fun <R> accept(visitor: AstStatementVisitor<R>): R = visitor.visitExpression(this)
 
     override fun equals(other: Any?): Boolean {

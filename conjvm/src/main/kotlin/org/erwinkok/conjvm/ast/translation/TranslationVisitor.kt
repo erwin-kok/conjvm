@@ -18,9 +18,9 @@ import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
-import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.BreakStatement
 import org.erwinkok.conjvm.ast.statements.CompilationUnitStatement
+import org.erwinkok.conjvm.ast.statements.CompoundStatement
 import org.erwinkok.conjvm.ast.statements.ContinueStatement
 import org.erwinkok.conjvm.ast.statements.DoWhileStatement
 import org.erwinkok.conjvm.ast.statements.ExpressionStatement
@@ -124,7 +124,7 @@ interface ExpressionTranslationVisitor : AstExpressionVisitor<TranslationResult>
 interface StatementTranslationVisitor : AstStatementVisitor<TranslationResult> {
     fun translate(node: Statement): TranslationResult = node.accept(this)
 
-    fun translateBlock(statement: BlockStatement): TranslationResult
+    fun translateBlock(statement: CompoundStatement): TranslationResult
     fun translateBreak(statement: BreakStatement): TranslationResult
     fun translateCompilationUnit(statement: CompilationUnitStatement): TranslationResult
     fun translateContinue(statement: ContinueStatement): TranslationResult
@@ -141,7 +141,7 @@ interface StatementTranslationVisitor : AstStatementVisitor<TranslationResult> {
     fun translateWhile(statement: WhileStatement): TranslationResult
     fun translateDoWhile(statement: DoWhileStatement): TranslationResult
 
-    override fun visitBlock(statement: BlockStatement): TranslationResult {
+    override fun visitBlock(statement: CompoundStatement): TranslationResult {
         return translateBlock(statement)
     }
 

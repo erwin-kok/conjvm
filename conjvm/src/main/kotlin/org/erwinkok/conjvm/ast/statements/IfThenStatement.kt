@@ -4,7 +4,11 @@ import org.erwinkok.conjvm.ast.AstStatementVisitor
 import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.parser.SourceLocation
 
-class IfThenStatement(location: SourceLocation, val test: Expression, val thenBlock: BlockStatement) : Statement(location) {
+class IfThenStatement(
+    location: SourceLocation,
+    val test: Expression,
+    val thenBlock: CompoundStatement,
+) : Statement(location) {
     override fun <R> accept(visitor: AstStatementVisitor<R>): R = visitor.visitIfThen(this)
 
     override fun equals(other: Any?): Boolean {
