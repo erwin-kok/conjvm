@@ -7,20 +7,21 @@ import org.erwinkok.conjvm.ast.expressions.AssignmentExpression
 import org.erwinkok.conjvm.ast.expressions.BinaryExpression
 import org.erwinkok.conjvm.ast.expressions.CallExpression
 import org.erwinkok.conjvm.ast.expressions.CastExpression
-import org.erwinkok.conjvm.ast.expressions.ConstantIntExpression
-import org.erwinkok.conjvm.ast.expressions.ConstantLongExpression
-import org.erwinkok.conjvm.ast.expressions.ConstantStringExpression
+import org.erwinkok.conjvm.ast.expressions.CharacterLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.ast.expressions.FieldAccessExpression
-import org.erwinkok.conjvm.ast.expressions.Identifier
+import org.erwinkok.conjvm.ast.expressions.FloatLiteralExpression
+import org.erwinkok.conjvm.ast.expressions.IntegerLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
+import org.erwinkok.conjvm.ast.expressions.StringLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
+import org.erwinkok.conjvm.ast.expressions.VariableReference
+import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.BreakStatement
 import org.erwinkok.conjvm.ast.statements.CompilationUnitStatement
-import org.erwinkok.conjvm.ast.statements.CompoundStatement
 import org.erwinkok.conjvm.ast.statements.ContinueStatement
 import org.erwinkok.conjvm.ast.statements.DoWhileStatement
 import org.erwinkok.conjvm.ast.statements.ExpressionStatement
@@ -49,16 +50,17 @@ interface ExpressionTranslationVisitor : AstExpressionVisitor<TranslationResult>
     fun translateBinary(expression: BinaryExpression): TranslationResult
     fun translateCall(expression: CallExpression): TranslationResult
     fun translateCast(expression: CastExpression): TranslationResult
-    fun translateConstantInt(expression: ConstantIntExpression): TranslationResult
-    fun translateConstantLong(expression: ConstantLongExpression): TranslationResult
-    fun translateConstantString(expression: ConstantStringExpression): TranslationResult
+    fun translateIntegerLiteral(expression: IntegerLiteralExpression): TranslationResult
+    fun translateFloatLiteral(expression: FloatLiteralExpression): TranslationResult
+    fun translateStringLiteral(expression: StringLiteralExpression): TranslationResult
+    fun translateCharacterLiteral(expression: CharacterLiteralExpression): TranslationResult
     fun translateFieldAccess(expression: FieldAccessExpression): TranslationResult
-    fun translateIdentifier(identifier: Identifier): TranslationResult
     fun translateParenthesized(expression: ParenthesizedExpression): TranslationResult
     fun translatePostfixDecrement(expression: PostfixDecrementExpression): TranslationResult
     fun translatePostfixIncrement(expression: PostfixIncrementExpression): TranslationResult
     fun translateTernary(expression: TernaryExpression): TranslationResult
     fun translateUnary(expression: UnaryExpression): TranslationResult
+    fun translateVariableReference(variableReference: VariableReference): TranslationResult
 
     override fun visitArrayAccess(expression: ArrayAccessExpression): TranslationResult {
         return translateArrayAccess(expression)
@@ -80,24 +82,24 @@ interface ExpressionTranslationVisitor : AstExpressionVisitor<TranslationResult>
         return translateCast(expression)
     }
 
-    override fun visitConstantInt(expression: ConstantIntExpression): TranslationResult {
-        return translateConstantInt(expression)
+    override fun visitIntegerLiteral(expression: IntegerLiteralExpression): TranslationResult {
+        return translateIntegerLiteral(expression)
     }
 
-    override fun visitConstantLong(expression: ConstantLongExpression): TranslationResult {
-        return translateConstantLong(expression)
+    override fun visitFloatLiteral(expression: FloatLiteralExpression): TranslationResult {
+        return translateFloatLiteral(expression)
     }
 
-    override fun visitConstantString(expression: ConstantStringExpression): TranslationResult {
-        return translateConstantString(expression)
+    override fun visitStringLiteral(expression: StringLiteralExpression): TranslationResult {
+        return translateStringLiteral(expression)
+    }
+
+    override fun visitCharacterLiteral(expression: CharacterLiteralExpression): TranslationResult {
+        return translateCharacterLiteral(expression)
     }
 
     override fun visitFieldAccess(expression: FieldAccessExpression): TranslationResult {
         return translateFieldAccess(expression)
-    }
-
-    override fun visitIdentifier(identifier: Identifier): TranslationResult {
-        return translateIdentifier(identifier)
     }
 
     override fun visitParenthesized(expression: ParenthesizedExpression): TranslationResult {
@@ -119,12 +121,16 @@ interface ExpressionTranslationVisitor : AstExpressionVisitor<TranslationResult>
     override fun visitUnary(expression: UnaryExpression): TranslationResult {
         return translateUnary(expression)
     }
+
+    override fun visitVariableReference(variableReference: VariableReference): TranslationResult {
+        return translateVariableReference(variableReference)
+    }
 }
 
 interface StatementTranslationVisitor : AstStatementVisitor<TranslationResult> {
     fun translate(node: Statement): TranslationResult = node.accept(this)
 
-    fun translateBlock(statement: CompoundStatement): TranslationResult
+    fun translateBlock(statement: BlockStatement): TranslationResult
     fun translateBreak(statement: BreakStatement): TranslationResult
     fun translateCompilationUnit(statement: CompilationUnitStatement): TranslationResult
     fun translateContinue(statement: ContinueStatement): TranslationResult
@@ -141,7 +147,7 @@ interface StatementTranslationVisitor : AstStatementVisitor<TranslationResult> {
     fun translateWhile(statement: WhileStatement): TranslationResult
     fun translateDoWhile(statement: DoWhileStatement): TranslationResult
 
-    override fun visitBlock(statement: CompoundStatement): TranslationResult {
+    override fun visitBlock(statement: BlockStatement): TranslationResult {
         return translateBlock(statement)
     }
 

@@ -3,9 +3,9 @@ package org.erwinkok.conjvm.tac
 import org.erwinkok.conjvm.ast.AstStatementVisitor
 import org.erwinkok.conjvm.ast.expressions.BinaryExpressionType
 import org.erwinkok.conjvm.ast.expressions.Expression
+import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.BreakStatement
 import org.erwinkok.conjvm.ast.statements.CompilationUnitStatement
-import org.erwinkok.conjvm.ast.statements.CompoundStatement
 import org.erwinkok.conjvm.ast.statements.ContinueStatement
 import org.erwinkok.conjvm.ast.statements.DoWhileStatement
 import org.erwinkok.conjvm.ast.statements.ExpressionStatement
@@ -65,7 +65,7 @@ class TacTranslation(
         return TacResult(listOf(TacFunctionDefinition(name, translatedBlock)), null)
     }
 
-    override fun visitBlock(statement: CompoundStatement): TacResult {
+    override fun visitBlock(statement: BlockStatement): TacResult {
         return TacResult(translateBlockStatement(statement), null)
     }
 
@@ -192,7 +192,7 @@ class TacTranslation(
         return TacResult(allStatements, null)
     }
 
-    private fun emitSwitchBlock(blockStatement: CompoundStatement, endLabel: TacLabel): List<TacInstruction> {
+    private fun emitSwitchBlock(blockStatement: BlockStatement, endLabel: TacLabel): List<TacInstruction> {
         val allStatements = mutableListOf<TacInstruction>()
         for (i in blockStatement.statements) {
             if (i is BreakStatement) {
@@ -252,7 +252,7 @@ class TacTranslation(
         return TacResult(allStatements, null)
     }
 
-    private fun translateBlockStatement(statement: CompoundStatement): List<TacInstruction> {
+    private fun translateBlockStatement(statement: BlockStatement): List<TacInstruction> {
         val allStatements = mutableListOf<TacInstruction>()
         for (s in statement.statements) {
             val (ts, te) = translateStatement(s)

@@ -3,7 +3,7 @@ package org.erwinkok.conjvm.ast.statements
 import org.erwinkok.conjvm.ast.AstStatementVisitor
 import org.erwinkok.conjvm.parser.SourceLocation
 
-class CompoundStatement(
+class BlockStatement(
     location: SourceLocation,
     val statements: List<Statement>,
 ) : Statement(location) {
@@ -13,7 +13,7 @@ class CompoundStatement(
         if (other === this) {
             return true
         }
-        if (other !is CompoundStatement) {
+        if (other !is BlockStatement) {
             return false
         }
         return statements == other.statements

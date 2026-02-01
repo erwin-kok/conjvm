@@ -5,20 +5,21 @@ import org.erwinkok.conjvm.ast.expressions.AssignmentExpression
 import org.erwinkok.conjvm.ast.expressions.BinaryExpression
 import org.erwinkok.conjvm.ast.expressions.CallExpression
 import org.erwinkok.conjvm.ast.expressions.CastExpression
-import org.erwinkok.conjvm.ast.expressions.ConstantIntExpression
-import org.erwinkok.conjvm.ast.expressions.ConstantLongExpression
-import org.erwinkok.conjvm.ast.expressions.ConstantStringExpression
+import org.erwinkok.conjvm.ast.expressions.CharacterLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.ast.expressions.FieldAccessExpression
-import org.erwinkok.conjvm.ast.expressions.Identifier
+import org.erwinkok.conjvm.ast.expressions.FloatLiteralExpression
+import org.erwinkok.conjvm.ast.expressions.IntegerLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
+import org.erwinkok.conjvm.ast.expressions.StringLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
+import org.erwinkok.conjvm.ast.expressions.VariableReference
+import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.BreakStatement
 import org.erwinkok.conjvm.ast.statements.CompilationUnitStatement
-import org.erwinkok.conjvm.ast.statements.CompoundStatement
 import org.erwinkok.conjvm.ast.statements.ContinueStatement
 import org.erwinkok.conjvm.ast.statements.DoWhileStatement
 import org.erwinkok.conjvm.ast.statements.ExpressionStatement
@@ -79,24 +80,24 @@ abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : T
         return TranslationResult(ts, CastExpression(expression.location, expression.targetType, te))
     }
 
-    override fun translateConstantInt(expression: ConstantIntExpression): TranslationResult {
+    override fun translateIntegerLiteral(expression: IntegerLiteralExpression): TranslationResult {
         return TranslationResult(emptyList(), expression)
     }
 
-    override fun translateConstantLong(expression: ConstantLongExpression): TranslationResult {
+    override fun translateFloatLiteral(expression: FloatLiteralExpression): TranslationResult {
         return TranslationResult(emptyList(), expression)
     }
 
-    override fun translateConstantString(expression: ConstantStringExpression): TranslationResult {
+    override fun translateStringLiteral(expression: StringLiteralExpression): TranslationResult {
+        return TranslationResult(emptyList(), expression)
+    }
+
+    override fun translateCharacterLiteral(expression: CharacterLiteralExpression): TranslationResult {
         return TranslationResult(emptyList(), expression)
     }
 
     override fun translateFieldAccess(expression: FieldAccessExpression): TranslationResult {
         return TranslationResult(emptyList(), expression)
-    }
-
-    override fun translateIdentifier(identifier: Identifier): TranslationResult {
-        return TranslationResult(emptyList(), identifier)
     }
 
     override fun translateParenthesized(expression: ParenthesizedExpression): TranslationResult {
@@ -133,7 +134,11 @@ abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : T
         return TranslationResult(ts, UnaryExpression(expression.location, expression.type, te))
     }
 
-    override fun translateBlock(statement: CompoundStatement): TranslationResult {
+    override fun translateVariableReference(variableReference: VariableReference): TranslationResult {
+        return TranslationResult(emptyList(), variableReference)
+    }
+
+    override fun translateBlock(statement: BlockStatement): TranslationResult {
         return TranslationResult(
             listOf(translateBlockStatement(statement)),
             null,
@@ -270,14 +275,14 @@ abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : T
         )
     }
 
-    protected fun translateBlockStatement(statement: CompoundStatement): CompoundStatement {
+    protected fun translateBlockStatement(statement: BlockStatement): BlockStatement {
         val allStatements = mutableListOf<Statement>()
         for (s in statement.statements) {
             val (ts, te) = translate(s)
             require(te == null)
             allStatements.addAll(ts)
         }
-        return CompoundStatement(statement.location, allStatements)
+        return BlockStatement(statement.location, allStatements)
     }
 
     private fun translateVariableDeclarator(allStatements: MutableList<Statement>, varDecl: VariableDeclarator): VariableDeclarator {

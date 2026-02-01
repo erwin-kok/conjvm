@@ -8,18 +8,19 @@ import org.erwinkok.conjvm.ast.expressions.BinaryExpression
 import org.erwinkok.conjvm.ast.expressions.BinaryExpressionType
 import org.erwinkok.conjvm.ast.expressions.CallExpression
 import org.erwinkok.conjvm.ast.expressions.CastExpression
-import org.erwinkok.conjvm.ast.expressions.ConstantIntExpression
-import org.erwinkok.conjvm.ast.expressions.ConstantLongExpression
-import org.erwinkok.conjvm.ast.expressions.ConstantStringExpression
+import org.erwinkok.conjvm.ast.expressions.CharacterLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.ast.expressions.FieldAccessExpression
-import org.erwinkok.conjvm.ast.expressions.Identifier
+import org.erwinkok.conjvm.ast.expressions.FloatLiteralExpression
+import org.erwinkok.conjvm.ast.expressions.IntegerLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
+import org.erwinkok.conjvm.ast.expressions.StringLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryType
+import org.erwinkok.conjvm.ast.expressions.VariableReference
 import org.erwinkok.conjvm.tac.instructions.TacAddressOfInstruction
 import org.erwinkok.conjvm.tac.instructions.TacBinaryInstruction
 import org.erwinkok.conjvm.tac.instructions.TacCallInstruction
@@ -39,6 +40,8 @@ import org.erwinkok.conjvm.tac.lvalues.FieldLValue
 import org.erwinkok.conjvm.tac.lvalues.IndirectLValue
 import org.erwinkok.conjvm.tac.lvalues.TacLValue
 import org.erwinkok.conjvm.tac.lvalues.VarLValue
+import org.erwinkok.conjvm.tac.values.TacConstantCharacterValue
+import org.erwinkok.conjvm.tac.values.TacConstantFloatValue
 import org.erwinkok.conjvm.tac.values.TacConstantLongValue
 import org.erwinkok.conjvm.tac.values.TacConstantStringValue
 import org.erwinkok.conjvm.tac.values.TacValue
@@ -57,16 +60,20 @@ class TacRValueGeneration(
         return TacResult(ts + tsl, tel)
     }
 
-    override fun visitConstantInt(expression: ConstantIntExpression): TacResult {
-        return TacResult(emptyList(), TacConstantLongValue(expression.value.toLong()))
-    }
-
-    override fun visitConstantLong(expression: ConstantLongExpression): TacResult {
+    override fun visitIntegerLiteral(expression: IntegerLiteralExpression): TacResult {
         return TacResult(emptyList(), TacConstantLongValue(expression.value))
     }
 
-    override fun visitConstantString(expression: ConstantStringExpression): TacResult {
+    override fun visitFloatLiteral(expression: FloatLiteralExpression): TacResult {
+        return TacResult(emptyList(), TacConstantFloatValue(expression.value))
+    }
+
+    override fun visitStringLiteral(expression: StringLiteralExpression): TacResult {
         return TacResult(emptyList(), TacConstantStringValue(expression.value))
+    }
+
+    override fun visitCharacterLiteral(expression: CharacterLiteralExpression): TacResult {
+        return TacResult(emptyList(), TacConstantCharacterValue(expression.value))
     }
 
     override fun visitFieldAccess(expression: FieldAccessExpression): TacResult {
@@ -76,8 +83,8 @@ class TacRValueGeneration(
         return TacResult(ts + tsl, tel)
     }
 
-    override fun visitIdentifier(identifier: Identifier): TacResult {
-        val (ts, te) = lValueVisitor.translate(identifier)
+    override fun visitVariableReference(variableReference: VariableReference): TacResult {
+        val (ts, te) = lValueVisitor.translate(variableReference)
         requireNotNull(te)
         val (tsl, tel) = generateLoadInstruction(te)
         return TacResult(ts + tsl, tel)
@@ -163,7 +170,7 @@ class TacRValueGeneration(
             te
         }
         val temp = tempFactory.newTemp()
-        if (expression.function is Identifier) {
+        if (expression.function is VariableReference) {
             allArguments.add(TacCallInstruction(temp, TacConstantStringValue(expression.function.name), args))
         } else {
             val (ts, te) = translate(expression.function)

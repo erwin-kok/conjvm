@@ -10,7 +10,7 @@ abstract class SwitchSection
 data class SwitchCaseStatement(
     val location: SourceLocation,
     val test: ConstantExpression,
-    val blockStatement: CompoundStatement,
+    val blockStatement: BlockStatement,
 ) : SwitchSection() {
     override fun equals(other: Any?): Boolean {
         if (other === this) {
@@ -33,7 +33,7 @@ data class SwitchCaseStatement(
     }
 }
 
-data class SwitchDefaultStatement(val location: SourceLocation, val blockStatement: CompoundStatement) : SwitchSection() {
+data class SwitchDefaultStatement(val location: SourceLocation, val blockStatement: BlockStatement) : SwitchSection() {
     override fun equals(other: Any?): Boolean {
         if (other === this) {
             return true

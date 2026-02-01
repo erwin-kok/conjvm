@@ -15,22 +15,23 @@ import org.erwinkok.conjvm.ast.expressions.BinaryExpression
 import org.erwinkok.conjvm.ast.expressions.BinaryExpressionType
 import org.erwinkok.conjvm.ast.expressions.CallExpression
 import org.erwinkok.conjvm.ast.expressions.CastExpression
+import org.erwinkok.conjvm.ast.expressions.CharacterLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.ConstantExpression
-import org.erwinkok.conjvm.ast.expressions.ConstantIntExpression
-import org.erwinkok.conjvm.ast.expressions.ConstantLongExpression
-import org.erwinkok.conjvm.ast.expressions.ConstantStringExpression
 import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.ast.expressions.FieldAccessExpression
-import org.erwinkok.conjvm.ast.expressions.Identifier
+import org.erwinkok.conjvm.ast.expressions.FloatLiteralExpression
+import org.erwinkok.conjvm.ast.expressions.IntegerLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
+import org.erwinkok.conjvm.ast.expressions.StringLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryType
+import org.erwinkok.conjvm.ast.expressions.VariableReference
+import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.BreakStatement
 import org.erwinkok.conjvm.ast.statements.CompilationUnitStatement
-import org.erwinkok.conjvm.ast.statements.CompoundStatement
 import org.erwinkok.conjvm.ast.statements.ContinueStatement
 import org.erwinkok.conjvm.ast.statements.DoWhileStatement
 import org.erwinkok.conjvm.ast.statements.ExpressionStatement
@@ -53,8 +54,12 @@ import org.erwinkok.conjvm.ast.statements.VariableDeclarator
 import org.erwinkok.conjvm.ast.statements.WhileStatement
 import org.erwinkok.conjvm.declarations.DeclarationSpecifier
 import org.erwinkok.conjvm.declarations.Declarator
+import org.erwinkok.conjvm.declarations.Entity
 import org.erwinkok.conjvm.declarations.FunctionSpec
+import org.erwinkok.conjvm.declarations.Linkage
 import org.erwinkok.conjvm.declarations.Parameter
+import org.erwinkok.conjvm.declarations.Scope
+import org.erwinkok.conjvm.declarations.ScopeKind
 import org.erwinkok.conjvm.declarations.StorageClass
 import org.erwinkok.conjvm.declarations.TypeName
 import org.erwinkok.conjvm.declarations.TypeQualifier
@@ -62,8 +67,12 @@ import org.erwinkok.conjvm.declarations.TypeSpec
 import org.erwinkok.conjvm.parser.ErrorReporter
 import org.erwinkok.conjvm.parser.SourceFile
 import org.erwinkok.conjvm.parser.SourceLocation
+import org.erwinkok.conjvm.parser.UnknownLocation
+import org.erwinkok.conjvm.types.QualType
+import org.erwinkok.conjvm.types.Type
 import org.erwinkok.conjvm.types.TypeException
 import org.erwinkok.conjvm.types.TypeResolutionResult
+import org.erwinkok.conjvm.types.VariableSymbol
 import org.erwinkok.conjvm.utils.ParserReporting
 import org.erwinkok.conjvm.utils.Value
 
@@ -73,7 +82,13 @@ class AstBuilder(
     private val typeResolution: TypeResolutionResult,
 ) : CBaseVisitor<Value>(),
     ParserReporting {
+    private var currentScope: Scope? = null
+    private val symbolTable = typeResolution.symbolTable
+    private val entityTable = typeResolution.entityTable
+
     override fun visitCompilationUnit(ctx: CParser.CompilationUnitContext): Value {
+        currentScope = entityTable.getScope(ctx)
+
         val varDecls = mutableListOf<VariableDeclarationStatement>()
         val funcDefs = mutableListOf<FunctionDefinitionStatement>()
         for (decl in ctx.external_declaration()) {
@@ -100,7 +115,7 @@ class AstBuilder(
                 ctx.location,
                 declarationSpecifier,
                 declarator,
-                visit(ctx.block_statement()).cast<CompoundStatement>(),
+                visit(ctx.block_statement()).cast<BlockStatement>(),
             ),
         )
     }
@@ -272,7 +287,8 @@ class AstBuilder(
     }
 
     override fun visitPrimaryId(ctx: CParser.PrimaryIdContext): Value {
-        return Value.of(Identifier(ctx.location, ctx.Identifier().text))
+        val name = ctx.Identifier().text
+        return Value.of(lookupIdentifier(ctx.location, name))
     }
 
     override fun visitPrimaryConstant(ctx: CParser.PrimaryConstantContext): Value {
@@ -280,8 +296,15 @@ class AstBuilder(
     }
 
     override fun visitPrimaryStringLiteral(ctx: CParser.PrimaryStringLiteralContext): Value {
-        val str = ctx.StringLiteral().joinToString("") { it.text }
-        return Value.of(ConstantStringExpression(ctx.location, str))
+        val text = ctx.StringLiteral().joinToString("") { it.text }
+        val value = parseStringLiteral(text)
+        val arrayType = QualType(
+            Type.Array(
+                QualType(Type.Char(signed = true)),
+                (value.length + 1).toLong(),
+            ),
+        )
+        return Value.of(StringLiteralExpression(ctx.location, value, arrayType))
     }
 
     override fun visitPrimaryParenthesized(ctx: CParser.PrimaryParenthesizedContext): Value {
@@ -353,7 +376,7 @@ class AstBuilder(
 
     override fun visitBlock_statement(ctx: CParser.Block_statementContext): Value {
         return Value.of(
-            CompoundStatement(
+            BlockStatement(
                 ctx.location,
                 ctx.block_item().map { visit(it).cast<Statement>() },
             ),
@@ -381,7 +404,7 @@ class AstBuilder(
     override fun visitExprStatAssign(ctx: CParser.ExprStatAssignContext): Value {
         val ex = ctx.expression()?.let {
             ExpressionStatement(ctx.location, visit(it).cast<Expression>())
-        } ?: CompoundStatement(ctx.location, emptyList())
+        } ?: BlockStatement(ctx.location, emptyList())
         return Value.of(ex)
     }
 
@@ -427,7 +450,7 @@ class AstBuilder(
             SwitchCaseStatement(
                 ctx.location,
                 visit(ctx.constant_expression()).cast<ConstantExpression>(),
-                CompoundStatement(ctx.location, ctx.statement().map { visit(it).cast<Statement>() }),
+                BlockStatement(ctx.location, ctx.statement().map { visit(it).cast<Statement>() }),
             ),
         )
     }
@@ -436,7 +459,7 @@ class AstBuilder(
         return Value.of(
             SwitchDefaultStatement(
                 ctx.location,
-                CompoundStatement(ctx.location, ctx.statement().map { visit(it).cast<Statement>() }),
+                BlockStatement(ctx.location, ctx.statement().map { visit(it).cast<Statement>() }),
             ),
         )
     }
@@ -724,19 +747,8 @@ class AstBuilder(
         return result
     }
 
-    private fun Value.toBlockStatement(location: SourceLocation): CompoundStatement {
-        return this.tryCast<CompoundStatement>() ?: CompoundStatement(location, listOf(this.cast<Statement>()))
-    }
-
-    private fun parseConstant(location: SourceLocation, input: String): ConstantExpression {
-        if (input.startsWith("0x", ignoreCase = true)) {
-            val hexValue = input.substring(2)
-            hexValue.toIntOrNull(radix = 16)?.let { return ConstantIntExpression(location, it) }
-            hexValue.toLongOrNull(radix = 16)?.let { return ConstantLongExpression(location, it) }
-        }
-        input.toIntOrNull()?.let { return ConstantIntExpression(location, it) }
-        input.toLongOrNull()?.let { return ConstantLongExpression(location, it) }
-        error("Could not parse constant: $input")
+    private fun Value.toBlockStatement(location: SourceLocation): BlockStatement {
+        return this.tryCast<BlockStatement>() ?: BlockStatement(location, listOf(this.cast<Statement>()))
     }
 
     private fun parseStorageClassSpec(ctx: CParser.Storage_class_specifierContext): StorageClass {
@@ -792,6 +804,164 @@ class AstBuilder(
     }
 
     private fun lookupIdentifier(location: SourceLocation, name: String): Expression {
-        TODO()
+        // Try enum constant first
+        symbolTable.lookupEnumConstantSymbol(name)?.let { enumConst ->
+            return IntegerLiteralExpression(
+                location = location,
+                value = enumConst.value,
+                type = QualType(Type.Int(signed = true)),
+            )
+        }
+
+        // Try variable lookup
+        val scope = currentScope ?: run {
+            reporter.reportError(location, "no scope available")
+            return VariableReference(
+                location,
+                name,
+                VariableSymbol(
+                    "",
+                    QualType(Type.Error),
+                    emptySet(),
+                    Linkage.NONE,
+                    Scope(ScopeKind.FILE, null),
+                    Entity.Variable(Scope(ScopeKind.FILE, null), ""),
+                ),
+                QualType(Type.Error),
+            )
+        }
+
+        val entity = scope.lookupVariableEntity(name)
+        if (entity == null) {
+            reporter.reportError(location, "undefined identifier '$name'")
+            return VariableReference(
+                location,
+                name,
+                VariableSymbol(
+                    "",
+                    QualType(Type.Error),
+                    emptySet(),
+                    Linkage.NONE,
+                    scope,
+                    Entity.Variable(scope, ""),
+                ),
+                QualType(Type.Error),
+            )
+        }
+
+        // Find the symbol for this entity
+        val symbol = symbolTable.getAllVariables().find { it.entity == entity }
+            ?: run {
+                reporter.reportError(location, "symbol not found for '$name'")
+                return VariableReference(
+                    location,
+                    name,
+                    VariableSymbol(
+                        "",
+                        QualType(Type.Error),
+                        emptySet(),
+                        Linkage.NONE,
+                        scope,
+                        entity,
+                    ),
+                    QualType(Type.Error),
+                )
+            }
+        return VariableReference(location, name, symbol, symbol.type)
+    }
+
+    private fun parseConstant(location: SourceLocation, text: String): Expression {
+        // Parse integer or float constant
+        return when {
+            text.contains('.') || text.contains('e') || text.contains('E') -> {
+                // Float constant
+                val value = text.toDoubleOrNull() ?: run {
+                    reporter.reportError(location, "invalid float constant: $text")
+                    0.0
+                }
+
+                val type = when {
+                    text.endsWith('f') || text.endsWith('F') -> QualType(Type.Float)
+                    text.endsWith('l') || text.endsWith('L') -> QualType(Type.LongDouble)
+                    else -> QualType(Type.Double)
+                }
+
+                FloatLiteralExpression(location, value, type)
+            }
+
+            text.startsWith("'") -> {
+                // Character constant
+                val value = parseCharacterConstant(text)
+                CharacterLiteralExpression(location, value, QualType(Type.Int(signed = true)))
+            }
+
+            else -> {
+                // Integer constant
+                val (value, type) = parseIntegerConstant(text)
+                IntegerLiteralExpression(location, value, type)
+            }
+        }
+    }
+
+    private fun parseIntegerConstant(text: String): Pair<Long, QualType> {
+        // Determine base
+        val (base, digits) = when {
+            text.startsWith("0x") || text.startsWith("0X") -> 16 to text.substring(2)
+            text.startsWith("0") && text.length > 1 -> 8 to text.substring(1)
+            else -> 10 to text
+        }
+
+        // Remove suffix
+        val suffix = digits.takeLastWhile { it in "uUlL" }
+        val numberPart = digits.dropLast(suffix.length)
+
+        val value = numberPart.toLongOrNull(base) ?: run {
+            reporter.reportError(UnknownLocation, "invalid integer constant: $text")
+            0L
+        }
+
+        // Determine type from suffix
+        val isUnsigned = suffix.contains('u') || suffix.contains('U')
+        val isLong = suffix.count { it == 'l' || it == 'L' }
+
+        val type = when {
+            isLong >= 2 -> QualType(Type.LongLong(!isUnsigned))
+            isLong == 1 -> QualType(Type.Long(!isUnsigned))
+            else -> QualType(Type.Int(!isUnsigned))
+        }
+
+        return value to type
+    }
+
+    private fun parseCharacterConstant(text: String): Char {
+        val content = text.substring(1, text.length - 1)
+        return when {
+            content.startsWith("\\") -> {
+                when (content[1]) {
+                    'n' -> '\n'
+                    't' -> '\t'
+                    'r' -> '\r'
+                    '0' -> '\u0000'
+                    '\\' -> '\\'
+                    '\'' -> '\''
+                    '"' -> '"'
+                    else -> content[1]
+                }
+            }
+
+            else -> content[0]
+        }
+    }
+
+    private fun parseStringLiteral(text: String): String {
+        // Remove quotes and handle escape sequences
+        val content = text.substring(1, text.length - 1)
+        return content.replace("\\n", "\n")
+            .replace("\\t", "\t")
+            .replace("\\r", "\r")
+            .replace("\\0", "\u0000")
+            .replace("\\\\", "\\")
+            .replace("\\'", "'")
+            .replace("\\\"", "\"")
     }
 }

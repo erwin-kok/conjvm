@@ -54,7 +54,7 @@ class ForStatement(
     val init: ForInit?,
     val condition: Expression?,
     val iterators: List<Expression>?,
-    val statements: CompoundStatement,
+    val statements: BlockStatement,
 ) : Statement(location) {
     override fun <R> accept(visitor: AstStatementVisitor<R>): R = visitor.visitFor(this)
 

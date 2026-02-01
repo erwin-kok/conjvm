@@ -5,20 +5,21 @@ import org.erwinkok.conjvm.ast.expressions.AssignmentExpression
 import org.erwinkok.conjvm.ast.expressions.BinaryExpression
 import org.erwinkok.conjvm.ast.expressions.CallExpression
 import org.erwinkok.conjvm.ast.expressions.CastExpression
-import org.erwinkok.conjvm.ast.expressions.ConstantIntExpression
-import org.erwinkok.conjvm.ast.expressions.ConstantLongExpression
-import org.erwinkok.conjvm.ast.expressions.ConstantStringExpression
+import org.erwinkok.conjvm.ast.expressions.CharacterLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.ast.expressions.FieldAccessExpression
-import org.erwinkok.conjvm.ast.expressions.Identifier
+import org.erwinkok.conjvm.ast.expressions.FloatLiteralExpression
+import org.erwinkok.conjvm.ast.expressions.IntegerLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
+import org.erwinkok.conjvm.ast.expressions.StringLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
+import org.erwinkok.conjvm.ast.expressions.VariableReference
+import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.BreakStatement
 import org.erwinkok.conjvm.ast.statements.CompilationUnitStatement
-import org.erwinkok.conjvm.ast.statements.CompoundStatement
 import org.erwinkok.conjvm.ast.statements.ContinueStatement
 import org.erwinkok.conjvm.ast.statements.DoWhileStatement
 import org.erwinkok.conjvm.ast.statements.ExpressionStatement
@@ -42,22 +43,23 @@ interface AstExpressionVisitor<out R> {
     fun visitBinary(expression: BinaryExpression): R
     fun visitCall(expression: CallExpression): R
     fun visitCast(expression: CastExpression): R
-    fun visitConstantInt(expression: ConstantIntExpression): R
-    fun visitConstantLong(expression: ConstantLongExpression): R
-    fun visitConstantString(expression: ConstantStringExpression): R
+    fun visitIntegerLiteral(expression: IntegerLiteralExpression): R
+    fun visitFloatLiteral(expression: FloatLiteralExpression): R
+    fun visitStringLiteral(expression: StringLiteralExpression): R
+    fun visitCharacterLiteral(expression: CharacterLiteralExpression): R
     fun visitFieldAccess(expression: FieldAccessExpression): R
-    fun visitIdentifier(identifier: Identifier): R
     fun visitParenthesized(expression: ParenthesizedExpression): R
     fun visitPostfixDecrement(expression: PostfixDecrementExpression): R
     fun visitPostfixIncrement(expression: PostfixIncrementExpression): R
     fun visitTernary(expression: TernaryExpression): R
     fun visitUnary(expression: UnaryExpression): R
+    fun visitVariableReference(variableReference: VariableReference): R
 }
 
 interface AstStatementVisitor<out R> {
     fun visit(node: Statement): R = node.accept(this)
 
-    fun visitBlock(statement: CompoundStatement): R
+    fun visitBlock(statement: BlockStatement): R
     fun visitBreak(statement: BreakStatement): R
     fun visitCompilationUnit(statement: CompilationUnitStatement): R
     fun visitContinue(statement: ContinueStatement): R

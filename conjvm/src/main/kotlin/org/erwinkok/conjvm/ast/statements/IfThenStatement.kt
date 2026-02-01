@@ -7,7 +7,7 @@ import org.erwinkok.conjvm.parser.SourceLocation
 class IfThenStatement(
     location: SourceLocation,
     val test: Expression,
-    val thenBlock: CompoundStatement,
+    val thenBlock: BlockStatement,
 ) : Statement(location) {
     override fun <R> accept(visitor: AstStatementVisitor<R>): R = visitor.visitIfThen(this)
 

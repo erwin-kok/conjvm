@@ -9,7 +9,7 @@ import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
-import org.erwinkok.conjvm.ast.statements.CompoundStatement
+import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.ExpressionStatement
 import org.erwinkok.conjvm.ast.statements.Statement
 import org.erwinkok.conjvm.ast.statements.VariableDeclarationStatement
@@ -55,7 +55,7 @@ class AssignmentTranslation(reporter: ErrorReporter) : BaseTranslationVisitor(re
         )
     }
 
-    override fun translateBlock(statement: CompoundStatement): TranslationResult {
+    override fun translateBlock(statement: BlockStatement): TranslationResult {
         val allStatements = mutableListOf<Statement>()
         statement.statements.map {
             val (ts, te) = translate(it)
@@ -63,7 +63,7 @@ class AssignmentTranslation(reporter: ErrorReporter) : BaseTranslationVisitor(re
             require(te == null)
         }
         return TranslationResult(
-            listOf(CompoundStatement(statement.location, allStatements)),
+            listOf(BlockStatement(statement.location, allStatements)),
             null,
         )
     }

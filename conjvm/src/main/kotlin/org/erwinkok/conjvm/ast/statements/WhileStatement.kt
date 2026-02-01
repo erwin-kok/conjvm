@@ -7,7 +7,7 @@ import org.erwinkok.conjvm.parser.SourceLocation
 class WhileStatement(
     location: SourceLocation,
     val condition: Expression,
-    val statements: CompoundStatement,
+    val statements: BlockStatement,
 ) : Statement(location) {
     override fun <R> accept(visitor: AstStatementVisitor<R>): R = visitor.visitWhile(this)
 

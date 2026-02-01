@@ -7,21 +7,22 @@ import org.erwinkok.conjvm.ast.expressions.AssignmentExpression
 import org.erwinkok.conjvm.ast.expressions.BinaryExpression
 import org.erwinkok.conjvm.ast.expressions.CallExpression
 import org.erwinkok.conjvm.ast.expressions.CastExpression
-import org.erwinkok.conjvm.ast.expressions.ConstantIntExpression
-import org.erwinkok.conjvm.ast.expressions.ConstantLongExpression
-import org.erwinkok.conjvm.ast.expressions.ConstantStringExpression
+import org.erwinkok.conjvm.ast.expressions.CharacterLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.ast.expressions.FieldAccessExpression
-import org.erwinkok.conjvm.ast.expressions.Identifier
+import org.erwinkok.conjvm.ast.expressions.FloatLiteralExpression
+import org.erwinkok.conjvm.ast.expressions.IntegerLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
+import org.erwinkok.conjvm.ast.expressions.StringLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryType
+import org.erwinkok.conjvm.ast.expressions.VariableReference
+import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.BreakStatement
 import org.erwinkok.conjvm.ast.statements.CompilationUnitStatement
-import org.erwinkok.conjvm.ast.statements.CompoundStatement
 import org.erwinkok.conjvm.ast.statements.ContinueStatement
 import org.erwinkok.conjvm.ast.statements.DoWhileStatement
 import org.erwinkok.conjvm.ast.statements.ExpressionStatement
@@ -114,7 +115,7 @@ class TypeVisitor(
         currentReturn = oldReturn
     }
 
-    override fun visitBlock(statement: CompoundStatement) {
+    override fun visitBlock(statement: BlockStatement) {
         enterScope()
         statement.statements.forEach { visit(it) }
         leaveScope()
@@ -357,19 +358,23 @@ class TypeVisitor(
         return errorType(expression)
     }
 
-    override fun visitConstantInt(expression: ConstantIntExpression): ExpressionType {
-        return expressionType(expression, TypeSystem.intType)
-    }
-
-    override fun visitConstantLong(expression: ConstantLongExpression): ExpressionType {
+    override fun visitIntegerLiteral(expression: IntegerLiteralExpression): ExpressionType {
         return expressionType(expression, TypeSystem.longType)
     }
 
-    override fun visitConstantString(expression: ConstantStringExpression): ExpressionType {
+    override fun visitFloatLiteral(expression: FloatLiteralExpression): ExpressionType {
+        return expressionType(expression, TypeSystem.longType) // TODO
+    }
+
+    override fun visitStringLiteral(expression: StringLiteralExpression): ExpressionType {
         // String literals decay to pointer to char
         val charType = QualType(Type.Char(true), setOf(TypeQualifier.CONST))
         val arrayType = QualType(Type.Array(charType, expression.value.length.toLong()))
         return expressionType(expression, TypeSystem.decay(arrayType))
+    }
+
+    override fun visitCharacterLiteral(expression: CharacterLiteralExpression): ExpressionType {
+        TODO("Not yet implemented")
     }
 
     override fun visitFieldAccess(expression: FieldAccessExpression): ExpressionType {
@@ -396,19 +401,6 @@ class TypeVisitor(
 
         // Field access: lvalue if base is lvalue
         return expressionType(expression, field.type, baseExpr.isLValue)
-    }
-
-    override fun visitIdentifier(identifier: Identifier): ExpressionType {
-        val localVar = scope.resolveVariable(identifier.name)
-        if (localVar != null) {
-            return expressionType(identifier, localVar.type, true)
-        }
-        val globalFunc = globalScope.resolveFunction(identifier.name)
-        if (globalFunc != null) {
-            return expressionType(identifier, globalFunc.type)
-        }
-        reporter.reportError(identifier.location, "undeclared identifier: '${identifier.name}'")
-        return errorType(identifier)
     }
 
     override fun visitParenthesized(expression: ParenthesizedExpression): ExpressionType {
@@ -559,6 +551,19 @@ class TypeVisitor(
                 }
             }
         }
+    }
+
+    override fun visitVariableReference(variableReference: VariableReference): ExpressionType {
+        val localVar = scope.resolveVariable(variableReference.name)
+        if (localVar != null) {
+            return expressionType(variableReference, localVar.type, true)
+        }
+        val globalFunc = globalScope.resolveFunction(variableReference.name)
+        if (globalFunc != null) {
+            return expressionType(variableReference, globalFunc.type)
+        }
+        reporter.reportError(variableReference.location, "undeclared identifier: '${variableReference.name}'")
+        return errorType(variableReference)
     }
 
     private fun visitSwitchCase(case: SwitchCaseStatement) {

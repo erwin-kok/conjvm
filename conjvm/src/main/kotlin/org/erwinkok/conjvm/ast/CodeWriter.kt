@@ -5,19 +5,20 @@ import org.erwinkok.conjvm.ast.expressions.AssignmentExpression
 import org.erwinkok.conjvm.ast.expressions.BinaryExpression
 import org.erwinkok.conjvm.ast.expressions.CallExpression
 import org.erwinkok.conjvm.ast.expressions.CastExpression
-import org.erwinkok.conjvm.ast.expressions.ConstantIntExpression
-import org.erwinkok.conjvm.ast.expressions.ConstantLongExpression
-import org.erwinkok.conjvm.ast.expressions.ConstantStringExpression
+import org.erwinkok.conjvm.ast.expressions.CharacterLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.FieldAccessExpression
-import org.erwinkok.conjvm.ast.expressions.Identifier
+import org.erwinkok.conjvm.ast.expressions.FloatLiteralExpression
+import org.erwinkok.conjvm.ast.expressions.IntegerLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
+import org.erwinkok.conjvm.ast.expressions.StringLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
+import org.erwinkok.conjvm.ast.expressions.VariableReference
+import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.BreakStatement
 import org.erwinkok.conjvm.ast.statements.CompilationUnitStatement
-import org.erwinkok.conjvm.ast.statements.CompoundStatement
 import org.erwinkok.conjvm.ast.statements.ContinueStatement
 import org.erwinkok.conjvm.ast.statements.DoWhileStatement
 import org.erwinkok.conjvm.ast.statements.ExpressionStatement
@@ -79,7 +80,7 @@ class CodeWriter(val writer: Writer) : AstVisitor<String> {
         return "(${expression.targetType})$nodeResult"
     }
 
-    override fun visitConstantInt(expression: ConstantIntExpression): String {
+    override fun visitIntegerLiteral(expression: IntegerLiteralExpression): String {
         return if (expression.value < 10) {
             expression.value.toString()
         } else {
@@ -87,24 +88,20 @@ class CodeWriter(val writer: Writer) : AstVisitor<String> {
         }
     }
 
-    override fun visitConstantLong(expression: ConstantLongExpression): String {
-        return if (expression.value < 10) {
-            expression.value.toString()
-        } else {
-            expression.value.toHexString(format)
-        }
+    override fun visitFloatLiteral(expression: FloatLiteralExpression): String {
+        return expression.value.toString()
     }
 
-    override fun visitConstantString(expression: ConstantStringExpression): String {
+    override fun visitStringLiteral(expression: StringLiteralExpression): String {
         return expression.value
+    }
+
+    override fun visitCharacterLiteral(expression: CharacterLiteralExpression): String {
+        return expression.value.toString()
     }
 
     override fun visitFieldAccess(expression: FieldAccessExpression): String {
         return "${expression.base}.${expression.field}"
-    }
-
-    override fun visitIdentifier(identifier: Identifier): String {
-        return identifier.name
     }
 
     override fun visitParenthesized(expression: ParenthesizedExpression): String {
@@ -134,7 +131,11 @@ class CodeWriter(val writer: Writer) : AstVisitor<String> {
         return "${expression.type}$nodeResult"
     }
 
-    override fun visitBlock(statement: CompoundStatement): String {
+    override fun visitVariableReference(variableReference: VariableReference): String {
+        return variableReference.name
+    }
+
+    override fun visitBlock(statement: BlockStatement): String {
         appendIndent()
         writer.appendLine("{")
         withIncreasedIdent {

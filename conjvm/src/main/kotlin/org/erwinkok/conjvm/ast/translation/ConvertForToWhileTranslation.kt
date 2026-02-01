@@ -1,8 +1,8 @@
 package org.erwinkok.conjvm.ast.translation
 
-import org.erwinkok.conjvm.ast.expressions.ConstantLongExpression
 import org.erwinkok.conjvm.ast.expressions.Expression
-import org.erwinkok.conjvm.ast.statements.CompoundStatement
+import org.erwinkok.conjvm.ast.expressions.IntegerLiteralExpression
+import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.ContinueStatement
 import org.erwinkok.conjvm.ast.statements.ExpressionStatement
 import org.erwinkok.conjvm.ast.statements.ForInit
@@ -16,6 +16,8 @@ import org.erwinkok.conjvm.ast.statements.SwitchStatement
 import org.erwinkok.conjvm.ast.statements.WhileStatement
 import org.erwinkok.conjvm.parser.ErrorReporter
 import org.erwinkok.conjvm.parser.SourceLocation
+import org.erwinkok.conjvm.types.QualType
+import org.erwinkok.conjvm.types.Type
 
 class ConvertForToWhileTranslation(reporter: ErrorReporter) : BaseTranslationVisitor(reporter) {
     override fun translateFor(statement: ForStatement): TranslationResult {
@@ -42,10 +44,10 @@ class ConvertForToWhileTranslation(reporter: ErrorReporter) : BaseTranslationVis
         val whileStatement = WhileStatement(
             statement.location,
             cte,
-            CompoundStatement(statement.location, whileBodyStatements),
+            BlockStatement(statement.location, whileBodyStatements),
         )
         allStatements.add(whileStatement)
-        return TranslationResult(listOf(CompoundStatement(statement.location, allStatements)), null)
+        return TranslationResult(listOf(BlockStatement(statement.location, allStatements)), null)
     }
 
     private fun translateForInit(location: SourceLocation, statement: ForInit?): List<Statement> {
@@ -76,7 +78,7 @@ class ConvertForToWhileTranslation(reporter: ErrorReporter) : BaseTranslationVis
             val (ts, te) = translate(condition)
             return TranslationResult(ts, te)
         } else {
-            return TranslationResult(emptyList(), ConstantLongExpression(location, 1L))
+            return TranslationResult(emptyList(), IntegerLiteralExpression(location, 1L, QualType(Type.Int(true))))
         }
     }
 
@@ -97,11 +99,11 @@ class ConvertForToWhileTranslation(reporter: ErrorReporter) : BaseTranslationVis
         }
         return when (stmt) {
             is ContinueStatement -> {
-                CompoundStatement(location, iterators + stmt)
+                BlockStatement(location, iterators + stmt)
             }
 
-            is CompoundStatement ->
-                CompoundStatement(
+            is BlockStatement ->
+                BlockStatement(
                     location,
                     stmt.statements.map { rewriteContinues(location, it, iterators) },
                 )
@@ -130,7 +132,7 @@ class ConvertForToWhileTranslation(reporter: ErrorReporter) : BaseTranslationVis
         }
     }
 
-    private fun toBlockStatement(statement: Statement): CompoundStatement {
-        return statement as? CompoundStatement ?: CompoundStatement(statement.location, listOf(statement))
+    private fun toBlockStatement(statement: Statement): BlockStatement {
+        return statement as? BlockStatement ?: BlockStatement(statement.location, listOf(statement))
     }
 }

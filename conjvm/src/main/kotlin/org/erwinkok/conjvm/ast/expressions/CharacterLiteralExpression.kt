@@ -2,18 +2,20 @@ package org.erwinkok.conjvm.ast.expressions
 
 import org.erwinkok.conjvm.ast.AstExpressionVisitor
 import org.erwinkok.conjvm.parser.SourceLocation
+import org.erwinkok.conjvm.types.QualType
 
-class ConstantLongExpression(
+class CharacterLiteralExpression(
     location: SourceLocation,
-    val value: Long,
+    val value: Char,
+    val type: QualType,
 ) : ConstantExpression(location) {
-    override fun <R> accept(visitor: AstExpressionVisitor<R>): R = visitor.visitConstantLong(this)
+    override fun <R> accept(visitor: AstExpressionVisitor<R>): R = visitor.visitCharacterLiteral(this)
 
     override fun equals(other: Any?): Boolean {
         if (other === this) {
             return true
         }
-        if (other !is ConstantLongExpression) {
+        if (other !is CharacterLiteralExpression) {
             return false
         }
 
@@ -27,6 +29,6 @@ class ConstantLongExpression(
     }
 
     override fun toString(): String {
-        return "$value"
+        return value.toString()
     }
 }

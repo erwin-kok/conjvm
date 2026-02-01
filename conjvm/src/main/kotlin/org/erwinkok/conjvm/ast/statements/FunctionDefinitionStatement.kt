@@ -9,7 +9,7 @@ class FunctionDefinitionStatement(
     location: SourceLocation,
     val declarationSpecifier: DeclarationSpecifier,
     val declarator: Declarator,
-    val statements: CompoundStatement,
+    val statements: BlockStatement,
 ) : Statement(location) {
     override fun <R> accept(visitor: AstStatementVisitor<R>): R = visitor.visitFunctionDefinition(this)
 
