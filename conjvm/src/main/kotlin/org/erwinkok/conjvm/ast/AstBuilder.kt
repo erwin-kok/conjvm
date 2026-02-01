@@ -12,22 +12,23 @@ import org.erwinkok.conjvm.ast.expressions.ArrayAccessExpression
 import org.erwinkok.conjvm.ast.expressions.AssignmentExpression
 import org.erwinkok.conjvm.ast.expressions.AssignmentExpressionType
 import org.erwinkok.conjvm.ast.expressions.BinaryExpression
-import org.erwinkok.conjvm.ast.expressions.BinaryExpressionType
+import org.erwinkok.conjvm.ast.expressions.BinaryOperator
 import org.erwinkok.conjvm.ast.expressions.CallExpression
 import org.erwinkok.conjvm.ast.expressions.CastExpression
+import org.erwinkok.conjvm.ast.expressions.CastKind
 import org.erwinkok.conjvm.ast.expressions.CharacterLiteralExpression
+import org.erwinkok.conjvm.ast.expressions.ConditionalExpression
 import org.erwinkok.conjvm.ast.expressions.ConstantExpression
 import org.erwinkok.conjvm.ast.expressions.Expression
-import org.erwinkok.conjvm.ast.expressions.FieldAccessExpression
 import org.erwinkok.conjvm.ast.expressions.FloatLiteralExpression
+import org.erwinkok.conjvm.ast.expressions.ImplicitCastExpression
 import org.erwinkok.conjvm.ast.expressions.IntegerLiteralExpression
+import org.erwinkok.conjvm.ast.expressions.MemberAccessExpression
 import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
-import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
-import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
+import org.erwinkok.conjvm.ast.expressions.PointerMemberAccessExpression
 import org.erwinkok.conjvm.ast.expressions.StringLiteralExpression
-import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
-import org.erwinkok.conjvm.ast.expressions.UnaryType
+import org.erwinkok.conjvm.ast.expressions.UnaryOperator
 import org.erwinkok.conjvm.ast.expressions.VariableReference
 import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.BreakStatement
@@ -132,12 +133,29 @@ class AstBuilder(
     }
 
     override fun visitCompoundAssignExpr(ctx: CParser.CompoundAssignExprContext): Value {
+        val left = visit(ctx.unary_expression()).cast<Expression>()
+        val right = visit(ctx.assignment_expression()).cast<Expression>()
+        if (!left.isLValue) {
+            reporter.reportError(
+                ctx.unary_expression().location,
+                "expression is not assignable",
+            )
+        }
+        val operator = AssignmentExpressionType.parse(ctx.assignment_operator().text) ?: return reportErrorNode(ctx.location, "Unknown assignment operator")
+        if (!isAssignmentCompatible(left.type, right.type)) {
+            reporter.reportError(
+                ctx.location,
+                "incompatible types in assignment: cannot assign '${right.type}' to '${left.type}'",
+            )
+        }
+        val convertedRight = insertImplicitConversion(right, left.type)
         return Value.of(
             AssignmentExpression(
                 ctx.location,
-                AssignmentExpressionType.parse(ctx.assignment_operator().text),
-                visit(ctx.unary_expression()).cast<Expression>(),
-                visit(ctx.assignment_expression()).cast<Expression>(),
+                operator = operator,
+                left = left,
+                right = convertedRight,
+                type = left.type,
             ),
         )
     }
@@ -151,57 +169,70 @@ class AstBuilder(
     }
 
     override fun visitCompoundConditional(ctx: CParser.CompoundConditionalContext): Value {
-        val testResult = visit(ctx.test).cast<Expression>()
-        val thenResult = visit(ctx.thenExpr).cast<Expression>()
-        val elseResult = visit(ctx.elseExpr).cast<Expression>()
+        val condition = visit(ctx.test).cast<Expression>()
+        val thenExpr = visit(ctx.thenExpr).cast<Expression>()
+        val elseExpr = visit(ctx.elseExpr).cast<Expression>()
+        if (!isScalarType(condition.type)) {
+            reporter.reportError(
+                ctx.logical_or_expression().location,
+                "condition must have scalar type",
+            )
+        }
+        // Result type is the common type of then and else
+        val resultType = usualArithmeticConversions(thenExpr.type, elseExpr.type)
+
+        val convertedThen = insertImplicitConversion(thenExpr, resultType)
+        val convertedElse = insertImplicitConversion(elseExpr, resultType)
+
         return Value.of(
-            TernaryExpression(
+            ConditionalExpression(
                 ctx.location,
-                testResult,
-                thenResult,
-                elseResult,
+                condition,
+                convertedThen,
+                convertedElse,
+                type = resultType,
             ),
         )
     }
 
     override fun visitLogical_or_expression(ctx: CParser.Logical_or_expressionContext): Value {
-        return Value.of(buildLeftAssociativeBinaryExpression(ctx, ctx.left, ctx.op, ctx.right))
+        return Value.of(buildBinaryOp(ctx, ctx.left, ctx.op, ctx.right))
     }
 
     override fun visitLogical_and_expression(ctx: CParser.Logical_and_expressionContext): Value {
-        return Value.of(buildLeftAssociativeBinaryExpression(ctx, ctx.left, ctx.op, ctx.right))
+        return Value.of(buildBinaryOp(ctx, ctx.left, ctx.op, ctx.right))
     }
 
     override fun visitInclusive_or_expression(ctx: CParser.Inclusive_or_expressionContext): Value {
-        return Value.of(buildLeftAssociativeBinaryExpression(ctx, ctx.left, ctx.op, ctx.right))
+        return Value.of(buildBinaryOp(ctx, ctx.left, ctx.op, ctx.right))
     }
 
     override fun visitExclusive_or_expression(ctx: CParser.Exclusive_or_expressionContext): Value {
-        return Value.of(buildLeftAssociativeBinaryExpression(ctx, ctx.left, ctx.op, ctx.right))
+        return Value.of(buildBinaryOp(ctx, ctx.left, ctx.op, ctx.right))
     }
 
     override fun visitAnd_expression(ctx: CParser.And_expressionContext): Value {
-        return Value.of(buildLeftAssociativeBinaryExpression(ctx, ctx.left, ctx.op, ctx.right))
+        return Value.of(buildBinaryOp(ctx, ctx.left, ctx.op, ctx.right))
     }
 
     override fun visitEquality_expression(ctx: CParser.Equality_expressionContext): Value {
-        return Value.of(buildLeftAssociativeBinaryExpression(ctx, ctx.left, ctx.op, ctx.right))
+        return Value.of(buildBinaryOp(ctx, ctx.left, ctx.op, ctx.right))
     }
 
     override fun visitRelational_expression(ctx: CParser.Relational_expressionContext): Value {
-        return Value.of(buildLeftAssociativeBinaryExpression(ctx, ctx.left, ctx.op, ctx.right))
+        return Value.of(buildBinaryOp(ctx, ctx.left, ctx.op, ctx.right))
     }
 
     override fun visitShift_expression(ctx: CParser.Shift_expressionContext): Value {
-        return Value.of(buildLeftAssociativeBinaryExpression(ctx, ctx.left, ctx.op, ctx.right))
+        return Value.of(buildBinaryOp(ctx, ctx.left, ctx.op, ctx.right))
     }
 
     override fun visitAdditive_expression(ctx: CParser.Additive_expressionContext): Value {
-        return Value.of(buildLeftAssociativeBinaryExpression(ctx, ctx.left, ctx.op, ctx.right))
+        return Value.of(buildBinaryOp(ctx, ctx.left, ctx.op, ctx.right))
     }
 
     override fun visitMultiplicative_expression(ctx: CParser.Multiplicative_expressionContext): Value {
-        return Value.of(buildLeftAssociativeBinaryExpression(ctx, ctx.left, ctx.op, ctx.right))
+        return Value.of(buildBinaryOp(ctx, ctx.left, ctx.op, ctx.right))
     }
 
     override fun visitSimpleCast(ctx: CParser.SimpleCastContext): Value {
@@ -209,9 +240,18 @@ class AstBuilder(
     }
 
     override fun visitCastExpr(ctx: CParser.CastExprContext): Value {
-        val typeName = visit(ctx.type_name()).cast<TypeName>()
-        val nodeResult = visit(ctx.cast_expression()).cast<Expression>()
-        return Value.of(CastExpression(ctx.location, typeName, nodeResult))
+        val typeName = entityTable.getTypeName(ctx.type_name())
+            ?: return reportErrorNode(ctx.location, "Type name not found")
+        val targetType = resolveTypeName(typeName)
+        val expression = visit(ctx.cast_expression()).cast<Expression>()
+        // Validate cast
+        if (!isCastValid(expression.type, targetType)) {
+            reporter.reportError(
+                ctx.location,
+                "invalid cast from '${expression.type}' to '$targetType'",
+            )
+        }
+        return Value.of(CastExpression(ctx.location, typeName, expression))
     }
 
     override fun visitCastWithLiteral(ctx: CParser.CastWithLiteralContext): Value {
@@ -223,21 +263,43 @@ class AstBuilder(
         return Value.of(
             ctx.prefix_operator()
                 .asReversed()
-                .fold(coreExpr) { acc, op ->
+                .fold(coreExpr) { result, op ->
                     when (op) {
-                        is CParser.PrefixIncrementContext -> UnaryExpression(op.location, UnaryType.PlusPlus, acc)
-                        is CParser.PrefixDecrementContext -> UnaryExpression(op.location, UnaryType.MinusMinus, acc)
-                        is CParser.PrefixSizeofContext -> error("sizeof operator is currently not supported")
-                        else -> error("Unexpected prefix operator ${op.javaClass}")
+                        is CParser.PrefixIncrementContext -> {
+                            if (!result.isLValue) {
+                                reporter.reportError(ctx.location, "operand must be an lvalue")
+                            }
+                            buildUnaryOp(ctx.location, UnaryOperator.PrefixIncrement, result)
+                        }
+
+                        is CParser.PrefixDecrementContext -> {
+                            if (!result.isLValue) {
+                                reporter.reportError(ctx.location, "operand must be an lvalue")
+                            }
+                            buildUnaryOp(ctx.location, UnaryOperator.PrefixDecrement, result)
+                        }
+
+                        is CParser.PrefixSizeofContext -> {
+//                            val size = computeTypeSize(result.type)
+//                            return SizeofExpression(
+//                                location = ctx.location,
+//                                expression = result,
+//                                type = QualType(Type.Long(signed = false)),
+//                                size = size,
+//                            )
+                            error("sizeof operator is currently not supported")
+                        }
+
+                        else -> return reportErrorNode(ctx.location, "Unknown unary expression")
                     }
                 },
         )
     }
 
     override fun visitCompoundUnaryCore(ctx: CParser.CompoundUnaryCoreContext): Value {
-        val operator = UnaryType.parse(ctx.unary_operator().text)
+        val operator = UnaryOperator.parse(ctx.unary_operator().text) ?: return reportErrorNode(ctx.location, "Unknown unary operator")
         val operand = visit(ctx.cast_expression()).cast<Expression>()
-        return Value.of(UnaryExpression(ctx.location, operator, operand))
+        return Value.of(buildUnaryOp(ctx.location, operator, operand))
     }
 
     override fun visitSimpleUnaryCore(ctx: CParser.SimpleUnaryCoreContext): Value {
@@ -245,6 +307,17 @@ class AstBuilder(
     }
 
     override fun visitSizeofUnaryCore(ctx: CParser.SizeofUnaryCoreContext): Value? {
+        // sizeof(type)
+//        val typeName = entityTable.getTypeName(ctx.type_name())
+//            ?: return reportErrorNode(ctx.location, "Type name not found")
+//        val targetType = resolveTypeName(typeName)
+//        val size = computeTypeSize(targetType)
+//        return SizeofType(
+//            location = ctx.location,
+//            targetType = targetType,
+//            type = QualType(Type.Long(signed = false)),  // size_t
+//            size = size,
+//        )
         error("sizeof operator is currently not supported")
     }
 
@@ -252,32 +325,40 @@ class AstBuilder(
         return Value.of(
             ctx
                 .postfix_suffix()
-                .fold(visit(ctx.primary_expression()).cast<Expression>()) { acc, suffix ->
+                .fold(visit(ctx.primary_expression()).cast<Expression>()) { result, suffix ->
                     when (suffix) {
                         is CParser.PostfixArrayAccessContext -> {
-                            ArrayAccessExpression(ctx.location, acc, visit(suffix.index).cast<Expression>())
+                            val index = visit(suffix.index).cast<Expression>()
+                            buildArraySubscript(ctx.location, result, index)
                         }
 
                         is CParser.PostfixFunctionCallContext -> {
                             val argumentList = suffix.args?.assignment_expression()?.map { visit(it).cast<Expression>() } ?: emptyList()
-                            CallExpression(ctx.location, acc, argumentList)
+                            buildFunctionCall(ctx.location, result, argumentList)
                         }
 
                         is CParser.PostfixMemberAccessContext -> {
-                            FieldAccessExpression(ctx.location, acc, suffix.field.text)
+                            val memberName = suffix.Identifier().text
+                            buildMemberAccess(ctx.location, result, memberName)
                         }
 
                         is CParser.PostfixPointerMemberAccessContext -> {
-                            val deref = UnaryExpression(ctx.location, UnaryType.Indirection, acc)
-                            FieldAccessExpression(ctx.location, deref, suffix.field.text)
+                            val memberName = suffix.Identifier().text
+                            buildPointerMemberAccess(ctx.location, result, memberName)
                         }
 
                         is CParser.PostfixIncrementContext -> {
-                            PostfixIncrementExpression(ctx.location, acc)
+                            if (!result.isLValue) {
+                                reporter.reportError(ctx.location, "operand must be an lvalue")
+                            }
+                            buildUnaryOp(ctx.location, UnaryOperator.PostfixIncrement, result)
                         }
 
                         is CParser.PostfixDecrementContext -> {
-                            PostfixDecrementExpression(ctx.location, acc)
+                            if (!result.isLValue) {
+                                reporter.reportError(ctx.location, "operand must be an lvalue")
+                            }
+                            buildUnaryOp(ctx.location, UnaryOperator.PostfixDecrement, result)
                         }
 
                         else -> error("unknown postfix suffix $suffix")
@@ -729,78 +810,221 @@ class AstBuilder(
         return visit(ctx.assignment_expression())
     }
 
-    private fun buildLeftAssociativeBinaryExpression(
+    // ========================================================================
+    // HELPER FUNCTIONS - Type Checking and Conversions
+    // ========================================================================
+
+    private fun buildBinaryOp(
         ctx: ParserRuleContext,
         left: ParserRuleContext,
         operators: List<Token>,
         rights: List<ParserRuleContext>,
     ): Expression {
-        var result = visit(left).cast<Expression>()
-        for ((op, right) in operators.zip(rights)) {
-            result = BinaryExpression(
+        var left = visit(left).cast<Expression>()
+        for ((op, rightCtx) in operators.zip(rights)) {
+            val right = visit(rightCtx).cast<Expression>()
+            val operator = BinaryOperator.parse(op.text)
+            val resultType = when (operator) {
+                BinaryOperator.LogicalAnd, BinaryOperator.LogicalOr,
+                BinaryOperator.Equals, BinaryOperator.NotEquals,
+                BinaryOperator.Less, BinaryOperator.LessOrEqual,
+                BinaryOperator.Greater, BinaryOperator.GreaterOrEqual,
+                -> {
+                    // Result is int
+                    QualType(Type.Int(signed = true))
+                }
+
+                BinaryOperator.Add, BinaryOperator.Subtract -> {
+                    // Handle pointer arithmetic
+                    when {
+                        isPointerType(left.type) && isIntegerType(right.type) -> left.type
+                        isIntegerType(left.type) && isPointerType(right.type) -> right.type
+                        isPointerType(left.type) && isPointerType(right.type) && operator == BinaryOperator.Subtract -> {
+                            // Pointer difference
+                            QualType(Type.Long(signed = true))  // ptrdiff_t
+                        }
+
+                        else -> usualArithmeticConversions(left.type, right.type)
+                    }
+                }
+
+                else -> usualArithmeticConversions(left.type, right.type)
+            }
+            // Insert implicit conversions
+            val convertedLeft = if (operator in setOf(BinaryOperator.LogicalAnd, BinaryOperator.LogicalOr)) {
+                left
+            } else {
+                insertImplicitConversion(left, resultType)
+            }
+            val convertedRight = if (operator in setOf(BinaryOperator.LogicalAnd, BinaryOperator.LogicalOr)) {
+                right
+            } else {
+                insertImplicitConversion(right, resultType)
+            }
+            left = BinaryExpression(
                 ctx.location,
-                BinaryExpressionType.parse(op.text),
-                result,
-                visit(right).cast<Expression>(),
+                operator,
+                convertedLeft,
+                convertedRight,
+                resultType,
             )
         }
-        return result
+        return left
     }
 
-    private fun Value.toBlockStatement(location: SourceLocation): BlockStatement {
-        return this.tryCast<BlockStatement>() ?: BlockStatement(location, listOf(this.cast<Statement>()))
+    private fun buildUnaryOp(
+        location: SourceLocation,
+        operator: UnaryOperator,
+        operand: Expression,
+    ): Expression {
+        val resultType = when (operator) {
+            UnaryOperator.AddressOf -> {
+                if (!operand.isLValue) {
+                    reporter.reportError(location, "cannot take address of rvalue")
+                }
+                QualType(Type.Pointer(operand.type))
+            }
+
+            UnaryOperator.Dereference -> {
+                if (!isPointerType(operand.type)) {
+                    reporter.reportError(location, "cannot dereference non-pointer type '${operand.type}'")
+                    operand.type
+                } else {
+                    (operand.type.canonical.type as Type.Pointer).pointee
+                }
+            }
+
+            UnaryOperator.LogicalNot -> {
+                if (!isScalarType(operand.type)) {
+                    reporter.reportError(location, "operand must have scalar type")
+                }
+                QualType(Type.Int(signed = true))
+            }
+
+            UnaryOperator.Plus, UnaryOperator.Minus -> {
+                if (!isArithmeticType(operand.type)) {
+                    reporter.reportError(location, "operand must have arithmetic type")
+                }
+                integerPromotion(operand.type)
+            }
+
+            UnaryOperator.BitwiseNot -> {
+                if (!isIntegerType(operand.type)) {
+                    reporter.reportError(location, "operand must have integer type")
+                }
+                integerPromotion(operand.type)
+            }
+
+            UnaryOperator.PrefixIncrement, UnaryOperator.PrefixDecrement,
+            UnaryOperator.PostfixIncrement, UnaryOperator.PostfixDecrement,
+            -> {
+                if (!isScalarType(operand.type)) {
+                    reporter.reportError(location, "operand must have scalar type")
+                }
+                operand.type
+            }
+        }
+        return UnaryExpression(location, operator, operand, resultType)
     }
 
-    private fun parseStorageClassSpec(ctx: CParser.Storage_class_specifierContext): StorageClass {
-        return when {
-            ctx.Typedef() != null -> StorageClass.TYPEDEF
-            ctx.Extern() != null -> StorageClass.EXTERN
-            ctx.Static() != null -> StorageClass.STATIC
-            ctx.ThreadLocal() != null -> StorageClass.THREAD_LOCAL
-            ctx.Auto() != null -> StorageClass.AUTO
-            ctx.Register() != null -> StorageClass.REGISTER
-            else -> throw TypeException("Invalid storage class spec: ${ctx.text}")
+    private fun buildArraySubscript(location: SourceLocation, array: Expression, index: Expression): Expression {
+        val arrayType = array.type.canonical.type
+        val elementType = when {
+            arrayType is Type.Array -> arrayType.elementType
+            arrayType is Type.Pointer -> arrayType.pointee
+            else -> {
+                reporter.reportError(location, "subscripted value is not an array or pointer")
+                QualType(Type.Error)
+            }
         }
+        if (!isIntegerType(index.type)) {
+            reporter.reportError(location, "array subscript must be an integer")
+        }
+        return ArrayAccessExpression(location, array, index, elementType)
     }
 
-    private fun parseTypeSpec(ctx: CParser.Type_specifierContext): TypeSpec {
-        if (ctx.typedef_name() != null) {
-            return TypeSpec.TypedefName(ctx.typedef_name().text)
+    private fun buildFunctionCall(location: SourceLocation, function: Expression, arguments: List<Expression>): Expression {
+        val funcType = when (val canonical = function.type.canonical.type) {
+            is Type.Function -> canonical
+            is Type.Pointer -> {
+                when (val pointee = canonical.pointee.canonical.type) {
+                    is Type.Function -> pointee
+                    else -> {
+                        reporter.reportError(location, "called object is not a function")
+                        return CallExpression(location, function, arguments, null, QualType(Type.Error))
+                    }
+                }
+            }
+
+            else -> {
+                reporter.reportError(location, "called object is not a function")
+                return CallExpression(location, function, arguments, null, QualType(Type.Error))
+            }
         }
-        ctx.struct_specifier()?.let {
-            return TypeSpec.Struct(it.Identifier()?.text)
+        // Type check arguments
+        if (arguments.size != funcType.parameters.size) {
+            reporter.reportError(
+                location,
+                "function expects ${funcType.parameters.size} arguments, got ${arguments.size}",
+            )
         }
-        ctx.enum_specifier()?.let {
-            return TypeSpec.Enum(it.Identifier()?.text)
+        val convertedArgs = arguments.zip(funcType.parameters).map { (arg, paramType) ->
+            if (!isAssignmentCompatible(paramType, arg.type)) {
+                reporter.reportError(
+                    location,
+                    "incompatible argument type: expected '$paramType', got '${arg.type}'",
+                )
+            }
+            insertImplicitConversion(arg, paramType)
         }
-        return when {
-            ctx.Void() != null -> TypeSpec.VOID
-            ctx.Char() != null -> TypeSpec.CHAR
-            ctx.Short() != null -> TypeSpec.SHORT
-            ctx.Int() != null -> TypeSpec.INT
-            ctx.Long() != null -> TypeSpec.LONG
-            ctx.Float() != null -> TypeSpec.FLOAT
-            ctx.Double() != null -> TypeSpec.DOUBLE
-            ctx.Signed() != null -> TypeSpec.SIGNED
-            ctx.Unsigned() != null -> TypeSpec.UNSIGNED
-            else -> throw TypeException("Invalid type spec: ${ctx.text}")
+        // Try to get function symbol if this is a direct function reference
+        val functionSymbol = if (function is VariableReference) {
+            function.symbol.entity.scope.lookupFunctionEntity(function.name)?.let {
+                symbolTable.getAllFunctions().find { func -> func.entity == it }
+            }
+        } else {
+            null
         }
+        return CallExpression(location, function, convertedArgs, functionSymbol, funcType.returnType)
     }
 
-    private fun parseTypeQualifier(ctx: CParser.Type_qualifierContext): TypeQualifier {
-        return when {
-            ctx.Const() != null -> TypeQualifier.CONST
-            ctx.Volatile() != null -> TypeQualifier.VOLATILE
-            ctx.Restrict() != null -> TypeQualifier.RESTRICT
-            else -> throw TypeException("Invalid type spec: ${ctx.text}")
+    private fun buildMemberAccess(location: SourceLocation, struct: Expression, memberName: String): Expression {
+        val structType = struct.type.canonical.type
+        if (structType !is Type.Struct) {
+            reporter.reportError(location, "member access requires struct type, got '${struct.type}'")
+            return MemberAccessExpression(location, struct, memberName, -1, QualType(Type.Error))
         }
+        val memberIndex = structType.symbol.members.indexOfFirst { it.name == memberName }
+        if (memberIndex == -1) {
+            reporter.reportError(location, "struct has no member named '$memberName'")
+            return MemberAccessExpression(location, struct, memberName, -1, QualType(Type.Error))
+        }
+        val member = structType.symbol.members[memberIndex]
+        return MemberAccessExpression(location, struct, memberName, memberIndex, member.type)
     }
 
-    private fun parseFunctionSpec(ctx: CParser.Function_specifierContext): FunctionSpec {
-        return when {
-            ctx.Inline() != null -> FunctionSpec.INLINE
-            else -> throw TypeException("Invalid function spec: ${ctx.text}")
+    private fun buildPointerMemberAccess(location: SourceLocation, pointer: Expression, memberName: String): Expression {
+        val pointerType = pointer.type.canonical.type
+
+        if (pointerType !is Type.Pointer) {
+            reporter.reportError(location, "pointer member access requires pointer type")
+            return PointerMemberAccessExpression(location, pointer, memberName, -1, QualType(Type.Error))
         }
+
+        val structType = pointerType.pointee.canonical.type
+        if (structType !is Type.Struct) {
+            reporter.reportError(location, "pointer member access requires pointer to struct")
+            return PointerMemberAccessExpression(location, pointer, memberName, -1, QualType(Type.Error))
+        }
+
+        val memberIndex = structType.symbol.members.indexOfFirst { it.name == memberName }
+        if (memberIndex == -1) {
+            reporter.reportError(location, "struct has no member named '$memberName'")
+            return PointerMemberAccessExpression(location, pointer, memberName, -1, QualType(Type.Error))
+        }
+
+        val member = structType.symbol.members[memberIndex]
+        return PointerMemberAccessExpression(location, pointer, memberName, memberIndex, member.type)
     }
 
     private fun lookupIdentifier(location: SourceLocation, name: String): Expression {
@@ -868,6 +1092,270 @@ class AstBuilder(
                 )
             }
         return VariableReference(location, name, symbol, symbol.type)
+    }
+
+    // ========================================================================
+    // TYPE SYSTEM HELPERS
+    // ========================================================================
+
+    private fun usualArithmeticConversions(t1: QualType, t2: QualType): QualType {
+        // Simplified version of C's usual arithmetic conversions
+        val c1 = t1.canonical.type
+        val c2 = t2.canonical.type
+
+        // If either is error, return error
+        if (c1 is Type.Error || c2 is Type.Error) {
+            return QualType(Type.Error)
+        }
+
+        // If either is floating point, use floating point rules
+        when {
+            c1 is Type.LongDouble || c2 is Type.LongDouble ->
+                return QualType(Type.LongDouble)
+
+            c1 is Type.Double || c2 is Type.Double ->
+                return QualType(Type.Double)
+
+            c1 is Type.Float || c2 is Type.Float ->
+                return QualType(Type.Float)
+        }
+
+        // Integer promotion
+        val p1 = integerPromotion(t1)
+        val p2 = integerPromotion(t2)
+
+        // If same type, return it
+        if (p1.canonical == p2.canonical) return p1
+
+        // Get integer types
+        val i1 = p1.canonical.type as? Type.Int ?: p1.canonical.type as? Type.Long ?: p1.canonical.type as? Type.LongLong ?: return p1
+        val i2 = p2.canonical.type as? Type.Int ?: p2.canonical.type as? Type.Long ?: p2.canonical.type as? Type.LongLong ?: return p2
+
+        // Rank: long long > long > int
+        val rank1 = when (i1) {
+            is Type.LongLong -> 3
+            is Type.Long -> 2
+            is Type.Int -> 1
+            else -> 0
+        }
+
+        val rank2 = when (i2) {
+            is Type.LongLong -> 3
+            is Type.Long -> 2
+            is Type.Int -> 1
+            else -> 0
+        }
+
+        // Return higher rank
+        return if (rank1 >= rank2) p1 else p2
+    }
+
+    private fun integerPromotion(type: QualType): QualType {
+        return when (type.canonical.type) {
+            is Type.Bool,
+            is Type.Char,
+            is Type.Short,
+            -> QualType(Type.Int(signed = true))
+
+            else -> type
+        }
+    }
+
+    private fun insertImplicitConversion(expr: Expression, targetType: QualType): Expression {
+        if (expr.type.canonical == targetType.canonical) {
+            return expr
+        }
+        val castKind = determineCastKind(expr.type, targetType)
+        return ImplicitCastExpression(expr.location, castKind, expr, targetType)
+    }
+
+    private fun determineCastKind(fromType: QualType, toType: QualType): CastKind {
+        val from = fromType.canonical.type
+        val to = toType.canonical.type
+
+        return when {
+            from == to -> CastKind.NO_OP
+
+            from is Type.Array -> CastKind.ARRAY_TO_POINTER
+            from is Type.Function -> CastKind.FUNCTION_TO_POINTER
+
+            isIntegerType(fromType) && isIntegerType(toType) -> CastKind.INTEGRAL_CAST
+            isIntegerType(fromType) && isFloatingType(toType) -> CastKind.INTEGRAL_TO_FLOATING
+            isFloatingType(fromType) && isIntegerType(toType) -> CastKind.FLOATING_TO_INTEGRAL
+            isFloatingType(fromType) && isFloatingType(toType) -> CastKind.FLOATING_CAST
+
+            isPointerType(fromType) && isIntegerType(toType) -> CastKind.POINTER_TO_INTEGRAL
+            isIntegerType(fromType) && isPointerType(toType) -> CastKind.INTEGRAL_TO_POINTER
+            isPointerType(fromType) && isPointerType(toType) -> CastKind.POINTER_TO_POINTER
+
+            else -> CastKind.NO_OP
+        }
+    }
+
+    private fun isAssignmentCompatible(target: QualType, source: QualType): Boolean {
+        // Error types are compatible with everything
+        if (target.isError || source.isError) return true
+
+        val targetCanon = target.canonical.type
+        val sourceCanon = source.canonical.type
+
+        return when {
+            // Same type
+            targetCanon == sourceCanon -> true
+
+            // Arithmetic types
+            isArithmeticType(target) && isArithmeticType(source) -> true
+
+            // Pointer compatibility
+            isPointerType(target) && isPointerType(source) -> {
+                val targetPointee = (targetCanon as Type.Pointer).pointee
+                val sourcePointee = (sourceCanon as Type.Pointer).pointee
+
+                // void* is compatible with any pointer
+                targetPointee.canonical.type is Type.Void ||
+                    sourcePointee.canonical.type is Type.Void ||
+                    targetPointee.canonical == sourcePointee.canonical
+            }
+
+            // Null pointer constant (0) to pointer
+            isPointerType(target) && isIntegerType(source) -> true
+
+            else -> false
+        }
+    }
+
+    private fun isCastValid(fromType: QualType, toType: QualType): Boolean {
+        // Most casts are valid in C (even if unsafe)
+        // Only invalid casts: struct to non-struct, etc.
+        return when {
+            fromType.isError || toType.isError -> true
+            fromType.canonical.type is Type.Struct && toType.canonical.type !is Type.Struct -> false
+            toType.canonical.type is Type.Struct && fromType.canonical.type !is Type.Struct -> false
+            else -> true
+        }
+    }
+
+    private fun isScalarType(type: QualType): Boolean {
+        return isArithmeticType(type) || isPointerType(type)
+    }
+
+    private fun isArithmeticType(type: QualType): Boolean {
+        return isIntegerType(type) || isFloatingType(type)
+    }
+
+    private fun isIntegerType(type: QualType): Boolean {
+        return when (type.canonical.type) {
+            is Type.Bool,
+            is Type.Char,
+            is Type.Short,
+            is Type.Int,
+            is Type.Long,
+            is Type.LongLong,
+            -> true
+
+            else -> false
+        }
+    }
+
+    private fun isFloatingType(type: QualType): Boolean {
+        return when (type.canonical.type) {
+            is Type.Float,
+            is Type.Double,
+            is Type.LongDouble,
+            -> true
+
+            else -> false
+        }
+    }
+
+    private fun isPointerType(type: QualType): Boolean {
+        return type.canonical.type is Type.Pointer
+    }
+
+    private fun computeTypeSize(type: QualType): Long {
+        return when (val canonical = type.canonical.type) {
+            is Type.Void -> 1
+            is Type.Bool -> 1
+            is Type.Char -> 1
+            is Type.Short -> 2
+            is Type.Int -> 4
+            is Type.Long -> 8
+            is Type.LongLong -> 8
+            is Type.Float -> 4
+            is Type.Double -> 8
+            is Type.LongDouble -> 16
+            is Type.Pointer -> 8
+            is Type.Array -> {
+                val elementSize = computeTypeSize(canonical.elementType)
+                (canonical.size ?: 0) * elementSize
+            }
+
+//            is Type.Struct -> canonical.symbol.size ?: 0
+//            is Type.Enum -> canonical.symbol.size ?: 0
+
+            is Type.Function -> {
+                reporter.reportError(UnknownLocation, "cannot compute size of function type")
+                0
+            }
+
+            is Type.Error -> 0
+        }
+    }
+
+    private fun Value.toBlockStatement(location: SourceLocation): BlockStatement {
+        return this.tryCast<BlockStatement>() ?: BlockStatement(location, listOf(this.cast<Statement>()))
+    }
+
+    private fun parseStorageClassSpec(ctx: CParser.Storage_class_specifierContext): StorageClass {
+        return when {
+            ctx.Typedef() != null -> StorageClass.TYPEDEF
+            ctx.Extern() != null -> StorageClass.EXTERN
+            ctx.Static() != null -> StorageClass.STATIC
+            ctx.ThreadLocal() != null -> StorageClass.THREAD_LOCAL
+            ctx.Auto() != null -> StorageClass.AUTO
+            ctx.Register() != null -> StorageClass.REGISTER
+            else -> throw TypeException("Invalid storage class spec: ${ctx.text}")
+        }
+    }
+
+    private fun parseTypeSpec(ctx: CParser.Type_specifierContext): TypeSpec {
+        if (ctx.typedef_name() != null) {
+            return TypeSpec.TypedefName(ctx.typedef_name().text)
+        }
+        ctx.struct_specifier()?.let {
+            return TypeSpec.Struct(it.Identifier()?.text)
+        }
+        ctx.enum_specifier()?.let {
+            return TypeSpec.Enum(it.Identifier()?.text)
+        }
+        return when {
+            ctx.Void() != null -> TypeSpec.VOID
+            ctx.Char() != null -> TypeSpec.CHAR
+            ctx.Short() != null -> TypeSpec.SHORT
+            ctx.Int() != null -> TypeSpec.INT
+            ctx.Long() != null -> TypeSpec.LONG
+            ctx.Float() != null -> TypeSpec.FLOAT
+            ctx.Double() != null -> TypeSpec.DOUBLE
+            ctx.Signed() != null -> TypeSpec.SIGNED
+            ctx.Unsigned() != null -> TypeSpec.UNSIGNED
+            else -> throw TypeException("Invalid type spec: ${ctx.text}")
+        }
+    }
+
+    private fun parseTypeQualifier(ctx: CParser.Type_qualifierContext): TypeQualifier {
+        return when {
+            ctx.Const() != null -> TypeQualifier.CONST
+            ctx.Volatile() != null -> TypeQualifier.VOLATILE
+            ctx.Restrict() != null -> TypeQualifier.RESTRICT
+            else -> throw TypeException("Invalid type spec: ${ctx.text}")
+        }
+    }
+
+    private fun parseFunctionSpec(ctx: CParser.Function_specifierContext): FunctionSpec {
+        return when {
+            ctx.Inline() != null -> FunctionSpec.INLINE
+            else -> throw TypeException("Invalid function spec: ${ctx.text}")
+        }
     }
 
     private fun parseConstant(location: SourceLocation, text: String): Expression {
@@ -963,5 +1451,11 @@ class AstBuilder(
             .replace("\\\\", "\\")
             .replace("\\'", "'")
             .replace("\\\"", "\"")
+    }
+
+    private fun resolveTypeName(typeName: TypeName): QualType {
+    }
+
+    private fun reportErrorNode(location: SourceLocation, string: String): Value {
     }
 }

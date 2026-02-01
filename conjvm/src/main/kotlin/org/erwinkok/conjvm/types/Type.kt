@@ -1,7 +1,5 @@
 package org.erwinkok.conjvm.types
 
-import java.util.UUID
-
 data class StructMember(
     val name: String,
     val type: QualType,
@@ -30,32 +28,25 @@ sealed class Type {
     data class Function(val returnType: QualType, val parameters: List<QualType>) : Type()
     data class BitField(val base: QualType, val width: kotlin.Int) : Type()
 
-    data class Struct(
-        val id: UUID,
-        val tag: String?,
-        val members: List<StructMember>?, // null = incomplete type
-    ) : Type() {
+    data class Struct(val symbol: StructSymbol) : Type() {
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other !is Struct) return false
-            return this.id == other.id
+            // Struct equality is based on identity (same definition)
+            return this.symbol === other.symbol
         }
 
-        override fun hashCode(): kotlin.Int = id.hashCode()
+        override fun hashCode(): kotlin.Int = System.identityHashCode(symbol)
     }
 
-    data class Enum(
-        val id: UUID,
-        val tag: String?,
-        val constants: Map<String, Long>?, // null = incomplete
-    ) : Type() {
+    data class Enum(val symbol: EnumSymbol) : Type() {
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other !is Enum) return false
-            return this.id == other.id
+            return this.symbol === other.symbol
         }
 
-        override fun hashCode(): kotlin.Int = id.hashCode()
+        override fun hashCode(): kotlin.Int = System.identityHashCode(symbol)
     }
 
     data class Typedef(
@@ -88,16 +79,14 @@ sealed class Type {
             is Function if other is Function -> functionCompatible(this, other)
 
             // Nominal types (compare by identity)
-            is Struct if other is Struct -> this.id == other.id
-            is Enum if other is Enum -> this.id == other.id
+//            is Struct if other is Struct -> this.id == other.id
+//            is Enum if other is Enum -> this.id == other.id
 
             // Typedefs should have been canonicalized already
             is Typedef -> error("Typedef should not appear in compatibility check")
 
             // Error types are compatible with everything
             is Error -> true
-
-            else -> false
         }
     }
 
@@ -137,8 +126,8 @@ sealed class Type {
             "${this.base.type} : [${this.width}]"
         }
 
-        is Struct -> this.tag?.let { "struct $it" } ?: "<anonymous struct>"
-        is Enum -> this.tag?.let { "enum $it" } ?: "<anonymous enum>"
+//        is Struct -> this.tag?.let { "struct $it" } ?: "<anonymous struct>"
+//        is Enum -> this.tag?.let { "enum $it" } ?: "<anonymous enum>"
 
         is Typedef -> this.name
     }

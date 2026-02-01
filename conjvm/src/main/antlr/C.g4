@@ -235,8 +235,8 @@ postfix_expression
 postfix_suffix
     :   '[' index = expression ']'                                                                  #postfixArrayAccess
     |   '(' args = argument_list? ')'                                                               #postfixFunctionCall
-    |   '->' field = Identifier                                                                     #postfixPointerMemberAccess
-    |   '.' field = Identifier                                                                      #postfixMemberAccess
+    |   '->' Identifier                                                                             #postfixPointerMemberAccess
+    |   '.' Identifier                                                                              #postfixMemberAccess
     |   '++'                                                                                        #postfixIncrement
     |   '--'                                                                                        #postfixDecrement
     ;

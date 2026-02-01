@@ -8,15 +8,15 @@ import org.erwinkok.conjvm.ast.expressions.BinaryExpression
 import org.erwinkok.conjvm.ast.expressions.CallExpression
 import org.erwinkok.conjvm.ast.expressions.CastExpression
 import org.erwinkok.conjvm.ast.expressions.CharacterLiteralExpression
+import org.erwinkok.conjvm.ast.expressions.ConditionalExpression
 import org.erwinkok.conjvm.ast.expressions.Expression
-import org.erwinkok.conjvm.ast.expressions.FieldAccessExpression
 import org.erwinkok.conjvm.ast.expressions.FloatLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.IntegerLiteralExpression
+import org.erwinkok.conjvm.ast.expressions.MemberAccessExpression
 import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.StringLiteralExpression
-import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
 import org.erwinkok.conjvm.ast.expressions.VariableReference
 import org.erwinkok.conjvm.ast.statements.BlockStatement
@@ -50,15 +50,15 @@ interface ExpressionTranslationVisitor : AstExpressionVisitor<TranslationResult>
     fun translateBinary(expression: BinaryExpression): TranslationResult
     fun translateCall(expression: CallExpression): TranslationResult
     fun translateCast(expression: CastExpression): TranslationResult
+    fun translateConditional(expression: ConditionalExpression): TranslationResult
     fun translateIntegerLiteral(expression: IntegerLiteralExpression): TranslationResult
     fun translateFloatLiteral(expression: FloatLiteralExpression): TranslationResult
     fun translateStringLiteral(expression: StringLiteralExpression): TranslationResult
     fun translateCharacterLiteral(expression: CharacterLiteralExpression): TranslationResult
-    fun translateFieldAccess(expression: FieldAccessExpression): TranslationResult
+    fun translateFieldAccess(expression: MemberAccessExpression): TranslationResult
     fun translateParenthesized(expression: ParenthesizedExpression): TranslationResult
     fun translatePostfixDecrement(expression: PostfixDecrementExpression): TranslationResult
     fun translatePostfixIncrement(expression: PostfixIncrementExpression): TranslationResult
-    fun translateTernary(expression: TernaryExpression): TranslationResult
     fun translateUnary(expression: UnaryExpression): TranslationResult
     fun translateVariableReference(variableReference: VariableReference): TranslationResult
 
@@ -98,7 +98,7 @@ interface ExpressionTranslationVisitor : AstExpressionVisitor<TranslationResult>
         return translateCharacterLiteral(expression)
     }
 
-    override fun visitFieldAccess(expression: FieldAccessExpression): TranslationResult {
+    override fun visitMemberAccess(expression: MemberAccessExpression): TranslationResult {
         return translateFieldAccess(expression)
     }
 
@@ -114,8 +114,8 @@ interface ExpressionTranslationVisitor : AstExpressionVisitor<TranslationResult>
         return translatePostfixIncrement(expression)
     }
 
-    override fun visitTernary(expression: TernaryExpression): TranslationResult {
-        return translateTernary(expression)
+    override fun visitConditional(expression: ConditionalExpression): TranslationResult {
+        return translateConditional(expression)
     }
 
     override fun visitUnary(expression: UnaryExpression): TranslationResult {

@@ -7,8 +7,8 @@ import org.erwinkok.conjvm.types.QualType
 class FloatLiteralExpression(
     location: SourceLocation,
     val value: Double,
-    val type: QualType,
-) : ConstantExpression(location) {
+    type: QualType,
+) : ConstantExpression(location, type) {
     override fun <R> accept(visitor: AstExpressionVisitor<R>): R = visitor.visitFloatLiteral(this)
 
     override fun equals(other: Any?): Boolean {

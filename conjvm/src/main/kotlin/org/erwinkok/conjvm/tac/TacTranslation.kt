@@ -1,7 +1,7 @@
 package org.erwinkok.conjvm.tac
 
 import org.erwinkok.conjvm.ast.AstStatementVisitor
-import org.erwinkok.conjvm.ast.expressions.BinaryExpressionType
+import org.erwinkok.conjvm.ast.expressions.BinaryOperator
 import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.BreakStatement
@@ -162,7 +162,7 @@ class TacTranslation(
             require(caseTemp != null)
             val cmpTemp = tempFactory.newTemp()
             allStatements.addAll(caseInstrs)
-            allStatements.add(TacBinaryInstruction(cmpTemp, BinaryExpressionType.Equals, testExpr, caseTemp))
+            allStatements.add(TacBinaryInstruction(cmpTemp, BinaryOperator.Equals, testExpr, caseTemp))
             allStatements.add(TacIfGotoInstruction(cmpTemp, caseLabel))
         }
 

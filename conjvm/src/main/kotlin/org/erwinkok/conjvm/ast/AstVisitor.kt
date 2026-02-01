@@ -6,15 +6,16 @@ import org.erwinkok.conjvm.ast.expressions.BinaryExpression
 import org.erwinkok.conjvm.ast.expressions.CallExpression
 import org.erwinkok.conjvm.ast.expressions.CastExpression
 import org.erwinkok.conjvm.ast.expressions.CharacterLiteralExpression
+import org.erwinkok.conjvm.ast.expressions.ConditionalExpression
 import org.erwinkok.conjvm.ast.expressions.Expression
-import org.erwinkok.conjvm.ast.expressions.FieldAccessExpression
 import org.erwinkok.conjvm.ast.expressions.FloatLiteralExpression
+import org.erwinkok.conjvm.ast.expressions.ImplicitCastExpression
 import org.erwinkok.conjvm.ast.expressions.IntegerLiteralExpression
+import org.erwinkok.conjvm.ast.expressions.MemberAccessExpression
 import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.StringLiteralExpression
-import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
 import org.erwinkok.conjvm.ast.expressions.VariableReference
 import org.erwinkok.conjvm.ast.statements.BlockStatement
@@ -43,17 +44,18 @@ interface AstExpressionVisitor<out R> {
     fun visitBinary(expression: BinaryExpression): R
     fun visitCall(expression: CallExpression): R
     fun visitCast(expression: CastExpression): R
+    fun visitImplicitCast(cast: ImplicitCastExpression): R
     fun visitIntegerLiteral(expression: IntegerLiteralExpression): R
     fun visitFloatLiteral(expression: FloatLiteralExpression): R
     fun visitStringLiteral(expression: StringLiteralExpression): R
     fun visitCharacterLiteral(expression: CharacterLiteralExpression): R
-    fun visitFieldAccess(expression: FieldAccessExpression): R
+    fun visitMemberAccess(expression: MemberAccessExpression): R
     fun visitParenthesized(expression: ParenthesizedExpression): R
     fun visitPostfixDecrement(expression: PostfixDecrementExpression): R
     fun visitPostfixIncrement(expression: PostfixIncrementExpression): R
-    fun visitTernary(expression: TernaryExpression): R
+    fun visitConditional(expression: ConditionalExpression): R
     fun visitUnary(expression: UnaryExpression): R
-    fun visitVariableReference(variableReference: VariableReference): R
+    fun visitVariableReference(expression: VariableReference): R
 }
 
 interface AstStatementVisitor<out R> {

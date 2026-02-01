@@ -2,12 +2,16 @@ package org.erwinkok.conjvm.ast.expressions
 
 import org.erwinkok.conjvm.ast.AstExpressionVisitor
 import org.erwinkok.conjvm.parser.SourceLocation
+import org.erwinkok.conjvm.types.FunctionSymbol
+import org.erwinkok.conjvm.types.QualType
 
 class CallExpression(
     location: SourceLocation,
     val function: Expression,
     val arguments: List<Expression>,
-) : Expression(location) {
+    val functionSymbol: FunctionSymbol?, // null for function pointers
+    type: QualType, // Return type
+) : Expression(location, type) {
     override fun <R> accept(visitor: AstExpressionVisitor<R>): R = visitor.visitCall(this)
 
     override fun toString(): String {

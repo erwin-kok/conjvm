@@ -6,14 +6,14 @@ import org.erwinkok.conjvm.ast.expressions.BinaryExpression
 import org.erwinkok.conjvm.ast.expressions.CallExpression
 import org.erwinkok.conjvm.ast.expressions.CastExpression
 import org.erwinkok.conjvm.ast.expressions.CharacterLiteralExpression
-import org.erwinkok.conjvm.ast.expressions.FieldAccessExpression
+import org.erwinkok.conjvm.ast.expressions.ConditionalExpression
 import org.erwinkok.conjvm.ast.expressions.FloatLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.IntegerLiteralExpression
+import org.erwinkok.conjvm.ast.expressions.MemberAccessExpression
 import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.StringLiteralExpression
-import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
 import org.erwinkok.conjvm.ast.expressions.VariableReference
 import org.erwinkok.conjvm.ast.statements.BlockStatement
@@ -59,15 +59,15 @@ class CodeWriter(val writer: Writer) : AstVisitor<String> {
     }
 
     override fun visitAssignment(expression: AssignmentExpression): String {
-        val leftResult = visit(expression.leftExpression)
-        val rightResult = visit(expression.rightExpression)
-        return "$leftResult ${expression.type} $rightResult"
+        val leftResult = visit(expression.left)
+        val rightResult = visit(expression.right)
+        return "$leftResult ${expression.operator} $rightResult"
     }
 
     override fun visitBinary(expression: BinaryExpression): String {
         val leftResult = visit(expression.leftExpression)
         val rightResult = visit(expression.rightExpression)
-        return "$leftResult ${expression.type} $rightResult"
+        return "$leftResult ${expression.operator} $rightResult"
     }
 
     override fun visitCall(expression: CallExpression): String {
@@ -100,8 +100,8 @@ class CodeWriter(val writer: Writer) : AstVisitor<String> {
         return expression.value.toString()
     }
 
-    override fun visitFieldAccess(expression: FieldAccessExpression): String {
-        return "${expression.base}.${expression.field}"
+    override fun visitMemberAccess(expression: MemberAccessExpression): String {
+        return "${expression.struct}.${expression.memberName}"
     }
 
     override fun visitParenthesized(expression: ParenthesizedExpression): String {
@@ -119,7 +119,7 @@ class CodeWriter(val writer: Writer) : AstVisitor<String> {
         return "$nodeResult++"
     }
 
-    override fun visitTernary(expression: TernaryExpression): String {
+    override fun visitConditional(expression: ConditionalExpression): String {
         val testResult = visit(expression.condition)
         val thenResult = visit(expression.thenExpression)
         val elseResult = visit(expression.elseExpression)
@@ -128,7 +128,7 @@ class CodeWriter(val writer: Writer) : AstVisitor<String> {
 
     override fun visitUnary(expression: UnaryExpression): String {
         val nodeResult = visit(expression.operand)
-        return "${expression.type}$nodeResult"
+        return "${expression.operator}$nodeResult"
     }
 
     override fun visitVariableReference(variableReference: VariableReference): String {

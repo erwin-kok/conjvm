@@ -8,17 +8,17 @@ import org.erwinkok.conjvm.ast.expressions.BinaryExpression
 import org.erwinkok.conjvm.ast.expressions.CallExpression
 import org.erwinkok.conjvm.ast.expressions.CastExpression
 import org.erwinkok.conjvm.ast.expressions.CharacterLiteralExpression
+import org.erwinkok.conjvm.ast.expressions.ConditionalExpression
 import org.erwinkok.conjvm.ast.expressions.Expression
-import org.erwinkok.conjvm.ast.expressions.FieldAccessExpression
 import org.erwinkok.conjvm.ast.expressions.FloatLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.IntegerLiteralExpression
+import org.erwinkok.conjvm.ast.expressions.MemberAccessExpression
 import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.StringLiteralExpression
-import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
-import org.erwinkok.conjvm.ast.expressions.UnaryType
+import org.erwinkok.conjvm.ast.expressions.UnaryOperator
 import org.erwinkok.conjvm.ast.expressions.VariableReference
 import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.BreakStatement
@@ -226,8 +226,8 @@ class TypeVisitor(
     }
 
     override fun visitAssignment(expression: AssignmentExpression): ExpressionType {
-        val lhs = typeOf(expression.leftExpression)
-        val rhs = typeOf(expression.rightExpression).toRValue()
+        val lhs = typeOf(expression.left)
+        val rhs = typeOf(expression.right).toRValue()
 
         if (lhs.isError || rhs.isError) {
             return errorType(expression)
@@ -377,8 +377,8 @@ class TypeVisitor(
         TODO("Not yet implemented")
     }
 
-    override fun visitFieldAccess(expression: FieldAccessExpression): ExpressionType {
-        val baseExpr = typeOf(expression.base)
+    override fun visitMemberAccess(expression: MemberAccessExpression): ExpressionType {
+        val baseExpr = typeOf(expression.struct)
         if (baseExpr.isError) {
             return errorType(expression)
         }
@@ -390,12 +390,12 @@ class TypeVisitor(
             else -> null
         }
         if (structType == null) {
-            reporter.reportError(expression.location, "'${expression.base}' is not a struct")
+            reporter.reportError(expression.location, "'${expression.struct}' is not a struct")
             return errorType(expression)
         }
-        val field = structType.members?.find { it.name == expression.field }
+        val field = structType.members?.find { it.name == expression.memberName }
         if (field == null) {
-            reporter.reportError(expression.location, "could not find field '${expression.field}' in struct '${expression.base}'")
+            reporter.reportError(expression.location, "could not find field '${expression.memberName}' in struct '${expression.struct}'")
             return errorType(expression)
         }
 
@@ -427,7 +427,7 @@ class TypeVisitor(
         return expressionType(expression, operand.type, false)
     }
 
-    override fun visitTernary(expression: TernaryExpression): ExpressionType {
+    override fun visitConditional(expression: ConditionalExpression): ExpressionType {
         val condType = typeOf(expression.condition).toRValue()
         val thenType = typeOf(expression.thenExpression).toRValue()
         val elseType = typeOf(expression.elseExpression).toRValue()
@@ -492,8 +492,8 @@ class TypeVisitor(
         }
 
         val t = operand.type
-        return when (expression.type) {
-            UnaryType.Address -> {
+        return when (expression.operator) {
+            UnaryOperator.AddressOf -> {
                 val address = TypeSystem.addressOf(t, operand.isLValue)
                 if (address.isError) {
                     reporter.reportError(expression.location, "cannot take address of '$expression'")
@@ -503,7 +503,7 @@ class TypeVisitor(
                 }
             }
 
-            UnaryType.Indirection -> {
+            UnaryOperator.Dereference -> {
                 val deref = TypeSystem.dereference(t)
                 if (deref.isError) {
                     reporter.reportError(expression.location, "cannot dereference '$expression'")
@@ -513,8 +513,8 @@ class TypeVisitor(
                 }
             }
 
-            UnaryType.Minus,
-            UnaryType.Plus,
+            UnaryOperator.Minus,
+            UnaryOperator.Plus,
             -> {
                 // Arithmetic operators
                 if (TypeSystem.isArithmetic(t)) {
@@ -526,8 +526,8 @@ class TypeVisitor(
                 }
             }
 
-            UnaryType.LogicalNot,
-            UnaryType.BitwiseNot,
+            UnaryOperator.LogicalNot,
+            UnaryOperator.BitwiseNot,
             -> {
                 // Arithmetic operators
                 if (TypeSystem.isArithmetic(t)) {
@@ -538,8 +538,8 @@ class TypeVisitor(
                 }
             }
 
-            UnaryType.MinusMinus,
-            UnaryType.PlusPlus,
+            UnaryOperator.PrefixDecrement,
+            UnaryOperator.PrefixIncrement,
             -> {
                 // Only lvalues of arithmetic type allowed
                 if (operand.isLValue && TypeSystem.isArithmetic(t)) {

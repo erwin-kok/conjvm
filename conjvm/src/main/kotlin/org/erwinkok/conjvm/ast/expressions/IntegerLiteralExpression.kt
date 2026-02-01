@@ -7,8 +7,8 @@ import org.erwinkok.conjvm.types.QualType
 class IntegerLiteralExpression(
     location: SourceLocation,
     val value: Long,
-    val type: QualType,
-) : ConstantExpression(location) {
+    type: QualType,
+) : ConstantExpression(location, type) {
     override fun <R> accept(visitor: AstExpressionVisitor<R>): R = visitor.visitIntegerLiteral(this)
 
     override fun equals(other: Any?): Boolean {

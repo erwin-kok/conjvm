@@ -8,7 +8,7 @@ class CharacterLiteralExpression(
     location: SourceLocation,
     val value: Char,
     val type: QualType,
-) : ConstantExpression(location) {
+) : ConstantExpression(location, type) {
     override fun <R> accept(visitor: AstExpressionVisitor<R>): R = visitor.visitCharacterLiteral(this)
 
     override fun equals(other: Any?): Boolean {

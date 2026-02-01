@@ -7,17 +7,17 @@ import org.erwinkok.conjvm.ast.expressions.BinaryExpression
 import org.erwinkok.conjvm.ast.expressions.CallExpression
 import org.erwinkok.conjvm.ast.expressions.CastExpression
 import org.erwinkok.conjvm.ast.expressions.CharacterLiteralExpression
+import org.erwinkok.conjvm.ast.expressions.ConditionalExpression
 import org.erwinkok.conjvm.ast.expressions.Expression
-import org.erwinkok.conjvm.ast.expressions.FieldAccessExpression
 import org.erwinkok.conjvm.ast.expressions.FloatLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.IntegerLiteralExpression
+import org.erwinkok.conjvm.ast.expressions.MemberAccessExpression
 import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.StringLiteralExpression
-import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
-import org.erwinkok.conjvm.ast.expressions.UnaryType
+import org.erwinkok.conjvm.ast.expressions.UnaryOperator
 import org.erwinkok.conjvm.ast.expressions.VariableReference
 import org.erwinkok.conjvm.tac.instructions.TacInstruction
 import org.erwinkok.conjvm.tac.lvalues.ArrayLValue
@@ -38,7 +38,7 @@ class TacLValueGeneration(private val rValueVisitor: TacRValueGeneration) : AstE
     override fun visitArrayAccess(expression: ArrayAccessExpression): TacAddressResult {
         val (tsb, teb) = when (expression.base) {
             is VariableReference,
-            is FieldAccessExpression,
+            is MemberAccessExpression,
             is ArrayAccessExpression,
             is UnaryExpression,
             -> {
@@ -74,10 +74,10 @@ class TacLValueGeneration(private val rValueVisitor: TacRValueGeneration) : AstE
         error("expression is not an lvalue: $expression")
     }
 
-    override fun visitFieldAccess(expression: FieldAccessExpression): TacAddressResult {
-        val (ts, te) = translate(expression.base)
+    override fun visitMemberAccess(expression: MemberAccessExpression): TacAddressResult {
+        val (ts, te) = translate(expression.struct)
         requireNotNull(te)
-        return TacAddressResult(ts, FieldLValue(te, expression.field))
+        return TacAddressResult(ts, FieldLValue(te, expression.memberName))
     }
 
     override fun visitParenthesized(expression: ParenthesizedExpression): TacAddressResult {
@@ -108,12 +108,12 @@ class TacLValueGeneration(private val rValueVisitor: TacRValueGeneration) : AstE
         error("expression is not an lvalue: $expression")
     }
 
-    override fun visitTernary(expression: TernaryExpression): TacAddressResult {
+    override fun visitConditional(expression: ConditionalExpression): TacAddressResult {
         error("expression is not an lvalue: $expression")
     }
 
     override fun visitUnary(expression: UnaryExpression): TacAddressResult {
-        return if (expression.type == UnaryType.Indirection) {
+        return if (expression.operator == UnaryOperator.Dereference) {
             val (ts, te) = rValueVisitor.translate(expression.operand)
             requireNotNull(te)
             TacAddressResult(ts, IndirectLValue(te))

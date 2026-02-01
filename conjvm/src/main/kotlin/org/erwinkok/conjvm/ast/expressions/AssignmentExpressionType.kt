@@ -31,7 +31,7 @@ enum class AssignmentExpressionType {
     }
 
     companion object {
-        fun parse(type: String): AssignmentExpressionType {
+        fun parse(type: String): AssignmentExpressionType? {
             return when (type) {
                 "=" -> Assign
                 "+=" -> PlusAssign
@@ -44,7 +44,7 @@ enum class AssignmentExpressionType {
                 "^=" -> XorAssign
                 "<<=" -> LeftShiftAssign
                 ">>=" -> RightShiftAssign
-                else -> error("Invalid binary expression type: $type")
+                else -> null
             }
         }
     }

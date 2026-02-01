@@ -6,15 +6,15 @@ import org.erwinkok.conjvm.ast.expressions.BinaryExpression
 import org.erwinkok.conjvm.ast.expressions.CallExpression
 import org.erwinkok.conjvm.ast.expressions.CastExpression
 import org.erwinkok.conjvm.ast.expressions.CharacterLiteralExpression
+import org.erwinkok.conjvm.ast.expressions.ConditionalExpression
 import org.erwinkok.conjvm.ast.expressions.Expression
-import org.erwinkok.conjvm.ast.expressions.FieldAccessExpression
 import org.erwinkok.conjvm.ast.expressions.FloatLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.IntegerLiteralExpression
+import org.erwinkok.conjvm.ast.expressions.MemberAccessExpression
 import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.StringLiteralExpression
-import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
 import org.erwinkok.conjvm.ast.expressions.VariableReference
 import org.erwinkok.conjvm.ast.statements.BlockStatement
@@ -43,15 +43,15 @@ abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : T
     override fun translateArrayAccess(expression: ArrayAccessExpression): TranslationResult {
         val (ts, te) = translate(expression.index)
         requireNotNull(te)
-        return TranslationResult(ts, ArrayAccessExpression(expression.location, expression.base, te))
+        return TranslationResult(ts, ArrayAccessExpression(expression.location, expression.base, te, elementType))
     }
 
     override fun translateAssignment(expression: AssignmentExpression): TranslationResult {
-        val (lts, lte) = translate(expression.leftExpression)
-        val (rts, rte) = translate(expression.rightExpression)
+        val (lts, lte) = translate(expression.left)
+        val (rts, rte) = translate(expression.right)
         requireNotNull(lte)
         requireNotNull(rte)
-        return TranslationResult(lts + rts, AssignmentExpression(expression.location, expression.type, lte, rte))
+        return TranslationResult(lts + rts, AssignmentExpression(expression.location, expression.operator, lte, rte))
     }
 
     override fun translateBinary(expression: BinaryExpression): TranslationResult {
@@ -59,7 +59,7 @@ abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : T
         val (rts, rte) = translate(expression.rightExpression)
         requireNotNull(lte)
         requireNotNull(rte)
-        return TranslationResult(lts + rts, BinaryExpression(expression.location, expression.type, lte, rte))
+        return TranslationResult(lts + rts, BinaryExpression(expression.location, expression.operator, lte, rte))
     }
 
     override fun translateCall(expression: CallExpression): TranslationResult {
@@ -80,6 +80,16 @@ abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : T
         return TranslationResult(ts, CastExpression(expression.location, expression.targetType, te))
     }
 
+    override fun translateConditional(expression: ConditionalExpression): TranslationResult {
+        val (testTs, testTe) = translate(expression.condition)
+        val (thenTs, thenTe) = translate(expression.thenExpression)
+        val (elseTs, elseTe) = translate(expression.elseExpression)
+        requireNotNull(testTe)
+        requireNotNull(thenTe)
+        requireNotNull(elseTe)
+        return TranslationResult(testTs + thenTs + elseTs, ConditionalExpression(expression.location, testTe, thenTe, elseTe))
+    }
+
     override fun translateIntegerLiteral(expression: IntegerLiteralExpression): TranslationResult {
         return TranslationResult(emptyList(), expression)
     }
@@ -96,7 +106,7 @@ abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : T
         return TranslationResult(emptyList(), expression)
     }
 
-    override fun translateFieldAccess(expression: FieldAccessExpression): TranslationResult {
+    override fun translateFieldAccess(expression: MemberAccessExpression): TranslationResult {
         return TranslationResult(emptyList(), expression)
     }
 
@@ -118,20 +128,10 @@ abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : T
         return TranslationResult(ts, PostfixIncrementExpression(expression.location, te))
     }
 
-    override fun translateTernary(expression: TernaryExpression): TranslationResult {
-        val (testTs, testTe) = translate(expression.condition)
-        val (thenTs, thenTe) = translate(expression.thenExpression)
-        val (elseTs, elseTe) = translate(expression.elseExpression)
-        requireNotNull(testTe)
-        requireNotNull(thenTe)
-        requireNotNull(elseTe)
-        return TranslationResult(testTs + thenTs + elseTs, TernaryExpression(expression.location, testTe, thenTe, elseTe))
-    }
-
     override fun translateUnary(expression: UnaryExpression): TranslationResult {
         val (ts, te) = translate(expression.operand)
         requireNotNull(te)
-        return TranslationResult(ts, UnaryExpression(expression.location, expression.type, te))
+        return TranslationResult(ts, UnaryExpression(expression.location, expression.operator, te))
     }
 
     override fun translateVariableReference(variableReference: VariableReference): TranslationResult {

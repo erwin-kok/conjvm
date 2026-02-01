@@ -1,10 +1,10 @@
 package org.erwinkok.conjvm.tac.instructions
 
-import org.erwinkok.conjvm.ast.expressions.BinaryExpressionType
+import org.erwinkok.conjvm.ast.expressions.BinaryOperator
 import org.erwinkok.conjvm.tac.values.TacTemp
 import org.erwinkok.conjvm.tac.values.TacValue
 
-class TacBinaryInstruction(val dst: TacTemp, val type: BinaryExpressionType, val leftValue: TacValue, val rightValue: TacValue) : TacInstruction {
+class TacBinaryInstruction(val dst: TacTemp, val type: BinaryOperator, val leftValue: TacValue, val rightValue: TacValue) : TacInstruction {
     override fun toString(): String {
         return "$dst = $leftValue $type $rightValue"
     }

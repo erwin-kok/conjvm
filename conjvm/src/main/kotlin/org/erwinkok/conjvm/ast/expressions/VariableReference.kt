@@ -9,8 +9,8 @@ class VariableReference(
     location: SourceLocation,
     val name: String,
     val symbol: VariableSymbol,
-    val type: QualType,
-) : Expression(location) {
+    type: QualType,
+) : Expression(location, type) {
     override fun <R> accept(visitor: AstExpressionVisitor<R>): R = visitor.visitVariableReference(this)
 
     override fun equals(other: Any?): Boolean {
