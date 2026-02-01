@@ -2,7 +2,10 @@ package org.erwinkok.conjvm.types
 
 import java.util.UUID
 
-data class StructMember(val name: String, val type: QualType)
+data class StructMember(
+    val name: String,
+    val type: QualType,
+)
 
 sealed class Type {
     // Error type for error recovery.

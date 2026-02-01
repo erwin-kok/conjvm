@@ -3,12 +3,13 @@ package org.erwinkok.conjvm.types
 import org.erwinkok.conjvm.declarations.Entity
 import org.erwinkok.conjvm.declarations.FunctionSpec
 import org.erwinkok.conjvm.declarations.Linkage
+import org.erwinkok.conjvm.declarations.Scope
 import org.erwinkok.conjvm.declarations.StorageClass
 
 data class TypedefSymbol(
     val name: String,
     val type: QualType,
-    val scope: ScopeX,
+    val scope: Scope,
     val entity: Entity.Typedef,
 )
 
@@ -17,7 +18,7 @@ data class VariableSymbol(
     val type: QualType,
     val storage: Set<StorageClass>,
     val linkage: Linkage,
-    val scope: ScopeX,
+    val scope: Scope,
     val entity: Entity.Variable,
 ) {
     val isDefinition: Boolean
@@ -36,7 +37,7 @@ data class FunctionSymbol(
     val parameterTypes: List<QualType>,
     val storage: Set<StorageClass>,
     val linkage: Linkage,
-    val scope: ScopeX,
+    val scope: Scope,
     val entity: Entity.Function,
 ) {
     val isDefinition: Boolean
@@ -52,7 +53,7 @@ data class StructSymbol(
     val name: String?,
     val members: List<StructMember>,
     val isComplete: Boolean,
-    val scope: ScopeX,
+    val scope: Scope,
     val entity: Entity.Struct,
     val size: Long?,
     val alignment: Long?,
@@ -65,7 +66,7 @@ data class EnumSymbol(
     val name: String?,
     val constants: Map<String, Long>,
     val underlyingType: QualType,
-    val scope: ScopeX,
+    val scope: Scope,
     val entity: Entity.Enum,
 ) {
     val isAnonymous: Boolean

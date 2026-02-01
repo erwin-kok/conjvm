@@ -276,7 +276,7 @@ object TypeSystem {
                 validateFunctionParameters(type.parameters)
             }
 
-            else -> {}
+            else -> Unit
         }
     }
 
