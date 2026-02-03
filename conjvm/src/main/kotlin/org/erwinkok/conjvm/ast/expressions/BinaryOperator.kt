@@ -1,6 +1,6 @@
 package org.erwinkok.conjvm.ast.expressions
 
-enum class BinaryExpressionType {
+enum class BinaryOperator {
     LogicalOr,
     LogicalAnd,
     InclusiveOr,
@@ -45,7 +45,7 @@ enum class BinaryExpressionType {
     }
 
     companion object {
-        fun parse(type: String): BinaryExpressionType {
+        fun parse(type: String): BinaryOperator {
             return when (type) {
                 "||" -> LogicalOr
                 "&&" -> LogicalAnd

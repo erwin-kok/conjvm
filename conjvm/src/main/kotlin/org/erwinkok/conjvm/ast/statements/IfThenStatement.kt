@@ -6,7 +6,7 @@ import org.erwinkok.conjvm.parser.SourceLocation
 
 class IfThenStatement(
     location: SourceLocation,
-    val test: Expression,
+    val condition: Expression,
     val thenBlock: BlockStatement,
 ) : Statement(location) {
     override fun <R> accept(visitor: AstStatementVisitor<R>): R = visitor.visitIfThen(this)
@@ -19,14 +19,14 @@ class IfThenStatement(
             return false
         }
 
-        if (test != other.test) return false
+        if (condition != other.condition) return false
         if (thenBlock != other.thenBlock) return false
 
         return true
     }
 
     override fun hashCode(): Int {
-        var result = test.hashCode()
+        var result = condition.hashCode()
         result = 31 * result + thenBlock.hashCode()
         return result
     }

@@ -10,9 +10,9 @@ import org.erwinkok.conjvm.CParser.DeclSpecTypeSpecContext
 import org.erwinkok.conjvm.CParser.StorageClassSpecContext
 import org.erwinkok.conjvm.ast.expressions.ArrayAccessExpression
 import org.erwinkok.conjvm.ast.expressions.AssignmentExpression
-import org.erwinkok.conjvm.ast.expressions.AssignmentExpressionType
+import org.erwinkok.conjvm.ast.expressions.AssignmentOperator
 import org.erwinkok.conjvm.ast.expressions.BinaryExpression
-import org.erwinkok.conjvm.ast.expressions.BinaryExpressionType
+import org.erwinkok.conjvm.ast.expressions.BinaryOperator
 import org.erwinkok.conjvm.ast.expressions.CallExpression
 import org.erwinkok.conjvm.ast.expressions.CastExpression
 import org.erwinkok.conjvm.ast.expressions.CharacterLiteralExpression
@@ -27,7 +27,7 @@ import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.StringLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
-import org.erwinkok.conjvm.ast.expressions.UnaryType
+import org.erwinkok.conjvm.ast.expressions.UnaryOperator
 import org.erwinkok.conjvm.ast.expressions.VariableReference
 import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.BreakStatement
@@ -69,6 +69,7 @@ import org.erwinkok.conjvm.parser.SourceFile
 import org.erwinkok.conjvm.parser.SourceLocation
 import org.erwinkok.conjvm.parser.UnknownLocation
 import org.erwinkok.conjvm.types.QualType
+import org.erwinkok.conjvm.types.SymbolTable
 import org.erwinkok.conjvm.types.Type
 import org.erwinkok.conjvm.types.TypeException
 import org.erwinkok.conjvm.types.TypeResolutionResult
@@ -83,7 +84,7 @@ class AstBuilder(
 ) : CBaseVisitor<Value>(),
     ParserReporting {
     private var currentScope: Scope? = null
-    private val symbolTable = typeResolution.symbolTable
+    private val symbolTable = SymbolTable()
     private val entityTable = typeResolution.entityTable
 
     override fun visitCompilationUnit(ctx: CParser.CompilationUnitContext): Value {
@@ -135,7 +136,7 @@ class AstBuilder(
         return Value.of(
             AssignmentExpression(
                 ctx.location,
-                AssignmentExpressionType.parse(ctx.assignment_operator().text),
+                AssignmentOperator.parse(ctx.assignment_operator().text),
                 visit(ctx.unary_expression()).cast<Expression>(),
                 visit(ctx.assignment_expression()).cast<Expression>(),
             ),
@@ -225,8 +226,8 @@ class AstBuilder(
                 .asReversed()
                 .fold(coreExpr) { acc, op ->
                     when (op) {
-                        is CParser.PrefixIncrementContext -> UnaryExpression(op.location, UnaryType.PlusPlus, acc)
-                        is CParser.PrefixDecrementContext -> UnaryExpression(op.location, UnaryType.MinusMinus, acc)
+                        is CParser.PrefixIncrementContext -> UnaryExpression(op.location, UnaryOperator.PlusPlus, acc)
+                        is CParser.PrefixDecrementContext -> UnaryExpression(op.location, UnaryOperator.MinusMinus, acc)
                         is CParser.PrefixSizeofContext -> error("sizeof operator is currently not supported")
                         else -> error("Unexpected prefix operator ${op.javaClass}")
                     }
@@ -235,7 +236,7 @@ class AstBuilder(
     }
 
     override fun visitCompoundUnaryCore(ctx: CParser.CompoundUnaryCoreContext): Value {
-        val operator = UnaryType.parse(ctx.unary_operator().text)
+        val operator = UnaryOperator.parse(ctx.unary_operator().text)
         val operand = visit(ctx.cast_expression()).cast<Expression>()
         return Value.of(UnaryExpression(ctx.location, operator, operand))
     }
@@ -264,12 +265,12 @@ class AstBuilder(
                         }
 
                         is CParser.PostfixMemberAccessContext -> {
-                            FieldAccessExpression(ctx.location, acc, suffix.field.text)
+                            FieldAccessExpression(ctx.location, acc, suffix.Identifier().text)
                         }
 
                         is CParser.PostfixPointerMemberAccessContext -> {
-                            val deref = UnaryExpression(ctx.location, UnaryType.Indirection, acc)
-                            FieldAccessExpression(ctx.location, deref, suffix.field.text)
+                            val deref = UnaryExpression(ctx.location, UnaryOperator.Dereference, acc)
+                            FieldAccessExpression(ctx.location, deref, suffix.Identifier().text)
                         }
 
                         is CParser.PostfixIncrementContext -> {
@@ -739,7 +740,7 @@ class AstBuilder(
         for ((op, right) in operators.zip(rights)) {
             result = BinaryExpression(
                 ctx.location,
-                BinaryExpressionType.parse(op.text),
+                BinaryOperator.parse(op.text),
                 result,
                 visit(right).cast<Expression>(),
             )
@@ -831,7 +832,7 @@ class AstBuilder(
             )
         }
 
-        val entity = scope.lookupVariableEntity(name)
+        val entity = scope.lookupVariable(name)
         if (entity == null) {
             reporter.reportError(location, "undefined identifier '$name'")
             return VariableReference(

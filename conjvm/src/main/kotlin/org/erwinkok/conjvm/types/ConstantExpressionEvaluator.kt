@@ -3,6 +3,7 @@ package org.erwinkok.conjvm.types
 import org.antlr.v4.runtime.ParserRuleContext
 import org.erwinkok.conjvm.CBaseVisitor
 import org.erwinkok.conjvm.CParser
+import org.erwinkok.conjvm.declarations.Scope
 import org.erwinkok.conjvm.parser.ErrorReporter
 import org.erwinkok.conjvm.parser.SourceFile
 import org.erwinkok.conjvm.utils.ParserReporting
@@ -10,7 +11,7 @@ import org.erwinkok.conjvm.utils.ParserReporting
 class ConstantExpressionEvaluator(
     override val reporter: ErrorReporter,
     override val source: SourceFile,
-    private val symbolTable: SymbolTable,
+    private val scope: Scope,
 ) : CBaseVisitor<Long?>(),
     ParserReporting {
     override fun visitConstant_expression(ctx: CParser.Constant_expressionContext): Long? {
@@ -238,7 +239,7 @@ class ConstantExpressionEvaluator(
 
     override fun visitPrimaryId(ctx: CParser.PrimaryIdContext): Long? {
         val name = ctx.Identifier().text
-        val enumValue = symbolTable.lookupEnumConstant(name)
+        val enumValue = scope.lookupEnumConstant(name)
         return if (enumValue != null) {
             enumValue
         } else {

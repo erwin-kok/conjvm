@@ -6,7 +6,7 @@ import org.erwinkok.conjvm.parser.SourceLocation
 
 class IfThenElseStatement(
     location: SourceLocation,
-    val test: Expression,
+    val condition: Expression,
     val thenBlock: BlockStatement,
     val elseBlock: BlockStatement,
 ) : Statement(location) {
@@ -19,16 +19,14 @@ class IfThenElseStatement(
         if (other !is IfThenElseStatement) {
             return false
         }
-
-        if (test != other.test) return false
+        if (condition != other.condition) return false
         if (thenBlock != other.thenBlock) return false
         if (elseBlock != other.elseBlock) return false
-
         return true
     }
 
     override fun hashCode(): Int {
-        var result = test.hashCode()
+        var result = condition.hashCode()
         result = 31 * result + thenBlock.hashCode()
         result = 31 * result + elseBlock.hashCode()
         return result

@@ -103,6 +103,41 @@ class DeclarationListener(
         exitScope(ctx, ScopeKind.FOR)
     }
 
+    override fun exitForInitVarDecl(ctx: CParser.ForInitVarDeclContext) {
+        val declarationSpecifier = declarationParser.visit(ctx.declaration_specifiers()).cast<DeclarationSpecifier>()
+        val initDeclaratorList = ctx.init_declarator_list()
+        if (initDeclaratorList != null) {
+            val declarators = declarationParser.visit(initDeclaratorList).cast<List<InitDeclarator>>()
+            declarators.forEach { (declarator, initializer) ->
+                handleDeclarator(ctx, declarationSpecifier, declarator, initializer)
+            }
+        }
+    }
+
+    override fun exitLabeled_statement(ctx: CParser.Labeled_statementContext) {
+        val name = ctx.Identifier().text
+        defineLabel(
+            ctx = ctx,
+            scope = currentScope,
+            name = name,
+            isDefinition = true,
+        )?.let {
+            entityTable.registerLabel(ctx, it)
+        }
+    }
+
+    override fun exitGoto_statement(ctx: CParser.Goto_statementContext) {
+        val name = ctx.Identifier().text
+        defineLabel(
+            ctx = ctx,
+            scope = currentScope,
+            name = name,
+            isDefinition = false,
+        )?.let {
+            entityTable.registerLabel(ctx, it)
+        }
+    }
+
     override fun exitDeclaration(ctx: CParser.DeclarationContext) {
         val declarationSpecifier = declarationParser.visit(ctx.declaration_specifiers()).cast<DeclarationSpecifier>()
         val isTypedef = declarationSpecifier.hasTypedef
@@ -169,6 +204,7 @@ class DeclarationListener(
         enumeratorStack.last().add(Enumerator(ctx.location, ctx.Identifier().text, ctx.constant_expression()))
     }
 
+    // Used by the ANTLR CParser
     fun isTypedefName(name: String): Boolean {
         return currentScope.isTypedefName(name)
     }
@@ -333,6 +369,11 @@ class DeclarationListener(
         val name = variable.name
         if (name == null) {
             reporter.reportError(ctx.location, "Variable should have a name")
+            return null
+        }
+        val hasExtern = declarationSpecifier.storage.contains(StorageClass.EXTERN)
+        if (scope.kind != ScopeKind.FILE && hasExtern && initializer != null) {
+            reporter.reportError(ctx.location, "Variable can not be extern and have an initializer")
             return null
         }
         val entity = scope.getOrCreateVariableEntity(name)
@@ -505,7 +546,7 @@ class DeclarationListener(
      */
     fun resolveTentativeDefinitions(scope: Scope) {
         if (scope.kind == ScopeKind.FILE) {
-            scope.variables.forEach { entity ->
+            scope.localVariables.forEach { entity ->
                 if (entity.definition == null && entity.linkage == Linkage.EXTERNAL) {
                     val declaration = entity.declarations.firstOrNull()
                     if (declaration != null) {
@@ -532,7 +573,7 @@ class DeclarationListener(
 
     private fun validateLabels(functionScope: Scope) {
         require(functionScope.kind == ScopeKind.FUNCTION) { "Expected function scope" }
-        functionScope.labels.forEach { entity ->
+        functionScope.localLabels.forEach { entity ->
             val hasDefinition = entity.declarations.any { it.isDefined }
             if (!hasDefinition) {
                 entity.declarations.forEach { decl ->

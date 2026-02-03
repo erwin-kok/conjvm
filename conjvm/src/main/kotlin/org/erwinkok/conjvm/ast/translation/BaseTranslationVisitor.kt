@@ -47,11 +47,11 @@ abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : T
     }
 
     override fun translateAssignment(expression: AssignmentExpression): TranslationResult {
-        val (lts, lte) = translate(expression.leftExpression)
-        val (rts, rte) = translate(expression.rightExpression)
+        val (lts, lte) = translate(expression.left)
+        val (rts, rte) = translate(expression.right)
         requireNotNull(lte)
         requireNotNull(rte)
-        return TranslationResult(lts + rts, AssignmentExpression(expression.location, expression.type, lte, rte))
+        return TranslationResult(lts + rts, AssignmentExpression(expression.location, expression.operator, lte, rte))
     }
 
     override fun translateBinary(expression: BinaryExpression): TranslationResult {
@@ -59,7 +59,7 @@ abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : T
         val (rts, rte) = translate(expression.rightExpression)
         requireNotNull(lte)
         requireNotNull(rte)
-        return TranslationResult(lts + rts, BinaryExpression(expression.location, expression.type, lte, rte))
+        return TranslationResult(lts + rts, BinaryExpression(expression.location, expression.operator, lte, rte))
     }
 
     override fun translateCall(expression: CallExpression): TranslationResult {
@@ -131,7 +131,7 @@ abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : T
     override fun translateUnary(expression: UnaryExpression): TranslationResult {
         val (ts, te) = translate(expression.operand)
         requireNotNull(te)
-        return TranslationResult(ts, UnaryExpression(expression.location, expression.type, te))
+        return TranslationResult(ts, UnaryExpression(expression.location, expression.operator, te))
     }
 
     override fun translateVariableReference(variableReference: VariableReference): TranslationResult {
@@ -215,7 +215,7 @@ abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : T
         val translatedThenBlock = translateBlockStatement(statement.thenBlock)
         val translatedElseBlock = translateBlockStatement(statement.elseBlock)
         return TranslationResult(
-            listOf(IfThenElseStatement(statement.location, statement.test, translatedThenBlock, translatedElseBlock)),
+            listOf(IfThenElseStatement(statement.location, statement.condition, translatedThenBlock, translatedElseBlock)),
             null,
         )
     }
@@ -223,7 +223,7 @@ abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : T
     override fun translateIfThen(statement: IfThenStatement): TranslationResult {
         val translatedThenBlock = translateBlockStatement(statement.thenBlock)
         return TranslationResult(
-            listOf(IfThenStatement(statement.location, statement.test, translatedThenBlock)),
+            listOf(IfThenStatement(statement.location, statement.condition, translatedThenBlock)),
             null,
         )
     }
@@ -238,11 +238,11 @@ abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : T
 
     override fun translateSwitch(statement: SwitchStatement): TranslationResult {
         val sections = statement.sections.map {
-            SwitchCaseStatement(it.location, it.test, translateBlockStatement(it.blockStatement))
+            SwitchCaseStatement(it.location, it.condition, translateBlockStatement(it.block))
         }
         val defaultSection = statement.defaultSection?.let { SwitchDefaultStatement(it.location, translateBlockStatement(it.blockStatement)) }
         return TranslationResult(
-            listOf(SwitchStatement(statement.location, statement.test, sections, defaultSection)),
+            listOf(SwitchStatement(statement.location, statement.condition, sections, defaultSection)),
             null,
         )
     }

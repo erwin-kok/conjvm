@@ -2,6 +2,7 @@ package org.erwinkok.conjvm.declarations
 
 import org.erwinkok.conjvm.CParser
 import org.erwinkok.conjvm.parser.SourceLocation
+import java.util.UUID
 
 data class InitDeclarator(
     val declarator: Declarator,
@@ -68,6 +69,7 @@ sealed class Declaration(
         scope: Scope,
         override val name: String?,
         val structDeclarations: List<StructDeclaration>,
+        val id: UUID = UUID.randomUUID(),
     ) : Declaration(location, scope) {
         val isDefinition = structDeclarations.isNotEmpty()
     }
@@ -77,6 +79,7 @@ sealed class Declaration(
         scope: Scope,
         override val name: String?,
         val enumerators: List<Enumerator>,
+        val id: UUID = UUID.randomUUID(),
     ) : Declaration(location, scope) {
         val isDefinition = enumerators.isNotEmpty()
     }

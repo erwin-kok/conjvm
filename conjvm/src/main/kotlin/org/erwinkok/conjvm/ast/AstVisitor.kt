@@ -43,14 +43,14 @@ interface AstExpressionVisitor<out R> {
     fun visitBinary(expression: BinaryExpression): R
     fun visitCall(expression: CallExpression): R
     fun visitCast(expression: CastExpression): R
-    fun visitIntegerLiteral(expression: IntegerLiteralExpression): R
-    fun visitFloatLiteral(expression: FloatLiteralExpression): R
-    fun visitStringLiteral(expression: StringLiteralExpression): R
     fun visitCharacterLiteral(expression: CharacterLiteralExpression): R
     fun visitFieldAccess(expression: FieldAccessExpression): R
+    fun visitFloatLiteral(expression: FloatLiteralExpression): R
+    fun visitIntegerLiteral(expression: IntegerLiteralExpression): R
     fun visitParenthesized(expression: ParenthesizedExpression): R
     fun visitPostfixDecrement(expression: PostfixDecrementExpression): R
     fun visitPostfixIncrement(expression: PostfixIncrementExpression): R
+    fun visitStringLiteral(expression: StringLiteralExpression): R
     fun visitTernary(expression: TernaryExpression): R
     fun visitUnary(expression: UnaryExpression): R
     fun visitVariableReference(variableReference: VariableReference): R
@@ -63,18 +63,18 @@ interface AstStatementVisitor<out R> {
     fun visitBreak(statement: BreakStatement): R
     fun visitCompilationUnit(statement: CompilationUnitStatement): R
     fun visitContinue(statement: ContinueStatement): R
+    fun visitDoWhile(statement: DoWhileStatement): R
     fun visitExpression(statement: ExpressionStatement): R
     fun visitFor(statement: ForStatement): R
     fun visitFunctionDefinition(definition: FunctionDefinitionStatement): R
     fun visitGoto(statement: GotoStatement): R
-    fun visitIfThenElse(statement: IfThenElseStatement): R
     fun visitIfThen(statement: IfThenStatement): R
+    fun visitIfThenElse(statement: IfThenElseStatement): R
     fun visitLabeled(statement: LabeledStatement): R
     fun visitReturn(statement: ReturnStatement): R
     fun visitSwitch(statement: SwitchStatement): R
     fun visitVariableDeclaration(statement: VariableDeclarationStatement): R
     fun visitWhile(statement: WhileStatement): R
-    fun visitDoWhile(statement: DoWhileStatement): R
 }
 
 interface AstVisitor<out R> :

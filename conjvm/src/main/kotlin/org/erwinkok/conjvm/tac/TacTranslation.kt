@@ -1,7 +1,7 @@
 package org.erwinkok.conjvm.tac
 
 import org.erwinkok.conjvm.ast.AstStatementVisitor
-import org.erwinkok.conjvm.ast.expressions.BinaryExpressionType
+import org.erwinkok.conjvm.ast.expressions.BinaryOperator
 import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.BreakStatement
@@ -92,7 +92,7 @@ class TacTranslation(
 
     override fun visitIfThenElse(statement: IfThenElseStatement): TacResult {
         val allStatements = mutableListOf<TacInstruction>()
-        val (ts, te) = translateExpression(statement.test)
+        val (ts, te) = translateExpression(statement.condition)
         allStatements.addAll(ts)
         requireNotNull(te)
         val translatedThenBlock = translateBlockStatement(statement.thenBlock)
@@ -113,7 +113,7 @@ class TacTranslation(
 
     override fun visitIfThen(statement: IfThenStatement): TacResult {
         val allStatements = mutableListOf<TacInstruction>()
-        val (ts, te) = translateExpression(statement.test)
+        val (ts, te) = translateExpression(statement.condition)
         allStatements.addAll(ts)
         requireNotNull(te)
         val translatedThenBlock = translateBlockStatement(statement.thenBlock)
@@ -145,7 +145,7 @@ class TacTranslation(
         val allStatements = mutableListOf<TacInstruction>()
 
         // Evaluate switch expression
-        val (testInstrs, testExpr) = translateExpression(statement.test)
+        val (testInstrs, testExpr) = translateExpression(statement.condition)
         require(testExpr != null)
         allStatements.addAll(testInstrs)
 
@@ -158,11 +158,11 @@ class TacTranslation(
 
         // First, write the case goto table.
         for ((caseStatement, caseLabel) in caseLabels) {
-            val (caseInstrs, caseTemp) = translateExpression(caseStatement.test)
+            val (caseInstrs, caseTemp) = translateExpression(caseStatement.condition)
             require(caseTemp != null)
             val cmpTemp = tempFactory.newTemp()
             allStatements.addAll(caseInstrs)
-            allStatements.add(TacBinaryInstruction(cmpTemp, BinaryExpressionType.Equals, testExpr, caseTemp))
+            allStatements.add(TacBinaryInstruction(cmpTemp, BinaryOperator.Equals, testExpr, caseTemp))
             allStatements.add(TacIfGotoInstruction(cmpTemp, caseLabel))
         }
 
@@ -178,7 +178,7 @@ class TacTranslation(
         // Write all the case blocks with their label
         for ((caseStatement, caseLabel) in caseLabels) {
             allStatements.add(TacLabeledInstruction(caseLabel))
-            allStatements.addAll(emitSwitchBlock(caseStatement.blockStatement, endLabel))
+            allStatements.addAll(emitSwitchBlock(caseStatement.block, endLabel))
         }
 
         // If there is a default block, write the block

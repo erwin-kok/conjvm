@@ -5,13 +5,13 @@ import org.erwinkok.conjvm.parser.SourceLocation
 
 class UnaryExpression(
     location: SourceLocation,
-    val type: UnaryType,
+    val operator: UnaryOperator,
     val operand: Expression,
 ) : Expression(location) {
     override fun <R> accept(visitor: AstExpressionVisitor<R>): R = visitor.visitUnary(this)
 
     override fun toString(): String {
-        return "$type$operand"
+        return "$operator$operand"
     }
 
     override fun equals(other: Any?): Boolean {
@@ -22,14 +22,14 @@ class UnaryExpression(
             return false
         }
 
-        if (type != other.type) return false
+        if (operator != other.operator) return false
         if (operand != other.operand) return false
 
         return true
     }
 
     override fun hashCode(): Int {
-        var result = type.hashCode()
+        var result = operator.hashCode()
         result = 31 * result + operand.hashCode()
         return result
     }

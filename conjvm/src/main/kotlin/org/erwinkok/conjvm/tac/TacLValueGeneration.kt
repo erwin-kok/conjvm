@@ -17,7 +17,7 @@ import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.StringLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
-import org.erwinkok.conjvm.ast.expressions.UnaryType
+import org.erwinkok.conjvm.ast.expressions.UnaryOperator
 import org.erwinkok.conjvm.ast.expressions.VariableReference
 import org.erwinkok.conjvm.tac.instructions.TacInstruction
 import org.erwinkok.conjvm.tac.lvalues.ArrayLValue
@@ -113,7 +113,7 @@ class TacLValueGeneration(private val rValueVisitor: TacRValueGeneration) : AstE
     }
 
     override fun visitUnary(expression: UnaryExpression): TacAddressResult {
-        return if (expression.type == UnaryType.Indirection) {
+        return if (expression.operator == UnaryOperator.Dereference) {
             val (ts, te) = rValueVisitor.translate(expression.operand)
             requireNotNull(te)
             TacAddressResult(ts, IndirectLValue(te))

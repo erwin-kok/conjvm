@@ -3,9 +3,9 @@ package org.erwinkok.conjvm.tac
 import org.erwinkok.conjvm.ast.AstExpressionVisitor
 import org.erwinkok.conjvm.ast.expressions.ArrayAccessExpression
 import org.erwinkok.conjvm.ast.expressions.AssignmentExpression
-import org.erwinkok.conjvm.ast.expressions.AssignmentExpressionType
+import org.erwinkok.conjvm.ast.expressions.AssignmentOperator
 import org.erwinkok.conjvm.ast.expressions.BinaryExpression
-import org.erwinkok.conjvm.ast.expressions.BinaryExpressionType
+import org.erwinkok.conjvm.ast.expressions.BinaryOperator
 import org.erwinkok.conjvm.ast.expressions.CallExpression
 import org.erwinkok.conjvm.ast.expressions.CastExpression
 import org.erwinkok.conjvm.ast.expressions.CharacterLiteralExpression
@@ -19,7 +19,7 @@ import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.StringLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
-import org.erwinkok.conjvm.ast.expressions.UnaryType
+import org.erwinkok.conjvm.ast.expressions.UnaryOperator
 import org.erwinkok.conjvm.ast.expressions.VariableReference
 import org.erwinkok.conjvm.tac.instructions.TacAddressOfInstruction
 import org.erwinkok.conjvm.tac.instructions.TacBinaryInstruction
@@ -107,7 +107,7 @@ class TacRValueGeneration(
         instructions.add(
             TacBinaryInstruction(
                 newTemp,
-                BinaryExpressionType.Subtract,
+                BinaryOperator.Subtract,
                 lte,
                 TacConstantLongValue(1),
             ),
@@ -128,7 +128,7 @@ class TacRValueGeneration(
         instructions.add(
             TacBinaryInstruction(
                 newTemp,
-                BinaryExpressionType.Add,
+                BinaryOperator.Add,
                 lte,
                 TacConstantLongValue(1),
             ),
@@ -139,11 +139,11 @@ class TacRValueGeneration(
     }
 
     override fun visitAssignment(expression: AssignmentExpression): TacResult {
-        val (lts, lte) = lValueVisitor.translate(expression.leftExpression)
-        val (rts, rte) = translate(expression.rightExpression)
+        val (lts, lte) = lValueVisitor.translate(expression.left)
+        val (rts, rte) = translate(expression.right)
         requireNotNull(lte)
         requireNotNull(rte)
-        require(expression.type == AssignmentExpressionType.Assign)
+        require(expression.operator == AssignmentOperator.Assign)
         val (tsl, tel) = generateStoreInstruction(lte, rte)
         return TacResult(lts + rts + tsl, tel)
     }
@@ -157,7 +157,7 @@ class TacRValueGeneration(
         allArguments.addAll(lte.statements)
         allArguments.addAll(rte.statements)
         val temp = tempFactory.newTemp()
-        allArguments.add(TacBinaryInstruction(temp, expression.type, lte.tacValue, rte.tacValue))
+        allArguments.add(TacBinaryInstruction(temp, expression.operator, lte.tacValue, rte.tacValue))
         return TacResult(allArguments, temp)
     }
 
@@ -210,15 +210,15 @@ class TacRValueGeneration(
     }
 
     override fun visitUnary(expression: UnaryExpression): TacResult {
-        return when (expression.type) {
-            UnaryType.Address -> translateUnaryAddressOf(expression)
-            UnaryType.Indirection -> translateUnaryIndirection(expression)
-            UnaryType.Plus -> translateUnaryPlus(expression)
-            UnaryType.Minus -> translateUnaryMinus(expression)
-            UnaryType.BitwiseNot -> translateUnaryBitwiseNot(expression)
-            UnaryType.LogicalNot -> translateUnaryLogicalNot(expression)
-            UnaryType.PlusPlus -> translateUnaryIncrement(expression)
-            UnaryType.MinusMinus -> translateUnaryDecrement(expression)
+        return when (expression.operator) {
+            UnaryOperator.AddressOf -> translateUnaryAddressOf(expression)
+            UnaryOperator.Dereference -> translateUnaryIndirection(expression)
+            UnaryOperator.Plus -> translateUnaryPlus(expression)
+            UnaryOperator.Minus -> translateUnaryMinus(expression)
+            UnaryOperator.BitwiseNot -> translateUnaryBitwiseNot(expression)
+            UnaryOperator.LogicalNot -> translateUnaryLogicalNot(expression)
+            UnaryOperator.PlusPlus -> translateUnaryIncrement(expression)
+            UnaryOperator.MinusMinus -> translateUnaryDecrement(expression)
         }
     }
 
@@ -248,7 +248,7 @@ class TacRValueGeneration(
         val allArguments = mutableListOf<TacInstruction>()
         allArguments.addAll(ts)
         val temp = tempFactory.newTemp()
-        allArguments.add(TacBinaryInstruction(temp, BinaryExpressionType.Subtract, TacConstantLongValue(0), te))
+        allArguments.add(TacBinaryInstruction(temp, BinaryOperator.Subtract, TacConstantLongValue(0), te))
         return TacResult(allArguments, temp)
     }
 
@@ -258,7 +258,7 @@ class TacRValueGeneration(
         val allArguments = mutableListOf<TacInstruction>()
         allArguments.addAll(ts)
         val temp = tempFactory.newTemp()
-        allArguments.add(TacBinaryInstruction(temp, BinaryExpressionType.ExclusiveOr, te, TacConstantLongValue(-1)))
+        allArguments.add(TacBinaryInstruction(temp, BinaryOperator.ExclusiveOr, te, TacConstantLongValue(-1)))
         return TacResult(allArguments, temp)
     }
 
@@ -268,7 +268,7 @@ class TacRValueGeneration(
         val allArguments = mutableListOf<TacInstruction>()
         allArguments.addAll(ts)
         val temp = tempFactory.newTemp()
-        allArguments.add(TacBinaryInstruction(temp, BinaryExpressionType.Equals, te, TacConstantLongValue(0)))
+        allArguments.add(TacBinaryInstruction(temp, BinaryOperator.Equals, te, TacConstantLongValue(0)))
         return TacResult(allArguments, temp)
     }
 
@@ -283,7 +283,7 @@ class TacRValueGeneration(
         instructions.add(
             TacBinaryInstruction(
                 newTemp,
-                BinaryExpressionType.Add,
+                BinaryOperator.Add,
                 lte,
                 TacConstantLongValue(1),
             ),
@@ -304,7 +304,7 @@ class TacRValueGeneration(
         instructions.add(
             TacBinaryInstruction(
                 newTemp,
-                BinaryExpressionType.Subtract,
+                BinaryOperator.Subtract,
                 lte,
                 TacConstantLongValue(1),
             ),

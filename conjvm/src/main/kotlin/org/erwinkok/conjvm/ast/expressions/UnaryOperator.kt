@@ -1,8 +1,8 @@
 package org.erwinkok.conjvm.ast.expressions
 
-enum class UnaryType {
-    Address,
-    Indirection,
+enum class UnaryOperator {
+    AddressOf,
+    Dereference,
     Plus,
     Minus,
     BitwiseNot,
@@ -13,8 +13,8 @@ enum class UnaryType {
 
     override fun toString(): String {
         return when (this) {
-            Address -> "&"
-            Indirection -> "*"
+            AddressOf -> "&"
+            Dereference -> "*"
             Plus -> "+"
             Minus -> "-"
             BitwiseNot -> "~"
@@ -25,10 +25,10 @@ enum class UnaryType {
     }
 
     companion object {
-        fun parse(type: String): UnaryType {
+        fun parse(type: String): UnaryOperator {
             return when (type) {
-                "&" -> Address
-                "*" -> Indirection
+                "&" -> AddressOf
+                "*" -> Dereference
                 "+" -> Plus
                 "-" -> Minus
                 "~" -> BitwiseNot

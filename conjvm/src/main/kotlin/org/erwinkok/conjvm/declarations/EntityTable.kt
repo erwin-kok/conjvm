@@ -77,7 +77,6 @@ class EntityTable {
         labelMap[ctx] = entity
     }
 
-    // ADD: Lookup by name
     fun getTypedefByName(name: String): Entity.Typedef? {
         return typedefsByName[name]
     }

@@ -5,14 +5,14 @@ import org.erwinkok.conjvm.parser.SourceLocation
 
 class AssignmentExpression(
     location: SourceLocation,
-    val type: AssignmentExpressionType,
-    val leftExpression: Expression,
-    val rightExpression: Expression,
+    val operator: AssignmentOperator,
+    val left: Expression,
+    val right: Expression,
 ) : Expression(location) {
     override fun <R> accept(visitor: AstExpressionVisitor<R>): R = visitor.visitAssignment(this)
 
     override fun toString(): String {
-        return "$leftExpression $type $rightExpression"
+        return "$left $operator $right"
     }
 
     override fun equals(other: Any?): Boolean {
@@ -23,17 +23,17 @@ class AssignmentExpression(
             return false
         }
 
-        if (type != other.type) return false
-        if (leftExpression != other.leftExpression) return false
-        if (rightExpression != other.rightExpression) return false
+        if (operator != other.operator) return false
+        if (left != other.left) return false
+        if (right != other.right) return false
 
         return true
     }
 
     override fun hashCode(): Int {
-        var result = type.hashCode()
-        result = 31 * result + leftExpression.hashCode()
-        result = 31 * result + rightExpression.hashCode()
+        var result = operator.hashCode()
+        result = 31 * result + left.hashCode()
+        result = 31 * result + right.hashCode()
         return result
     }
 }

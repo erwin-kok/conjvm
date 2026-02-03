@@ -30,12 +30,6 @@ class Compiler(
             }
             astResult
         }
-//        val typeVisitor = TypeVisitor(SymbolTable(), reporter)
-//        typeVisitor.visit(astResult.astStatement)
-//        if (reporter.hasErrors) {
-//            return null
-//        }
-
         val linkedProgram = Linker(reporter).link(astResults)
         if (reporter.hasErrors) {
             return null

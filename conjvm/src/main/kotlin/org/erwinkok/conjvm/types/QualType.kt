@@ -27,6 +27,10 @@ data class QualType(
     // Remove all qualifiers from this type.
     fun withoutQualifiers() = QualType(type, emptySet())
 
+    fun withQualifiers(newQualifiers: Set<TypeQualifier>): QualType {
+        return QualType(type, qualifiers + newQualifiers)
+    }
+
     // Get the underlying type if this is a typedef, otherwise return this.
     fun unwrapTypedef(): QualType {
         return if (type is Type.Typedef) {

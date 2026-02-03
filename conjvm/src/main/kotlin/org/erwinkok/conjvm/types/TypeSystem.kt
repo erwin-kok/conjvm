@@ -28,6 +28,16 @@ object TypeSystem {
         }
     }
 
+    fun isIncompleteType(type: QualType): Boolean {
+        return when (val canonical = type.canonical.type) {
+            is Type.Void -> true
+            is Type.Array -> canonical.size == null
+            is Type.Struct -> canonical.members == null
+            is Type.Enum -> canonical.constants == null
+            else -> false
+        }
+    }
+
     /* ============================================================
      * Classification helpers
      * ============================================================ */

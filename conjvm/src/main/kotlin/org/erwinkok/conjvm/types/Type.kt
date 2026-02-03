@@ -3,8 +3,10 @@ package org.erwinkok.conjvm.types
 import java.util.UUID
 
 data class StructMember(
-    val name: String,
+    val name: String?,
     val type: QualType,
+    val offset: Long,
+    val bitFieldWidth: Int? = null,
 )
 
 sealed class Type {
@@ -35,6 +37,9 @@ sealed class Type {
         val tag: String?,
         val members: List<StructMember>?, // null = incomplete type
     ) : Type() {
+        val isComplete: Boolean
+            get() = members != null
+
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other !is Struct) return false
@@ -47,8 +52,11 @@ sealed class Type {
     data class Enum(
         val id: UUID,
         val tag: String?,
-        val constants: Map<String, Long>?, // null = incomplete
+        val constants: Map<String, kotlin.Long>?, // null = incomplete type
     ) : Type() {
+        val isComplete: Boolean
+            get() = constants != null
+
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other !is Enum) return false
@@ -86,10 +94,11 @@ sealed class Type {
             is Pointer if other is Pointer -> pointerCompatible(this, other)
             is Array if other is Array -> arrayCompatible(this, other)
             is Function if other is Function -> functionCompatible(this, other)
+            is BitField -> other is BitField && bitFieldCompatible(this, other)
 
-            // Nominal types (compare by identity)
-            is Struct if other is Struct -> this.id == other.id
-            is Enum if other is Enum -> this.id == other.id
+            // Nominal types - compare by UUID identity
+            is Struct -> other is Struct && this.id == other.id
+            is Enum -> other is Enum && this.id == other.id
 
             // Typedefs should have been canonicalized already
             is Typedef -> error("Typedef should not appear in compatibility check")
@@ -150,6 +159,7 @@ sealed class Type {
         if (pa.type == Void || pb.type == Void) {
             return true
         }
+        // Otherwise, pointee types must be compatible
         return pa.isCompatibleWith(pb)
     }
 
@@ -162,6 +172,7 @@ sealed class Type {
         if (a.size != null && b.size != null && a.size != b.size) {
             return false
         }
+        // If one or both sizes are unknown, arrays are still compatible
         return true
     }
 
@@ -179,5 +190,10 @@ sealed class Type {
         return a.parameters.zip(b.parameters).all { (pa, pb) ->
             pa.isCompatibleWith(pb)
         }
+    }
+
+    private fun bitFieldCompatible(a: BitField, b: BitField): Boolean {
+        // Bit-fields must have the same width and compatible base types
+        return a.width == b.width && a.base.isCompatibleWith(b.base)
     }
 }

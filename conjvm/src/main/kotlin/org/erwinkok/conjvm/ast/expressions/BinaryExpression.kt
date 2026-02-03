@@ -5,14 +5,14 @@ import org.erwinkok.conjvm.parser.SourceLocation
 
 class BinaryExpression(
     location: SourceLocation,
-    val type: BinaryExpressionType,
+    val operator: BinaryOperator,
     val leftExpression: Expression,
     val rightExpression: Expression,
 ) : Expression(location) {
     override fun <R> accept(visitor: AstExpressionVisitor<R>): R = visitor.visitBinary(this)
 
     override fun toString(): String {
-        return "$leftExpression $type $rightExpression"
+        return "$leftExpression $operator $rightExpression"
     }
 
     override fun equals(other: Any?): Boolean {
@@ -23,7 +23,7 @@ class BinaryExpression(
             return false
         }
 
-        if (type != other.type) return false
+        if (operator != other.operator) return false
         if (leftExpression != other.leftExpression) return false
         if (rightExpression != other.rightExpression) return false
 
@@ -31,7 +31,7 @@ class BinaryExpression(
     }
 
     override fun hashCode(): Int {
-        var result = type.hashCode()
+        var result = operator.hashCode()
         result = 31 * result + leftExpression.hashCode()
         result = 31 * result + rightExpression.hashCode()
         return result

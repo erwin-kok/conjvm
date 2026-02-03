@@ -7,8 +7,7 @@ import org.erwinkok.conjvm.parser.SourceFile
 
 data class TypeResolutionResult(
     val sourceFile: SourceFile,
-    val entityTable: EntityTable,
     val rootScope: Scope,
+    val entityTable: EntityTable,
     val parseTree: ParserRuleContext,
-    val symbolTable: SymbolTable,
 )

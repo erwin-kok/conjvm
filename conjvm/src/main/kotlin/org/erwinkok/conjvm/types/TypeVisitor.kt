@@ -18,7 +18,7 @@ import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.StringLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
-import org.erwinkok.conjvm.ast.expressions.UnaryType
+import org.erwinkok.conjvm.ast.expressions.UnaryOperator
 import org.erwinkok.conjvm.ast.expressions.VariableReference
 import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.BreakStatement
@@ -55,8 +55,7 @@ class TypeVisitor(
     private val cache = IdentityHashMap<Expression, ExpressionType>()
     private var currentReturn: QualType = TypeSystem.voidType
     private var scope = ScopeX()
-
-    val globalScope = scope
+    private val globalScope = scope
 
     override fun visitCompilationUnit(statement: CompilationUnitStatement) {
         statement.variableDeclarations.forEach { defineGlobalVariable(it) }
@@ -144,13 +143,13 @@ class TypeVisitor(
     }
 
     override fun visitIfThenElse(statement: IfThenElseStatement) {
-        visit(statement.test)
+        visit(statement.condition)
         visit(statement.thenBlock)
         visit(statement.elseBlock)
     }
 
     override fun visitIfThen(statement: IfThenStatement) {
-        visit(statement.test)
+        visit(statement.condition)
         visit(statement.thenBlock)
     }
 
@@ -176,7 +175,7 @@ class TypeVisitor(
     }
 
     override fun visitSwitch(statement: SwitchStatement) {
-        visit(statement.test)
+        visit(statement.condition)
         statement.sections.forEach { visitSwitchCase(it) }
         statement.defaultSection?.let { visitDefaultCase(it) }
     }
@@ -226,8 +225,8 @@ class TypeVisitor(
     }
 
     override fun visitAssignment(expression: AssignmentExpression): ExpressionType {
-        val lhs = typeOf(expression.leftExpression)
-        val rhs = typeOf(expression.rightExpression).toRValue()
+        val lhs = typeOf(expression.left)
+        val rhs = typeOf(expression.right).toRValue()
 
         if (lhs.isError || rhs.isError) {
             return errorType(expression)
@@ -492,8 +491,8 @@ class TypeVisitor(
         }
 
         val t = operand.type
-        return when (expression.type) {
-            UnaryType.Address -> {
+        return when (expression.operator) {
+            UnaryOperator.AddressOf -> {
                 val address = TypeSystem.addressOf(t, operand.isLValue)
                 if (address.isError) {
                     reporter.reportError(expression.location, "cannot take address of '$expression'")
@@ -503,7 +502,7 @@ class TypeVisitor(
                 }
             }
 
-            UnaryType.Indirection -> {
+            UnaryOperator.Dereference -> {
                 val deref = TypeSystem.dereference(t)
                 if (deref.isError) {
                     reporter.reportError(expression.location, "cannot dereference '$expression'")
@@ -513,8 +512,8 @@ class TypeVisitor(
                 }
             }
 
-            UnaryType.Minus,
-            UnaryType.Plus,
+            UnaryOperator.Minus,
+            UnaryOperator.Plus,
             -> {
                 // Arithmetic operators
                 if (TypeSystem.isArithmetic(t)) {
@@ -526,8 +525,8 @@ class TypeVisitor(
                 }
             }
 
-            UnaryType.LogicalNot,
-            UnaryType.BitwiseNot,
+            UnaryOperator.LogicalNot,
+            UnaryOperator.BitwiseNot,
             -> {
                 // Arithmetic operators
                 if (TypeSystem.isArithmetic(t)) {
@@ -538,8 +537,8 @@ class TypeVisitor(
                 }
             }
 
-            UnaryType.MinusMinus,
-            UnaryType.PlusPlus,
+            UnaryOperator.MinusMinus,
+            UnaryOperator.PlusPlus,
             -> {
                 // Only lvalues of arithmetic type allowed
                 if (operand.isLValue && TypeSystem.isArithmetic(t)) {
@@ -567,8 +566,8 @@ class TypeVisitor(
     }
 
     private fun visitSwitchCase(case: SwitchCaseStatement) {
-        visit(case.test)
-        visit(case.blockStatement)
+        visit(case.condition)
+        visit(case.block)
     }
 
     private fun visitDefaultCase(default: SwitchDefaultStatement) {

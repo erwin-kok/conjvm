@@ -1,6 +1,6 @@
 package org.erwinkok.conjvm.ast.expressions
 
-enum class AssignmentExpressionType {
+enum class AssignmentOperator {
     Assign,
     PlusAssign,
     MinusAssign,
@@ -31,7 +31,7 @@ enum class AssignmentExpressionType {
     }
 
     companion object {
-        fun parse(type: String): AssignmentExpressionType {
+        fun parse(type: String): AssignmentOperator {
             return when (type) {
                 "=" -> Assign
                 "+=" -> PlusAssign

@@ -59,15 +59,15 @@ class CodeWriter(val writer: Writer) : AstVisitor<String> {
     }
 
     override fun visitAssignment(expression: AssignmentExpression): String {
-        val leftResult = visit(expression.leftExpression)
-        val rightResult = visit(expression.rightExpression)
-        return "$leftResult ${expression.type} $rightResult"
+        val leftResult = visit(expression.left)
+        val rightResult = visit(expression.right)
+        return "$leftResult ${expression.operator} $rightResult"
     }
 
     override fun visitBinary(expression: BinaryExpression): String {
         val leftResult = visit(expression.leftExpression)
         val rightResult = visit(expression.rightExpression)
-        return "$leftResult ${expression.type} $rightResult"
+        return "$leftResult ${expression.operator} $rightResult"
     }
 
     override fun visitCall(expression: CallExpression): String {
@@ -128,7 +128,7 @@ class CodeWriter(val writer: Writer) : AstVisitor<String> {
 
     override fun visitUnary(expression: UnaryExpression): String {
         val nodeResult = visit(expression.operand)
-        return "${expression.type}$nodeResult"
+        return "${expression.operator}$nodeResult"
     }
 
     override fun visitVariableReference(variableReference: VariableReference): String {
@@ -197,7 +197,7 @@ class CodeWriter(val writer: Writer) : AstVisitor<String> {
 
     override fun visitIfThenElse(statement: IfThenElseStatement): String {
         appendIndent()
-        val testResult = visit(statement.test)
+        val testResult = visit(statement.condition)
         writer.appendLine("if ($testResult)")
         writer.appendLine(visit(statement.thenBlock))
         appendIndent()
@@ -208,7 +208,7 @@ class CodeWriter(val writer: Writer) : AstVisitor<String> {
 
     override fun visitIfThen(statement: IfThenStatement): String {
         appendIndent()
-        val testResult = visit(statement.test)
+        val testResult = visit(statement.condition)
         writer.appendLine("if ($testResult)")
         writer.appendLine(visit(statement.thenBlock))
         return ""
@@ -234,7 +234,7 @@ class CodeWriter(val writer: Writer) : AstVisitor<String> {
 
     override fun visitSwitch(statement: SwitchStatement): String {
         appendIndent()
-        val testResult = visit(statement.test)
+        val testResult = visit(statement.condition)
         writer.appendLine("switch ($testResult) {")
         withIncreasedIdent {
             statement.sections.forEach { visitSwitchCase(it) }
@@ -273,10 +273,10 @@ class CodeWriter(val writer: Writer) : AstVisitor<String> {
 
     private fun visitSwitchCase(statement: SwitchCaseStatement): String {
         appendIndent()
-        val labelResult = visit(statement.test)
+        val labelResult = visit(statement.condition)
         writer.appendLine("case $labelResult:")
         withIncreasedIdent {
-            statement.blockStatement.statements.forEach {
+            statement.block.statements.forEach {
                 writer.appendLine(visit(it))
             }
         }

@@ -1,5 +1,8 @@
 package org.erwinkok.conjvm.declarations
 
+import org.erwinkok.conjvm.types.QualType
+import java.util.UUID
+
 enum class ScopeKind {
     FILE,
     FUNCTION,
@@ -13,136 +16,197 @@ class Scope(
 ) {
     val children: MutableList<Scope> = mutableListOf()
 
-    private val _typedefs = mutableMapOf<String, Entity.Typedef>()
-    private val _variables = mutableMapOf<String, Entity.Variable>()
-    private val _functions = mutableMapOf<String, Entity.Function>()
-    private val _structs = mutableMapOf<String, Entity.Struct>()
-    private val _enums = mutableMapOf<String, Entity.Enum>()
-    private val _labels = mutableMapOf<String, Entity.Label>()
+    // Entities in this scope
+    private val typedefs = mutableMapOf<String, Entity.Typedef>()
+    private val variables = mutableMapOf<String, Entity.Variable>()
+    private val functions = mutableMapOf<String, Entity.Function>()
+    private val structs = mutableMapOf<String, Entity.Struct>()
+    private val enums = mutableMapOf<String, Entity.Enum>()
+    private val labels = mutableMapOf<String, Entity.Label>()
+
+    // Enum constants (in ordinary namespace)
+    private val enumConstants = mutableMapOf<String, EnumConstant>()
 
     // Namespaces
     private val ordinaryNamespace = mutableSetOf<String>()
     private val tagNamespace = mutableSetOf<String>()
     private val labelNamespace = mutableSetOf<String>()
 
-    var isSynthetic: Boolean = false
-    val typedefs: List<Entity.Typedef>
-        get() = _typedefs.values.toList()
-    val variables: List<Entity.Variable>
-        get() = _variables.values.toList()
-    val functions: List<Entity.Function>
-        get() = _functions.values.toList()
-    val structs: List<Entity.Struct>
-        get() = _structs.values.toList()
-    val enums: List<Entity.Enum>
-        get() = _enums.values.toList()
-    val labels: List<Entity.Label>
-        get() = _labels.values.toList()
+    private var isSynthetic: Boolean = false
+
     val isEmpty: Boolean
         get() = ordinaryNamespace.isEmpty() && tagNamespace.isEmpty() && labelNamespace.isEmpty()
 
     fun markAsSynthetic() {
-        require(isEmpty)
+        require(isEmpty) { "Cannot mark non-empty scope as synthetic" }
         isSynthetic = true
     }
 
+    fun createChild(childKind: ScopeKind): Scope {
+        val child = Scope(childKind, this)
+        children.add(child)
+        return child
+    }
+
+    // ========================================================================
+    // COLLECTION QUERIES
+    // ========================================================================
+
+    val localTypedefs: Collection<Entity.Typedef>
+        get() = typedefs.values
+
+    val localVariables: Collection<Entity.Variable>
+        get() = variables.values
+
+    val localFunctions: Collection<Entity.Function>
+        get() = functions.values
+
+    val localStructs: Collection<Entity.Struct>
+        get() = structs.values
+
+    val localEnums: Collection<Entity.Enum>
+        get() = enums.values
+
+    val localLabels: Collection<Entity.Label>
+        get() = labels.values
+
+    // ========================================================================
+    // GET OR CREATE ENTITIES (only in current scope)
+    // ========================================================================
     fun getOrCreateTypedefEntity(name: String): Entity.Typedef {
-        val entity = _typedefs.getOrPut(name) { Entity.Typedef(this, name) }
+        val entity = typedefs.getOrPut(name) { Entity.Typedef(this, name) }
         ordinaryNamespace.add(name)
         return entity
     }
 
-    fun lookupTypedefEntity(name: String): Entity.Typedef? {
-        return _typedefs[name] ?: parent?.lookupTypedefEntity(name)
+    fun getOrCreateVariableEntity(name: String): Entity.Variable {
+        val entity = variables.getOrPut(name) { Entity.Variable(this, name) }
+        ordinaryNamespace.add(name)
+        return entity
     }
+
+    fun getOrCreateFunctionEntity(name: String): Entity.Function {
+        val entity = functions.getOrPut(name) { Entity.Function(this, name) }
+        ordinaryNamespace.add(name)
+        return entity
+    }
+
+    fun getOrCreateStructEntity(name: String?): Entity.Struct {
+        return if (name == null) {
+            // Anonymous struct - create new entity each time
+            Entity.Struct(this, name, UUID.randomUUID())
+        } else {
+            val entity = structs.getOrPut(name) { Entity.Struct(this, name, UUID.randomUUID()) }
+            tagNamespace.add(name)
+            entity
+        }
+    }
+
+    fun getOrCreateEnumEntity(name: String?): Entity.Enum {
+        return if (name == null) {
+            // Anonymous enum - create new entity each time
+            Entity.Enum(this, name, UUID.randomUUID())
+        } else {
+            val entity = enums.getOrPut(name) { Entity.Enum(this, name, UUID.randomUUID()) }
+            tagNamespace.add(name)
+            entity
+        }
+    }
+
+    fun getOrCreateLabelEntity(name: String): Entity.Label {
+        val entity = labels.getOrPut(name) { Entity.Label(this, name) }
+        labelNamespace.add(name)
+        return entity
+    }
+
+    fun registerEnumConstants(enumEntity: Entity.Enum) {
+        enumEntity.constants?.forEach { (constantName, value) ->
+            enumConstants[constantName] = EnumConstant(
+                name = constantName,
+                value = value,
+                enumEntity = enumEntity,
+            )
+        }
+    }
+
+    // ========================================================================
+    // LOOKUP ENTITIES (search up the scope chain)
+    // ========================================================================
+
+    fun lookupTypedef(name: String): QualType? {
+        return typedefs[name]?.type ?: parent?.lookupTypedef(name)
+    }
+
+    fun lookupTypedefEntity(name: String): Entity.Typedef? {
+        return typedefs[name] ?: parent?.lookupTypedefEntity(name)
+    }
+
+    fun lookupVariable(name: String): Entity.Variable? {
+        return variables[name] ?: parent?.lookupVariable(name)
+    }
+
+    fun lookupFunction(name: String): Entity.Function? {
+        return functions[name] ?: parent?.lookupFunction(name)
+    }
+
+    fun lookupStructTag(name: String): Entity.Struct? {
+        return structs[name] ?: parent?.lookupStructTag(name)
+    }
+
+    fun lookupEnumTag(name: String): Entity.Enum? {
+        return enums[name] ?: parent?.lookupEnumTag(name)
+    }
+
+    fun lookupEnumConstant(name: String): Long? {
+        return enumConstants[name]?.value ?: parent?.lookupEnumConstant(name)
+    }
+
+    fun lookupEnumConstantEntity(name: String): EnumConstant? {
+        return enumConstants[name] ?: parent?.lookupEnumConstantEntity(name)
+    }
+
+    fun lookupLabel(name: String): Entity.Label? {
+        // Labels are function-scoped only, don't search parent scopes
+        return labels[name]
+    }
+
+    // ========================================================================
+    // HELPER QUERIES
+    // ========================================================================
 
     fun isTypedefName(name: String): Boolean {
         return lookupTypedefEntity(name) != null
     }
 
-    fun getOrCreateVariableEntity(name: String): Entity.Variable {
-        val entity = _variables.getOrPut(name) { Entity.Variable(this, name) }
-        ordinaryNamespace.add(name)
-        return entity
+    fun isDeclaredLocally(name: String): Boolean {
+        return name in ordinaryNamespace
     }
 
-    fun lookupVariableEntity(name: String): Entity.Variable? {
-        return _variables[name] ?: parent?.lookupVariableEntity(name)
+    fun isTagDeclaredLocally(name: String): Boolean {
+        return name in tagNamespace
     }
 
-    fun getOrCreateFunctionEntity(name: String): Entity.Function {
-        val entity = _functions.getOrPut(name) { Entity.Function(this, name) }
-        ordinaryNamespace.add(name)
-        return entity
-    }
-
-    fun lookupFunctionEntity(name: String): Entity.Function? {
-        return _functions[name] ?: parent?.lookupFunctionEntity(name)
-    }
-
-    fun getOrCreateStructEntity(name: String?): Entity.Struct {
-        return if (name == null) {
-            Entity.Struct(this, name)
-        } else {
-            val entity = _structs.getOrPut(name) { Entity.Struct(this, name) }
-            tagNamespace.add(name)
-            entity
+    /**
+     * Get all external variables (for linking).
+     */
+    fun getExternalVariables(): List<Entity.Variable> {
+        if (kind != ScopeKind.FILE) {
+            return parent?.getExternalVariables() ?: emptyList()
         }
+        return variables.values.filter { it.linkage == Linkage.EXTERNAL }
     }
 
-    fun lookupStructEntity(name: String?): Entity.Struct? {
-        if (name == null) {
-            return null
+    /**
+     * Get all external functions (for linking).
+     */
+    fun getExternalFunctions(): List<Entity.Function> {
+        if (kind != ScopeKind.FILE) {
+            return parent?.getExternalFunctions() ?: emptyList()
         }
-        return _structs[name] ?: parent?.lookupStructEntity(name)
-    }
-
-    fun getOrCreateEnumEntity(name: String?): Entity.Enum {
-        return if (name == null) {
-            Entity.Enum(this, name)
-        } else {
-            val entity = _enums.getOrPut(name) { Entity.Enum(this, name) }
-            tagNamespace.add(name)
-            entity
-        }
-    }
-
-    fun lookupEnumEntity(name: String?): Entity.Enum? {
-        if (name == null) {
-            return null
-        }
-        return _enums[name] ?: parent?.lookupEnumEntity(name)
-    }
-
-    fun lookupOrdinary(name: String): Boolean {
-        if (ordinaryNamespace.contains(name)) {
-            return true
-        }
-        return parent?.lookupOrdinary(name) ?: false
-    }
-
-    fun lookupTag(name: String?): Boolean {
-        if (name == null) {
-            return false
-        }
-        if (tagNamespace.contains(name)) {
-            return true
-        }
-        return parent?.lookupTag(name) ?: false
-    }
-
-    fun getOrCreateLabelEntity(name: String): Entity.Label {
-        val entity = _labels.getOrPut(name) { Entity.Label(this, name) }
-        labelNamespace.add(name)
-        return entity
-    }
-
-    fun lookupLabel(name: String): Entity.Label? {
-        // Labels are function-scoped only, don't search parent
-        return _labels[name]
+        return functions.values.filter { it.linkage == Linkage.EXTERNAL }
     }
 
     override fun toString(): String {
-        return "$kind(vars=${_variables.size}, funcs=${_functions.size}, typedefs=${_typedefs.size})"
+        return "$kind(vars=${variables.size}, funcs=${functions.size}, typedefs=${typedefs.size})"
     }
 }

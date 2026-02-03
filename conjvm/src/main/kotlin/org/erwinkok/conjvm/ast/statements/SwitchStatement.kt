@@ -9,8 +9,8 @@ abstract class SwitchSection
 
 data class SwitchCaseStatement(
     val location: SourceLocation,
-    val test: ConstantExpression,
-    val blockStatement: BlockStatement,
+    val condition: ConstantExpression,
+    val block: BlockStatement,
 ) : SwitchSection() {
     override fun equals(other: Any?): Boolean {
         if (other === this) {
@@ -19,16 +19,14 @@ data class SwitchCaseStatement(
         if (other !is SwitchCaseStatement) {
             return false
         }
-
-        if (test != other.test) return false
-        if (blockStatement != other.blockStatement) return false
-
+        if (condition != other.condition) return false
+        if (block != other.block) return false
         return true
     }
 
     override fun hashCode(): Int {
-        var result = test.hashCode()
-        result = 31 * result + blockStatement.hashCode()
+        var result = condition.hashCode()
+        result = 31 * result + block.hashCode()
         return result
     }
 }
@@ -41,9 +39,7 @@ data class SwitchDefaultStatement(val location: SourceLocation, val blockStateme
         if (other !is SwitchDefaultStatement) {
             return false
         }
-
         if (blockStatement != other.blockStatement) return false
-
         return true
     }
 
@@ -52,7 +48,12 @@ data class SwitchDefaultStatement(val location: SourceLocation, val blockStateme
     }
 }
 
-class SwitchStatement(location: SourceLocation, val test: Expression, val sections: List<SwitchCaseStatement>, val defaultSection: SwitchDefaultStatement?) : Statement(location) {
+class SwitchStatement(
+    location: SourceLocation,
+    val condition: Expression,
+    val sections: List<SwitchCaseStatement>,
+    val defaultSection: SwitchDefaultStatement?,
+) : Statement(location) {
     override fun <R> accept(visitor: AstStatementVisitor<R>): R = visitor.visitSwitch(this)
 
     override fun equals(other: Any?): Boolean {
@@ -62,16 +63,14 @@ class SwitchStatement(location: SourceLocation, val test: Expression, val sectio
         if (other !is SwitchStatement) {
             return false
         }
-
-        if (test != other.test) return false
+        if (condition != other.condition) return false
         if (sections != other.sections) return false
         if (defaultSection != other.defaultSection) return false
-
         return true
     }
 
     override fun hashCode(): Int {
-        var result = test.hashCode()
+        var result = condition.hashCode()
         result = 31 * result + sections.hashCode()
         result = 31 * result + defaultSection.hashCode()
         return result

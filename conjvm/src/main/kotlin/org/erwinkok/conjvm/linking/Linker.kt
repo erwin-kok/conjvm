@@ -7,15 +7,15 @@ class Linker(
     val reporter: ErrorReporter,
 ) {
     fun link(units: List<AstResult>): LinkedProgram {
-        val globalSymbolTable = GlobalSymbolTable()
+        val globalSymbolTable = GlobalEntityTable()
 
         // Collect all external symbols
         units.forEach { unit ->
-            unit.symbolTable.externalVariables.forEach { symbol ->
-                globalSymbolTable.addVariable(symbol)
+            unit.rootScope.getExternalVariables().forEach { entity ->
+                globalSymbolTable.addVariable(entity)
             }
-            unit.symbolTable.externalFunctions.forEach { symbol ->
-                globalSymbolTable.addFunction(symbol)
+            unit.rootScope.getExternalFunctions().forEach { entity ->
+                globalSymbolTable.addFunction(entity)
             }
         }
         globalSymbolTable.validate(reporter)

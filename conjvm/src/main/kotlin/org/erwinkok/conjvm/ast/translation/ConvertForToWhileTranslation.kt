@@ -111,14 +111,14 @@ class ConvertForToWhileTranslation(reporter: ErrorReporter) : BaseTranslationVis
             is IfThenStatement ->
                 IfThenStatement(
                     location,
-                    stmt.test,
+                    stmt.condition,
                     toBlockStatement(rewriteContinues(location, stmt.thenBlock, iterators)),
                 )
 
             is IfThenElseStatement ->
                 IfThenElseStatement(
                     location,
-                    stmt.test,
+                    stmt.condition,
                     toBlockStatement(rewriteContinues(location, stmt.thenBlock, iterators)),
                     toBlockStatement(rewriteContinues(location, stmt.elseBlock, iterators)),
                 )

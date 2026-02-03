@@ -16,7 +16,7 @@ class AstConstruction(
         return AstResult(
             sourceFile = typeResolutionResult.sourceFile,
             astStatement = compilationUnit,
-            symbolTable = typeResolutionResult.symbolTable,
+            rootScope = typeResolutionResult.rootScope,
         )
     }
 
@@ -25,7 +25,7 @@ class AstConstruction(
         return AstResult(
             sourceFile = typeResolutionResult.sourceFile,
             astStatement = statement,
-            symbolTable = typeResolutionResult.symbolTable,
+            rootScope = typeResolutionResult.rootScope,
         )
     }
 }
