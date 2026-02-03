@@ -16,6 +16,7 @@ import org.erwinkok.conjvm.ast.expressions.BinaryOperator
 import org.erwinkok.conjvm.ast.expressions.CallExpression
 import org.erwinkok.conjvm.ast.expressions.CastExpression
 import org.erwinkok.conjvm.ast.expressions.CharacterLiteralExpression
+import org.erwinkok.conjvm.ast.expressions.ConditionalExpression
 import org.erwinkok.conjvm.ast.expressions.ConstantExpression
 import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.ast.expressions.FieldAccessExpression
@@ -25,7 +26,6 @@ import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.StringLiteralExpression
-import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryOperator
 import org.erwinkok.conjvm.ast.expressions.VariableReference
@@ -156,7 +156,7 @@ class AstBuilder(
         val thenResult = visit(ctx.thenExpr).cast<Expression>()
         val elseResult = visit(ctx.elseExpr).cast<Expression>()
         return Value.of(
-            TernaryExpression(
+            ConditionalExpression(
                 ctx.location,
                 testResult,
                 thenResult,

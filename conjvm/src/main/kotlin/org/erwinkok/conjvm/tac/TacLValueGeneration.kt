@@ -7,6 +7,7 @@ import org.erwinkok.conjvm.ast.expressions.BinaryExpression
 import org.erwinkok.conjvm.ast.expressions.CallExpression
 import org.erwinkok.conjvm.ast.expressions.CastExpression
 import org.erwinkok.conjvm.ast.expressions.CharacterLiteralExpression
+import org.erwinkok.conjvm.ast.expressions.ConditionalExpression
 import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.ast.expressions.FieldAccessExpression
 import org.erwinkok.conjvm.ast.expressions.FloatLiteralExpression
@@ -15,7 +16,6 @@ import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.StringLiteralExpression
-import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryOperator
 import org.erwinkok.conjvm.ast.expressions.VariableReference
@@ -108,7 +108,7 @@ class TacLValueGeneration(private val rValueVisitor: TacRValueGeneration) : AstE
         error("expression is not an lvalue: $expression")
     }
 
-    override fun visitTernary(expression: TernaryExpression): TacAddressResult {
+    override fun visitConditional(expression: ConditionalExpression): TacAddressResult {
         error("expression is not an lvalue: $expression")
     }
 
@@ -122,7 +122,7 @@ class TacLValueGeneration(private val rValueVisitor: TacRValueGeneration) : AstE
         }
     }
 
-    override fun visitVariableReference(variableReference: VariableReference): TacAddressResult {
-        return TacAddressResult(emptyList(), VarLValue(TacIdentifier(variableReference.name)))
+    override fun visitVariableReference(expression: VariableReference): TacAddressResult {
+        return TacAddressResult(emptyList(), VarLValue(TacIdentifier(expression.name)))
     }
 }

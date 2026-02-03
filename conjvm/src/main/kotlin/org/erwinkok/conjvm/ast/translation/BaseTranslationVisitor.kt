@@ -6,6 +6,7 @@ import org.erwinkok.conjvm.ast.expressions.BinaryExpression
 import org.erwinkok.conjvm.ast.expressions.CallExpression
 import org.erwinkok.conjvm.ast.expressions.CastExpression
 import org.erwinkok.conjvm.ast.expressions.CharacterLiteralExpression
+import org.erwinkok.conjvm.ast.expressions.ConditionalExpression
 import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.ast.expressions.FieldAccessExpression
 import org.erwinkok.conjvm.ast.expressions.FloatLiteralExpression
@@ -14,7 +15,6 @@ import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.StringLiteralExpression
-import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
 import org.erwinkok.conjvm.ast.expressions.VariableReference
 import org.erwinkok.conjvm.ast.statements.BlockStatement
@@ -118,14 +118,14 @@ abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : T
         return TranslationResult(ts, PostfixIncrementExpression(expression.location, te))
     }
 
-    override fun translateTernary(expression: TernaryExpression): TranslationResult {
+    override fun translateConditional(expression: ConditionalExpression): TranslationResult {
         val (testTs, testTe) = translate(expression.condition)
         val (thenTs, thenTe) = translate(expression.thenExpression)
         val (elseTs, elseTe) = translate(expression.elseExpression)
         requireNotNull(testTe)
         requireNotNull(thenTe)
         requireNotNull(elseTe)
-        return TranslationResult(testTs + thenTs + elseTs, TernaryExpression(expression.location, testTe, thenTe, elseTe))
+        return TranslationResult(testTs + thenTs + elseTs, ConditionalExpression(expression.location, testTe, thenTe, elseTe))
     }
 
     override fun translateUnary(expression: UnaryExpression): TranslationResult {

@@ -33,6 +33,7 @@ class Scope(
     private val labelNamespace = mutableSetOf<String>()
 
     private var isSynthetic: Boolean = false
+    private var isFrozen: Boolean = false
 
     val isEmpty: Boolean
         get() = ordinaryNamespace.isEmpty() && tagNamespace.isEmpty() && labelNamespace.isEmpty()
@@ -42,7 +43,13 @@ class Scope(
         isSynthetic = true
     }
 
+    fun markAsFrozen() {
+        isFrozen = true
+        children.forEach { it.markAsFrozen() }
+    }
+
     fun createChild(childKind: ScopeKind): Scope {
+        require(!isFrozen)
         val child = Scope(childKind, this)
         children.add(child)
         return child
@@ -74,24 +81,28 @@ class Scope(
     // GET OR CREATE ENTITIES (only in current scope)
     // ========================================================================
     fun getOrCreateTypedefEntity(name: String): Entity.Typedef {
+        require(!isFrozen)
         val entity = typedefs.getOrPut(name) { Entity.Typedef(this, name) }
         ordinaryNamespace.add(name)
         return entity
     }
 
     fun getOrCreateVariableEntity(name: String): Entity.Variable {
+        require(!isFrozen)
         val entity = variables.getOrPut(name) { Entity.Variable(this, name) }
         ordinaryNamespace.add(name)
         return entity
     }
 
     fun getOrCreateFunctionEntity(name: String): Entity.Function {
+        require(!isFrozen)
         val entity = functions.getOrPut(name) { Entity.Function(this, name) }
         ordinaryNamespace.add(name)
         return entity
     }
 
     fun getOrCreateStructEntity(name: String?): Entity.Struct {
+        require(!isFrozen)
         return if (name == null) {
             // Anonymous struct - create new entity each time
             Entity.Struct(this, name, UUID.randomUUID())
@@ -103,6 +114,7 @@ class Scope(
     }
 
     fun getOrCreateEnumEntity(name: String?): Entity.Enum {
+        require(!isFrozen)
         return if (name == null) {
             // Anonymous enum - create new entity each time
             Entity.Enum(this, name, UUID.randomUUID())
@@ -114,12 +126,14 @@ class Scope(
     }
 
     fun getOrCreateLabelEntity(name: String): Entity.Label {
+        require(!isFrozen)
         val entity = labels.getOrPut(name) { Entity.Label(this, name) }
         labelNamespace.add(name)
         return entity
     }
 
     fun registerEnumConstants(enumEntity: Entity.Enum) {
+        require(!isFrozen)
         enumEntity.constants?.forEach { (constantName, value) ->
             enumConstants[constantName] = EnumConstant(
                 name = constantName,
@@ -190,20 +204,22 @@ class Scope(
      * Get all external variables (for linking).
      */
     fun getExternalVariables(): List<Entity.Variable> {
-        if (kind != ScopeKind.FILE) {
-            return parent?.getExternalVariables() ?: emptyList()
+        return if (kind != ScopeKind.FILE) {
+            parent?.getExternalVariables() ?: emptyList()
+        } else {
+            localVariables.filter { it.linkage == Linkage.EXTERNAL }
         }
-        return variables.values.filter { it.linkage == Linkage.EXTERNAL }
     }
 
     /**
      * Get all external functions (for linking).
      */
     fun getExternalFunctions(): List<Entity.Function> {
-        if (kind != ScopeKind.FILE) {
-            return parent?.getExternalFunctions() ?: emptyList()
+        return if (kind != ScopeKind.FILE) {
+            parent?.getExternalFunctions() ?: emptyList()
+        } else {
+            localFunctions.filter { it.linkage == Linkage.EXTERNAL }
         }
-        return functions.values.filter { it.linkage == Linkage.EXTERNAL }
     }
 
     override fun toString(): String {

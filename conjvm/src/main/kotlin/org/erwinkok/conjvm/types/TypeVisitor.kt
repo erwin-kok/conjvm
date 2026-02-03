@@ -8,6 +8,7 @@ import org.erwinkok.conjvm.ast.expressions.BinaryExpression
 import org.erwinkok.conjvm.ast.expressions.CallExpression
 import org.erwinkok.conjvm.ast.expressions.CastExpression
 import org.erwinkok.conjvm.ast.expressions.CharacterLiteralExpression
+import org.erwinkok.conjvm.ast.expressions.ConditionalExpression
 import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.ast.expressions.FieldAccessExpression
 import org.erwinkok.conjvm.ast.expressions.FloatLiteralExpression
@@ -16,7 +17,6 @@ import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.StringLiteralExpression
-import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryOperator
 import org.erwinkok.conjvm.ast.expressions.VariableReference
@@ -426,7 +426,7 @@ class TypeVisitor(
         return expressionType(expression, operand.type, false)
     }
 
-    override fun visitTernary(expression: TernaryExpression): ExpressionType {
+    override fun visitConditional(expression: ConditionalExpression): ExpressionType {
         val condType = typeOf(expression.condition).toRValue()
         val thenType = typeOf(expression.thenExpression).toRValue()
         val elseType = typeOf(expression.elseExpression).toRValue()
@@ -552,17 +552,17 @@ class TypeVisitor(
         }
     }
 
-    override fun visitVariableReference(variableReference: VariableReference): ExpressionType {
-        val localVar = scope.resolveVariable(variableReference.name)
+    override fun visitVariableReference(expression: VariableReference): ExpressionType {
+        val localVar = scope.resolveVariable(expression.name)
         if (localVar != null) {
-            return expressionType(variableReference, localVar.type, true)
+            return expressionType(expression, localVar.type, true)
         }
-        val globalFunc = globalScope.resolveFunction(variableReference.name)
+        val globalFunc = globalScope.resolveFunction(expression.name)
         if (globalFunc != null) {
-            return expressionType(variableReference, globalFunc.type)
+            return expressionType(expression, globalFunc.type)
         }
-        reporter.reportError(variableReference.location, "undeclared identifier: '${variableReference.name}'")
-        return errorType(variableReference)
+        reporter.reportError(expression.location, "undeclared identifier: '${expression.name}'")
+        return errorType(expression)
     }
 
     private fun visitSwitchCase(case: SwitchCaseStatement) {

@@ -30,6 +30,7 @@ class DeclarationListener(
         require(currentScope === rootScope) { "scope mismatch at file exit" }
         require(currentScope === entityTable.getScope(ctx)) { "scope context mismatch" }
         resolveTentativeDefinitions(rootScope)
+        rootScope.markAsFrozen()
     }
 
     override fun enterFunction_definition(ctx: CParser.Function_definitionContext) {

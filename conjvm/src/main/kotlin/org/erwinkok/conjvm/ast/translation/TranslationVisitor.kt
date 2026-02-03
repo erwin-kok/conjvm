@@ -8,6 +8,7 @@ import org.erwinkok.conjvm.ast.expressions.BinaryExpression
 import org.erwinkok.conjvm.ast.expressions.CallExpression
 import org.erwinkok.conjvm.ast.expressions.CastExpression
 import org.erwinkok.conjvm.ast.expressions.CharacterLiteralExpression
+import org.erwinkok.conjvm.ast.expressions.ConditionalExpression
 import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.ast.expressions.FieldAccessExpression
 import org.erwinkok.conjvm.ast.expressions.FloatLiteralExpression
@@ -16,7 +17,6 @@ import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.StringLiteralExpression
-import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
 import org.erwinkok.conjvm.ast.expressions.VariableReference
 import org.erwinkok.conjvm.ast.statements.BlockStatement
@@ -50,15 +50,15 @@ interface ExpressionTranslationVisitor : AstExpressionVisitor<TranslationResult>
     fun translateBinary(expression: BinaryExpression): TranslationResult
     fun translateCall(expression: CallExpression): TranslationResult
     fun translateCast(expression: CastExpression): TranslationResult
-    fun translateIntegerLiteral(expression: IntegerLiteralExpression): TranslationResult
-    fun translateFloatLiteral(expression: FloatLiteralExpression): TranslationResult
-    fun translateStringLiteral(expression: StringLiteralExpression): TranslationResult
     fun translateCharacterLiteral(expression: CharacterLiteralExpression): TranslationResult
+    fun translateConditional(expression: ConditionalExpression): TranslationResult
     fun translateFieldAccess(expression: FieldAccessExpression): TranslationResult
+    fun translateFloatLiteral(expression: FloatLiteralExpression): TranslationResult
+    fun translateIntegerLiteral(expression: IntegerLiteralExpression): TranslationResult
     fun translateParenthesized(expression: ParenthesizedExpression): TranslationResult
     fun translatePostfixDecrement(expression: PostfixDecrementExpression): TranslationResult
     fun translatePostfixIncrement(expression: PostfixIncrementExpression): TranslationResult
-    fun translateTernary(expression: TernaryExpression): TranslationResult
+    fun translateStringLiteral(expression: StringLiteralExpression): TranslationResult
     fun translateUnary(expression: UnaryExpression): TranslationResult
     fun translateVariableReference(variableReference: VariableReference): TranslationResult
 
@@ -82,24 +82,24 @@ interface ExpressionTranslationVisitor : AstExpressionVisitor<TranslationResult>
         return translateCast(expression)
     }
 
-    override fun visitIntegerLiteral(expression: IntegerLiteralExpression): TranslationResult {
-        return translateIntegerLiteral(expression)
+    override fun visitCharacterLiteral(expression: CharacterLiteralExpression): TranslationResult {
+        return translateCharacterLiteral(expression)
+    }
+
+    override fun visitConditional(expression: ConditionalExpression): TranslationResult {
+        return translateConditional(expression)
+    }
+
+    override fun visitFieldAccess(expression: FieldAccessExpression): TranslationResult {
+        return translateFieldAccess(expression)
     }
 
     override fun visitFloatLiteral(expression: FloatLiteralExpression): TranslationResult {
         return translateFloatLiteral(expression)
     }
 
-    override fun visitStringLiteral(expression: StringLiteralExpression): TranslationResult {
-        return translateStringLiteral(expression)
-    }
-
-    override fun visitCharacterLiteral(expression: CharacterLiteralExpression): TranslationResult {
-        return translateCharacterLiteral(expression)
-    }
-
-    override fun visitFieldAccess(expression: FieldAccessExpression): TranslationResult {
-        return translateFieldAccess(expression)
+    override fun visitIntegerLiteral(expression: IntegerLiteralExpression): TranslationResult {
+        return translateIntegerLiteral(expression)
     }
 
     override fun visitParenthesized(expression: ParenthesizedExpression): TranslationResult {
@@ -114,16 +114,16 @@ interface ExpressionTranslationVisitor : AstExpressionVisitor<TranslationResult>
         return translatePostfixIncrement(expression)
     }
 
-    override fun visitTernary(expression: TernaryExpression): TranslationResult {
-        return translateTernary(expression)
+    override fun visitStringLiteral(expression: StringLiteralExpression): TranslationResult {
+        return translateStringLiteral(expression)
     }
 
     override fun visitUnary(expression: UnaryExpression): TranslationResult {
         return translateUnary(expression)
     }
 
-    override fun visitVariableReference(variableReference: VariableReference): TranslationResult {
-        return translateVariableReference(variableReference)
+    override fun visitVariableReference(expression: VariableReference): TranslationResult {
+        return translateVariableReference(expression)
     }
 }
 
@@ -134,18 +134,18 @@ interface StatementTranslationVisitor : AstStatementVisitor<TranslationResult> {
     fun translateBreak(statement: BreakStatement): TranslationResult
     fun translateCompilationUnit(statement: CompilationUnitStatement): TranslationResult
     fun translateContinue(statement: ContinueStatement): TranslationResult
+    fun translateDoWhile(statement: DoWhileStatement): TranslationResult
     fun translateExpression(statement: ExpressionStatement): TranslationResult
     fun translateFor(statement: ForStatement): TranslationResult
     fun translateFunctionDefinition(definition: FunctionDefinitionStatement): TranslationResult
     fun translateGoto(statement: GotoStatement): TranslationResult
-    fun translateIfThenElse(statement: IfThenElseStatement): TranslationResult
     fun translateIfThen(statement: IfThenStatement): TranslationResult
+    fun translateIfThenElse(statement: IfThenElseStatement): TranslationResult
     fun translateLabeled(statement: LabeledStatement): TranslationResult
     fun translateReturn(statement: ReturnStatement): TranslationResult
     fun translateSwitch(statement: SwitchStatement): TranslationResult
     fun translateVariableDeclaration(statement: VariableDeclarationStatement): TranslationResult
     fun translateWhile(statement: WhileStatement): TranslationResult
-    fun translateDoWhile(statement: DoWhileStatement): TranslationResult
 
     override fun visitBlock(statement: BlockStatement): TranslationResult {
         return translateBlock(statement)
@@ -161,6 +161,10 @@ interface StatementTranslationVisitor : AstStatementVisitor<TranslationResult> {
 
     override fun visitContinue(statement: ContinueStatement): TranslationResult {
         return translateContinue(statement)
+    }
+
+    override fun visitDoWhile(statement: DoWhileStatement): TranslationResult {
+        return translateDoWhile(statement)
     }
 
     override fun visitExpression(statement: ExpressionStatement): TranslationResult {
@@ -179,12 +183,12 @@ interface StatementTranslationVisitor : AstStatementVisitor<TranslationResult> {
         return translateGoto(statement)
     }
 
-    override fun visitIfThenElse(statement: IfThenElseStatement): TranslationResult {
-        return translateIfThenElse(statement)
-    }
-
     override fun visitIfThen(statement: IfThenStatement): TranslationResult {
         return translateIfThen(statement)
+    }
+
+    override fun visitIfThenElse(statement: IfThenElseStatement): TranslationResult {
+        return translateIfThenElse(statement)
     }
 
     override fun visitLabeled(statement: LabeledStatement): TranslationResult {
@@ -205,10 +209,6 @@ interface StatementTranslationVisitor : AstStatementVisitor<TranslationResult> {
 
     override fun visitWhile(statement: WhileStatement): TranslationResult {
         return translateWhile(statement)
-    }
-
-    override fun visitDoWhile(statement: DoWhileStatement): TranslationResult {
-        return translateDoWhile(statement)
     }
 }
 

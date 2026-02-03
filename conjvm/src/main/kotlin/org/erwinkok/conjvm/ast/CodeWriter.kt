@@ -6,6 +6,7 @@ import org.erwinkok.conjvm.ast.expressions.BinaryExpression
 import org.erwinkok.conjvm.ast.expressions.CallExpression
 import org.erwinkok.conjvm.ast.expressions.CastExpression
 import org.erwinkok.conjvm.ast.expressions.CharacterLiteralExpression
+import org.erwinkok.conjvm.ast.expressions.ConditionalExpression
 import org.erwinkok.conjvm.ast.expressions.FieldAccessExpression
 import org.erwinkok.conjvm.ast.expressions.FloatLiteralExpression
 import org.erwinkok.conjvm.ast.expressions.IntegerLiteralExpression
@@ -13,7 +14,6 @@ import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.StringLiteralExpression
-import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
 import org.erwinkok.conjvm.ast.expressions.VariableReference
 import org.erwinkok.conjvm.ast.statements.BlockStatement
@@ -119,7 +119,7 @@ class CodeWriter(val writer: Writer) : AstVisitor<String> {
         return "$nodeResult++"
     }
 
-    override fun visitTernary(expression: TernaryExpression): String {
+    override fun visitConditional(expression: ConditionalExpression): String {
         val testResult = visit(expression.condition)
         val thenResult = visit(expression.thenExpression)
         val elseResult = visit(expression.elseExpression)
@@ -131,8 +131,8 @@ class CodeWriter(val writer: Writer) : AstVisitor<String> {
         return "${expression.operator}$nodeResult"
     }
 
-    override fun visitVariableReference(variableReference: VariableReference): String {
-        return variableReference.name
+    override fun visitVariableReference(expression: VariableReference): String {
+        return expression.name
     }
 
     override fun visitBlock(statement: BlockStatement): String {

@@ -6,6 +6,7 @@ import org.erwinkok.conjvm.ast.expressions.BinaryExpression
 import org.erwinkok.conjvm.ast.expressions.CallExpression
 import org.erwinkok.conjvm.ast.expressions.CastExpression
 import org.erwinkok.conjvm.ast.expressions.CharacterLiteralExpression
+import org.erwinkok.conjvm.ast.expressions.ConditionalExpression
 import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.ast.expressions.FieldAccessExpression
 import org.erwinkok.conjvm.ast.expressions.FloatLiteralExpression
@@ -14,7 +15,6 @@ import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.StringLiteralExpression
-import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
 import org.erwinkok.conjvm.ast.expressions.VariableReference
 import org.erwinkok.conjvm.ast.statements.BlockStatement
@@ -44,6 +44,7 @@ interface AstExpressionVisitor<out R> {
     fun visitCall(expression: CallExpression): R
     fun visitCast(expression: CastExpression): R
     fun visitCharacterLiteral(expression: CharacterLiteralExpression): R
+    fun visitConditional(expression: ConditionalExpression): R
     fun visitFieldAccess(expression: FieldAccessExpression): R
     fun visitFloatLiteral(expression: FloatLiteralExpression): R
     fun visitIntegerLiteral(expression: IntegerLiteralExpression): R
@@ -51,9 +52,8 @@ interface AstExpressionVisitor<out R> {
     fun visitPostfixDecrement(expression: PostfixDecrementExpression): R
     fun visitPostfixIncrement(expression: PostfixIncrementExpression): R
     fun visitStringLiteral(expression: StringLiteralExpression): R
-    fun visitTernary(expression: TernaryExpression): R
     fun visitUnary(expression: UnaryExpression): R
-    fun visitVariableReference(variableReference: VariableReference): R
+    fun visitVariableReference(expression: VariableReference): R
 }
 
 interface AstStatementVisitor<out R> {

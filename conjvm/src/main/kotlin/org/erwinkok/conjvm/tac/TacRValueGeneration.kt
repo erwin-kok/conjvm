@@ -9,6 +9,7 @@ import org.erwinkok.conjvm.ast.expressions.BinaryOperator
 import org.erwinkok.conjvm.ast.expressions.CallExpression
 import org.erwinkok.conjvm.ast.expressions.CastExpression
 import org.erwinkok.conjvm.ast.expressions.CharacterLiteralExpression
+import org.erwinkok.conjvm.ast.expressions.ConditionalExpression
 import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.ast.expressions.FieldAccessExpression
 import org.erwinkok.conjvm.ast.expressions.FloatLiteralExpression
@@ -17,7 +18,6 @@ import org.erwinkok.conjvm.ast.expressions.ParenthesizedExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixDecrementExpression
 import org.erwinkok.conjvm.ast.expressions.PostfixIncrementExpression
 import org.erwinkok.conjvm.ast.expressions.StringLiteralExpression
-import org.erwinkok.conjvm.ast.expressions.TernaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryExpression
 import org.erwinkok.conjvm.ast.expressions.UnaryOperator
 import org.erwinkok.conjvm.ast.expressions.VariableReference
@@ -83,8 +83,8 @@ class TacRValueGeneration(
         return TacResult(ts + tsl, tel)
     }
 
-    override fun visitVariableReference(variableReference: VariableReference): TacResult {
-        val (ts, te) = lValueVisitor.translate(variableReference)
+    override fun visitVariableReference(expression: VariableReference): TacResult {
+        val (ts, te) = lValueVisitor.translate(expression)
         requireNotNull(te)
         val (tsl, tel) = generateLoadInstruction(te)
         return TacResult(ts + tsl, tel)
@@ -193,7 +193,7 @@ class TacRValueGeneration(
         return TacResult(allArguments, temp)
     }
 
-    override fun visitTernary(expression: TernaryExpression): TacResult {
+    override fun visitConditional(expression: ConditionalExpression): TacResult {
         val allArguments = mutableListOf<TacInstruction>()
         val testTr = translate(expression.condition)
         val thenTr = translate(expression.thenExpression)
