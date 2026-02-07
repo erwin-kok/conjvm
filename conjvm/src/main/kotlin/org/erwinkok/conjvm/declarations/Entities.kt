@@ -1,5 +1,6 @@
 package org.erwinkok.conjvm.declarations
 
+import org.erwinkok.conjvm.ast.expressions.Expression
 import org.erwinkok.conjvm.types.QualType
 import org.erwinkok.conjvm.types.StructMember
 import java.util.UUID
@@ -36,6 +37,7 @@ sealed interface Entity {
         var definition: Declaration.Variable? = null
         var linkage = Linkage.NONE
         var type: QualType? = null
+        var initializer: Expression? = null
         val isDefinition: Boolean
             get() = definition != null
         val isExtern: Boolean

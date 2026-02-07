@@ -2,16 +2,18 @@ package org.erwinkok.conjvm.ast.expressions
 
 import org.erwinkok.conjvm.ast.AstExpressionVisitor
 import org.erwinkok.conjvm.parser.SourceLocation
+import org.erwinkok.conjvm.types.QualType
 
 class FieldAccessExpression(
     location: SourceLocation,
-    val base: Expression,
-    val field: String,
-) : Expression(location) {
+    val struct: Expression,
+    val memberName: String,
+    type: QualType,
+) : Expression(location, type) {
     override fun <R> accept(visitor: AstExpressionVisitor<R>): R = visitor.visitFieldAccess(this)
 
     override fun toString(): String {
-        return "$base.$field"
+        return "$struct.$memberName"
     }
 
     override fun equals(other: Any?): Boolean {
@@ -21,16 +23,16 @@ class FieldAccessExpression(
         if (other !is FieldAccessExpression) {
             return false
         }
-
-        if (base != other.base) return false
-        if (field != other.field) return false
-
+        if (struct != other.struct) return false
+        if (memberName != other.memberName) return false
+        if (type != other.type) return false
         return true
     }
 
     override fun hashCode(): Int {
-        var result = base.hashCode()
-        result = 31 * result + field.hashCode()
+        var result = struct.hashCode()
+        result = 31 * result + memberName.hashCode()
+        result = 31 * result + type.hashCode()
         return result
     }
 }

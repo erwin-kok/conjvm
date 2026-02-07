@@ -7,8 +7,8 @@ import org.erwinkok.conjvm.types.QualType
 class IntegerLiteralExpression(
     location: SourceLocation,
     val value: Long,
-    val type: QualType,
-) : ConstantExpression(location) {
+    type: QualType,
+) : ConstantExpression(location, type) {
     override fun <R> accept(visitor: AstExpressionVisitor<R>): R = visitor.visitIntegerLiteral(this)
 
     override fun equals(other: Any?): Boolean {
@@ -18,14 +18,15 @@ class IntegerLiteralExpression(
         if (other !is IntegerLiteralExpression) {
             return false
         }
-
         if (value != other.value) return false
-
+        if (type != other.type) return false
         return true
     }
 
     override fun hashCode(): Int {
-        return value.hashCode()
+        var result = value.hashCode()
+        result = 31 * result + type.hashCode()
+        return result
     }
 
     override fun toString(): String {

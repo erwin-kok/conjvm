@@ -101,7 +101,7 @@ class CodeWriter(val writer: Writer) : AstVisitor<String> {
     }
 
     override fun visitFieldAccess(expression: FieldAccessExpression): String {
-        return "${expression.base}.${expression.field}"
+        return "${expression.struct}.${expression.memberName}"
     }
 
     override fun visitParenthesized(expression: ParenthesizedExpression): String {
@@ -247,10 +247,10 @@ class CodeWriter(val writer: Writer) : AstVisitor<String> {
 
     override fun visitVariableDeclaration(statement: VariableDeclarationStatement): String {
         appendIndent()
-        val nodeResult = statement.variableDeclarators.joinToString {
+        val nodeResult = statement.variables.joinToString {
             it.toString()
         }
-        writer.appendLine("${statement.declarationSpecifier} $nodeResult;")
+        writer.appendLine("$nodeResult;")
         return ""
     }
 
@@ -296,8 +296,8 @@ class CodeWriter(val writer: Writer) : AstVisitor<String> {
 
     private fun visitForInit(statement: ForInit): String {
         if (statement is ForInitVariableDeclaration) {
-            val nodeResult = statement.variableDeclaration.variableDeclarators.joinToString { it.toString() }
-            return "${statement.variableDeclaration.declarationSpecifier} $nodeResult"
+            val nodeResult = statement.variables.variables.joinToString { it.toString() }
+            return nodeResult
         } else {
             require(statement is ForInitAssignmentExpression)
             return statement.assignments.joinToString(", ") { visit(it) }

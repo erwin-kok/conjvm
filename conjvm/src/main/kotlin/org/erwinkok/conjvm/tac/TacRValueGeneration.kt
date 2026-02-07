@@ -217,8 +217,8 @@ class TacRValueGeneration(
             UnaryOperator.Minus -> translateUnaryMinus(expression)
             UnaryOperator.BitwiseNot -> translateUnaryBitwiseNot(expression)
             UnaryOperator.LogicalNot -> translateUnaryLogicalNot(expression)
-            UnaryOperator.PlusPlus -> translateUnaryIncrement(expression)
-            UnaryOperator.MinusMinus -> translateUnaryDecrement(expression)
+            UnaryOperator.PrefixIncrement -> translateUnaryIncrement(expression)
+            UnaryOperator.PrefixDecrement -> translateUnaryDecrement(expression)
         }
     }
 

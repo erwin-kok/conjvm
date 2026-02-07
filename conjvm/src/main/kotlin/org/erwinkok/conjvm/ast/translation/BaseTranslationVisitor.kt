@@ -35,15 +35,15 @@ import org.erwinkok.conjvm.ast.statements.SwitchCaseStatement
 import org.erwinkok.conjvm.ast.statements.SwitchDefaultStatement
 import org.erwinkok.conjvm.ast.statements.SwitchStatement
 import org.erwinkok.conjvm.ast.statements.VariableDeclarationStatement
-import org.erwinkok.conjvm.ast.statements.VariableDeclarator
 import org.erwinkok.conjvm.ast.statements.WhileStatement
+import org.erwinkok.conjvm.declarations.Entity
 import org.erwinkok.conjvm.parser.ErrorReporter
 
 abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : TranslationVisitor {
     override fun translateArrayAccess(expression: ArrayAccessExpression): TranslationResult {
         val (ts, te) = translate(expression.index)
         requireNotNull(te)
-        return TranslationResult(ts, ArrayAccessExpression(expression.location, expression.base, te))
+        return TranslationResult(ts, ArrayAccessExpression(expression.location, expression.base, te, expression.type))
     }
 
     override fun translateAssignment(expression: AssignmentExpression): TranslationResult {
@@ -51,7 +51,7 @@ abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : T
         val (rts, rte) = translate(expression.right)
         requireNotNull(lte)
         requireNotNull(rte)
-        return TranslationResult(lts + rts, AssignmentExpression(expression.location, expression.operator, lte, rte))
+        return TranslationResult(lts + rts, AssignmentExpression(expression.location, expression.operator, lte, rte, expression.type))
     }
 
     override fun translateBinary(expression: BinaryExpression): TranslationResult {
@@ -59,7 +59,7 @@ abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : T
         val (rts, rte) = translate(expression.rightExpression)
         requireNotNull(lte)
         requireNotNull(rte)
-        return TranslationResult(lts + rts, BinaryExpression(expression.location, expression.operator, lte, rte))
+        return TranslationResult(lts + rts, BinaryExpression(expression.location, expression.operator, lte, rte, expression.type))
     }
 
     override fun translateCall(expression: CallExpression): TranslationResult {
@@ -71,7 +71,7 @@ abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : T
             allStatements.addAll(ts)
             allArguments.add(te)
         }
-        return TranslationResult(allStatements, CallExpression(expression.location, expression.function, allArguments))
+        return TranslationResult(allStatements, CallExpression(expression.location, expression.function, allArguments, expression.type))
     }
 
     override fun translateCast(expression: CastExpression): TranslationResult {
@@ -103,19 +103,19 @@ abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : T
     override fun translateParenthesized(expression: ParenthesizedExpression): TranslationResult {
         val (ts, te) = translate(expression.expression)
         requireNotNull(te)
-        return TranslationResult(ts, ParenthesizedExpression(expression.location, te))
+        return TranslationResult(ts, ParenthesizedExpression(expression.location, te, expression.type))
     }
 
     override fun translatePostfixDecrement(expression: PostfixDecrementExpression): TranslationResult {
         val (ts, te) = translate(expression.expression)
         requireNotNull(te)
-        return TranslationResult(ts, PostfixDecrementExpression(expression.location, te))
+        return TranslationResult(ts, PostfixDecrementExpression(expression.location, te, expression.type))
     }
 
     override fun translatePostfixIncrement(expression: PostfixIncrementExpression): TranslationResult {
         val (ts, te) = translate(expression.expression)
         requireNotNull(te)
-        return TranslationResult(ts, PostfixIncrementExpression(expression.location, te))
+        return TranslationResult(ts, PostfixIncrementExpression(expression.location, te, expression.type))
     }
 
     override fun translateConditional(expression: ConditionalExpression): TranslationResult {
@@ -125,13 +125,13 @@ abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : T
         requireNotNull(testTe)
         requireNotNull(thenTe)
         requireNotNull(elseTe)
-        return TranslationResult(testTs + thenTs + elseTs, ConditionalExpression(expression.location, testTe, thenTe, elseTe))
+        return TranslationResult(testTs + thenTs + elseTs, ConditionalExpression(expression.location, testTe, thenTe, elseTe, expression.type))
     }
 
     override fun translateUnary(expression: UnaryExpression): TranslationResult {
         val (ts, te) = translate(expression.operand)
         requireNotNull(te)
-        return TranslationResult(ts, UnaryExpression(expression.location, expression.operator, te))
+        return TranslationResult(ts, UnaryExpression(expression.location, expression.operator, te, expression.type))
     }
 
     override fun translateVariableReference(variableReference: VariableReference): TranslationResult {
@@ -178,6 +178,14 @@ abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : T
         return TranslationResult(listOf(statement), null)
     }
 
+    override fun translateDoWhile(statement: DoWhileStatement): TranslationResult {
+        val translatedBlock = translateBlockStatement(statement.statements)
+        return TranslationResult(
+            listOf(DoWhileStatement(statement.location, statement.condition, translatedBlock)),
+            null,
+        )
+    }
+
     override fun translateExpression(statement: ExpressionStatement): TranslationResult {
         val (ts, te) = translate(statement.expression)
         requireNotNull(te)
@@ -198,8 +206,7 @@ abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : T
             listOf(
                 FunctionDefinitionStatement(
                     definition.location,
-                    definition.declarationSpecifier,
-                    definition.declarator,
+                    definition.functionEntity,
                     translatedBlock,
                 ),
             ),
@@ -211,19 +218,19 @@ abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : T
         return TranslationResult(listOf(statement), null)
     }
 
+    override fun translateIfThen(statement: IfThenStatement): TranslationResult {
+        val translatedThenBlock = translateBlockStatement(statement.thenBlock)
+        return TranslationResult(
+            listOf(IfThenStatement(statement.location, statement.condition, translatedThenBlock)),
+            null,
+        )
+    }
+
     override fun translateIfThenElse(statement: IfThenElseStatement): TranslationResult {
         val translatedThenBlock = translateBlockStatement(statement.thenBlock)
         val translatedElseBlock = translateBlockStatement(statement.elseBlock)
         return TranslationResult(
             listOf(IfThenElseStatement(statement.location, statement.condition, translatedThenBlock, translatedElseBlock)),
-            null,
-        )
-    }
-
-    override fun translateIfThen(statement: IfThenStatement): TranslationResult {
-        val translatedThenBlock = translateBlockStatement(statement.thenBlock)
-        return TranslationResult(
-            listOf(IfThenStatement(statement.location, statement.condition, translatedThenBlock)),
             null,
         )
     }
@@ -249,12 +256,12 @@ abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : T
 
     override fun translateVariableDeclaration(statement: VariableDeclarationStatement): TranslationResult {
         val allStatements = mutableListOf<Statement>()
-        val varDecls = statement.variableDeclarators.map {
-            translateVariableDeclarator(allStatements, it)
+        statement.variables.forEach {
+            translateVariableInitializer(allStatements, it)
         }
         return TranslationResult(
             allStatements +
-                VariableDeclarationStatement(statement.location, statement.declarationSpecifier, varDecls),
+                VariableDeclarationStatement(statement.location, statement.variables),
             null,
         )
     }
@@ -263,14 +270,6 @@ abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : T
         val translatedBlock = translateBlockStatement(statement.statements)
         return TranslationResult(
             listOf(WhileStatement(statement.location, statement.condition, translatedBlock)),
-            null,
-        )
-    }
-
-    override fun translateDoWhile(statement: DoWhileStatement): TranslationResult {
-        val translatedBlock = translateBlockStatement(statement.statements)
-        return TranslationResult(
-            listOf(DoWhileStatement(statement.location, statement.condition, translatedBlock)),
             null,
         )
     }
@@ -285,12 +284,12 @@ abstract class BaseTranslationVisitor(protected val reporter: ErrorReporter) : T
         return BlockStatement(statement.location, allStatements)
     }
 
-    private fun translateVariableDeclarator(allStatements: MutableList<Statement>, varDecl: VariableDeclarator): VariableDeclarator {
-        val init = varDecl.init?.let {
+    private fun translateVariableInitializer(allStatements: MutableList<Statement>, varDecl: Entity.Variable) {
+        val init = varDecl.initializer?.let {
             val (ts, te) = translate(it)
             allStatements.addAll(ts)
             te
         }
-        return VariableDeclarator(varDecl.location, varDecl.declarator, init)
+        varDecl.initializer = init
     }
 }

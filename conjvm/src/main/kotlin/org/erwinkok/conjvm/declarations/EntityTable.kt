@@ -3,60 +3,56 @@ package org.erwinkok.conjvm.declarations
 import org.antlr.v4.runtime.ParserRuleContext
 
 class EntityTable {
-    private val scopeMap = mutableMapOf<ParserRuleContext, Scope>()
-    private val typeNameMap = mutableMapOf<ParserRuleContext, TypeName>()
+    private val scopeCtxMap = mutableMapOf<ParserRuleContext, Scope>()
+    private val typeNameCtxMap = mutableMapOf<ParserRuleContext, TypeName>()
 
-    private val typedefMap = mutableMapOf<ParserRuleContext, Entity.Typedef>()
-    private val variableMap = mutableMapOf<ParserRuleContext, Entity.Variable>()
-    private val functionMap = mutableMapOf<ParserRuleContext, Entity.Function>()
+    private val typedefCtxMap = mutableMapOf<ParserRuleContext, Entity.Typedef>()
+    private val variableCtxMap = mutableMapOf<ParserRuleContext, MutableList<Entity.Variable>>()
+    private val functionCtxMap = mutableMapOf<ParserRuleContext, Entity.Function>()
     private val structCtxMap = mutableMapOf<ParserRuleContext, Entity.Struct>()
     private val enumCtxMap = mutableMapOf<ParserRuleContext, Entity.Enum>()
-    private val labelMap = mutableMapOf<ParserRuleContext, Entity.Label>()
+    private val labelCtxMap = mutableMapOf<ParserRuleContext, Entity.Label>()
 
     private val typedefsByName = mutableMapOf<String, Entity.Typedef>()
     private val structsByName = mutableMapOf<String, Entity.Struct>()
     private val enumsByName = mutableMapOf<String, Entity.Enum>()
 
     val typedefs: Map<ParserRuleContext, Entity.Typedef>
-        get() = typedefMap
-    val variables: Map<ParserRuleContext, Entity.Variable>
-        get() = variableMap
+        get() = typedefCtxMap
+    val variables: Map<ParserRuleContext, List<Entity.Variable>>
+        get() = variableCtxMap
     val functions: Map<ParserRuleContext, Entity.Function>
-        get() = functionMap
+        get() = functionCtxMap
     val structs: Map<ParserRuleContext, Entity.Struct>
         get() = structCtxMap
     val enums: Map<ParserRuleContext, Entity.Enum>
         get() = enumCtxMap
     val labels: Map<ParserRuleContext, Entity.Label>
-        get() = labelMap
+        get() = labelCtxMap
+
+    // ========================================================================
+    // REGISTER METHODS
+    // ========================================================================
 
     fun registerScope(ctx: ParserRuleContext, scope: Scope) {
-        scopeMap[ctx] = scope
-    }
-
-    fun getScope(ctx: ParserRuleContext): Scope? {
-        return scopeMap[ctx]
+        scopeCtxMap[ctx] = scope
     }
 
     fun registerTypeName(ctx: ParserRuleContext, typeName: TypeName) {
-        typeNameMap[ctx] = typeName
-    }
-
-    fun getTypeName(ctx: ParserRuleContext): TypeName? {
-        return typeNameMap[ctx]
-    }
-
-    fun registerVariable(ctx: ParserRuleContext, entity: Entity.Variable) {
-        variableMap[ctx] = entity
-    }
-
-    fun registerFunction(ctx: ParserRuleContext, entity: Entity.Function) {
-        functionMap[ctx] = entity
+        typeNameCtxMap[ctx] = typeName
     }
 
     fun registerTypedef(ctx: ParserRuleContext, entity: Entity.Typedef) {
-        typedefMap[ctx] = entity
+        typedefCtxMap[ctx] = entity
         typedefsByName[entity.name] = entity
+    }
+
+    fun registerVariable(ctx: ParserRuleContext, entity: Entity.Variable) {
+        variableCtxMap.computeIfAbsent(ctx) { mutableListOf() }.add(entity)
+    }
+
+    fun registerFunction(ctx: ParserRuleContext, entity: Entity.Function) {
+        functionCtxMap[ctx] = entity
     }
 
     fun registerStruct(ctx: ParserRuleContext, entity: Entity.Struct) {
@@ -74,8 +70,48 @@ class EntityTable {
     }
 
     fun registerLabel(ctx: ParserRuleContext, entity: Entity.Label) {
-        labelMap[ctx] = entity
+        labelCtxMap[ctx] = entity
     }
+
+    // ========================================================================
+    // GET BY PARSER CONTEXT METHODS
+    // ========================================================================
+
+    fun getScope(ctx: ParserRuleContext): Scope? {
+        return scopeCtxMap[ctx]
+    }
+
+    fun getTypeName(ctx: ParserRuleContext): TypeName? {
+        return typeNameCtxMap[ctx]
+    }
+
+    fun getTypeDef(ctx: ParserRuleContext): Entity.Typedef? {
+        return typedefCtxMap[ctx]
+    }
+
+    fun getVariables(ctx: ParserRuleContext): List<Entity.Variable>? {
+        return variableCtxMap[ctx]
+    }
+
+    fun getFunction(ctx: ParserRuleContext): Entity.Function? {
+        return functionCtxMap[ctx]
+    }
+
+    fun getStruct(ctx: ParserRuleContext): Entity.Struct? {
+        return structCtxMap[ctx]
+    }
+
+    fun getEnum(ctx: ParserRuleContext): Entity.Enum? {
+        return enumCtxMap[ctx]
+    }
+
+    fun getLabel(ctx: ParserRuleContext): Entity.Label? {
+        return labelCtxMap[ctx]
+    }
+
+    // ========================================================================
+    // GET BY NAME METHODS
+    // ========================================================================
 
     fun getTypedefByName(name: String): Entity.Typedef? {
         return typedefsByName[name]

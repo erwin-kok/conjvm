@@ -13,7 +13,6 @@ import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.ExpressionStatement
 import org.erwinkok.conjvm.ast.statements.Statement
 import org.erwinkok.conjvm.ast.statements.VariableDeclarationStatement
-import org.erwinkok.conjvm.ast.statements.VariableDeclarator
 import org.erwinkok.conjvm.parser.ErrorReporter
 
 class AssignmentTranslation(reporter: ErrorReporter) : BaseTranslationVisitor(reporter) {
@@ -51,7 +50,7 @@ class AssignmentTranslation(reporter: ErrorReporter) : BaseTranslationVisitor(re
         }
         return TranslationResult(
             allStatements,
-            CallExpression(expression.location, expression.function, arguments),
+            CallExpression(expression.location, expression.function, arguments, expression.type),
         )
     }
 
@@ -77,33 +76,23 @@ class AssignmentTranslation(reporter: ErrorReporter) : BaseTranslationVisitor(re
 
     override fun translateVariableDeclaration(statement: VariableDeclarationStatement): TranslationResult {
         val allStatements = mutableListOf<Statement>()
-        for (variableDeclarator in statement.variableDeclarators) {
-            if (variableDeclarator.init != null) {
-                val (assignStatements, expression) = translate(variableDeclarator.init)
+        for (variableDeclarator in statement.variables) {
+            val initializer = variableDeclarator.initializer
+            if (initializer != null) {
+                val (assignStatements, expression) = translate(initializer)
                 allStatements.addAll(assignStatements)
-                val variableDeclarator = VariableDeclarator(
-                    location = variableDeclarator.location,
-                    declarator = variableDeclarator.declarator,
-                    init = expression,
-                )
+                variableDeclarator.initializer = expression
                 allStatements.add(
                     VariableDeclarationStatement(
                         location = statement.location,
-                        declarationSpecifier = statement.declarationSpecifier,
-                        variableDeclarators = listOf(variableDeclarator),
+                        variables = listOf(variableDeclarator),
                     ),
                 )
             } else {
-                val variableDeclarator = VariableDeclarator(
-                    location = variableDeclarator.location,
-                    declarator = variableDeclarator.declarator,
-                    init = null,
-                )
                 allStatements.add(
                     VariableDeclarationStatement(
                         location = statement.location,
-                        declarationSpecifier = statement.declarationSpecifier,
-                        variableDeclarators = listOf(variableDeclarator),
+                        variables = listOf(variableDeclarator),
                     ),
                 )
             }
@@ -113,7 +102,7 @@ class AssignmentTranslation(reporter: ErrorReporter) : BaseTranslationVisitor(re
 
     private fun translateCompoundAssignmentExpression(expression: AssignmentExpression, leftExpression: Expression, rightExpression: Expression): AssignmentExpression {
         if (expression.operator == AssignmentOperator.Assign) {
-            return AssignmentExpression(expression.location, expression.operator, leftExpression, rightExpression)
+            return AssignmentExpression(expression.location, expression.operator, leftExpression, rightExpression, expression.type)
         }
         val binOp = when (expression.operator) {
             AssignmentOperator.PlusAssign -> BinaryOperator.Add
@@ -127,7 +116,7 @@ class AssignmentTranslation(reporter: ErrorReporter) : BaseTranslationVisitor(re
             AssignmentOperator.RightShiftAssign -> BinaryOperator.ShiftRight
             AssignmentOperator.LeftShiftAssign -> BinaryOperator.ShiftLeft
         }
-        val rhs = BinaryExpression(expression.location, binOp, leftExpression, rightExpression)
-        return AssignmentExpression(expression.location, AssignmentOperator.Assign, leftExpression, rhs)
+        val rhs = BinaryExpression(expression.location, binOp, leftExpression, rightExpression, expression.type)
+        return AssignmentExpression(expression.location, AssignmentOperator.Assign, leftExpression, rhs, expression.type)
     }
 }

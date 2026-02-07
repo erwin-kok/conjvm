@@ -2,13 +2,15 @@ package org.erwinkok.conjvm.ast.expressions
 
 import org.erwinkok.conjvm.ast.AstExpressionVisitor
 import org.erwinkok.conjvm.parser.SourceLocation
+import org.erwinkok.conjvm.types.QualType
 
 class BinaryExpression(
     location: SourceLocation,
     val operator: BinaryOperator,
     val leftExpression: Expression,
     val rightExpression: Expression,
-) : Expression(location) {
+    type: QualType,
+) : Expression(location, type) {
     override fun <R> accept(visitor: AstExpressionVisitor<R>): R = visitor.visitBinary(this)
 
     override fun toString(): String {
@@ -22,11 +24,10 @@ class BinaryExpression(
         if (other !is BinaryExpression) {
             return false
         }
-
         if (operator != other.operator) return false
         if (leftExpression != other.leftExpression) return false
         if (rightExpression != other.rightExpression) return false
-
+        if (type != other.type) return false
         return true
     }
 
@@ -34,6 +35,7 @@ class BinaryExpression(
         var result = operator.hashCode()
         result = 31 * result + leftExpression.hashCode()
         result = 31 * result + rightExpression.hashCode()
+        result = 31 * result + type.hashCode()
         return result
     }
 }

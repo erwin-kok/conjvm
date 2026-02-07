@@ -53,7 +53,8 @@ class DeclarationParser(
     }
 
     override fun visitInit_declarator(ctx: CParser.Init_declaratorContext): Value {
-        return Value.of(InitDeclarator(visit(ctx.declarator()).cast<Declarator>(), ctx.initializer()))
+        val initializer = ctx.initializer()?.assignment_expression()
+        return Value.of(InitDeclarator(visit(ctx.declarator()).cast<Declarator>(), initializer))
     }
 
     override fun visitSpecifier_qualifier_list(ctx: CParser.Specifier_qualifier_listContext): Value {

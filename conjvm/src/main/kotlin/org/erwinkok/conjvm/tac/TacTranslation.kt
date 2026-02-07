@@ -61,7 +61,7 @@ class TacTranslation(
         tempFactory.clear()
         labelFactory.clear()
         val translatedBlock = translateBlockStatement(definition.statements)
-        val name = definition.declarator.name() ?: "anonymous" // TODO
+        val name = definition.functionEntity.name
         return TacResult(listOf(TacFunctionDefinition(name, translatedBlock)), null)
     }
 
@@ -208,11 +208,11 @@ class TacTranslation(
 
     override fun visitVariableDeclaration(statement: VariableDeclarationStatement): TacResult {
         val allStatements = mutableListOf<TacInstruction>()
-        statement.variableDeclarators.forEach {
-            it.init?.let { vd ->
+        statement.variables.forEach {
+            it.initializer?.let { vd ->
                 val (ts, te) = translateExpression(vd)
                 requireNotNull(te)
-                val name = it.declarator.name() ?: "anonymous" // TODO
+                val name = it.name
                 allStatements.addAll(ts)
                 allStatements.add(TacStoreInstruction(TacIdentifier(name), te))
             }

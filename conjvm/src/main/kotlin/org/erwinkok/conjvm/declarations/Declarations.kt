@@ -6,7 +6,7 @@ import java.util.UUID
 
 data class InitDeclarator(
     val declarator: Declarator,
-    val initializer: CParser.InitializerContext? = null,
+    val initializerCtx: CParser.Assignment_expressionContext?,
 )
 
 data class StructDeclaration(
@@ -19,13 +19,13 @@ data class StructDeclaration(
 
 data class StructDeclarator(
     val declarator: Declarator?,
-    val bitWidth: CParser.Constant_expressionContext?,
+    val bitWidthCtx: CParser.Constant_expressionContext?,
 )
 
 data class Enumerator(
     val location: SourceLocation,
     val text: String,
-    val value: CParser.Constant_expressionContext?,
+    val valueCtx: CParser.Constant_expressionContext?,
 )
 
 sealed class Declaration(
@@ -48,7 +48,7 @@ sealed class Declaration(
         scope: Scope,
         val declarationSpecifier: DeclarationSpecifier,
         val declarator: Declarator,
-        val initializer: CParser.InitializerContext?,
+        val initializerCtx: CParser.Assignment_expressionContext?,
         val isSyntheticZeroInit: Boolean = false,
     ) : Declaration(location, scope) {
         override val name = declarator.name()

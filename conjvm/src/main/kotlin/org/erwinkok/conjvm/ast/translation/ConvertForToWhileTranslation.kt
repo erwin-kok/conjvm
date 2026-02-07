@@ -64,7 +64,7 @@ class ConvertForToWhileTranslation(reporter: ErrorReporter) : BaseTranslationVis
             }
 
             is ForInitVariableDeclaration -> {
-                val (ts, te) = translate(statement.variableDeclaration)
+                val (ts, te) = translate(statement.variables)
                 require(te == null)
                 ts
             }

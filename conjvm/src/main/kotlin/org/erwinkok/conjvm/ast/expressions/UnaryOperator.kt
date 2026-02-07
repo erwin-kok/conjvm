@@ -7,8 +7,8 @@ enum class UnaryOperator {
     Minus,
     BitwiseNot,
     LogicalNot,
-    PlusPlus,
-    MinusMinus,
+    PrefixIncrement,
+    PrefixDecrement,
     ;
 
     override fun toString(): String {
@@ -19,13 +19,13 @@ enum class UnaryOperator {
             Minus -> "-"
             BitwiseNot -> "~"
             LogicalNot -> "!"
-            PlusPlus -> "++"
-            MinusMinus -> "--"
+            PrefixIncrement -> "++"
+            PrefixDecrement -> "--"
         }
     }
 
     companion object {
-        fun parse(type: String): UnaryOperator {
+        fun parse(type: String): UnaryOperator? {
             return when (type) {
                 "&" -> AddressOf
                 "*" -> Dereference
@@ -33,9 +33,9 @@ enum class UnaryOperator {
                 "-" -> Minus
                 "~" -> BitwiseNot
                 "!" -> LogicalNot
-                "++" -> PlusPlus
-                "--" -> MinusMinus
-                else -> error("Invalid unary expression type: $type")
+                "++" -> PrefixIncrement
+                "--" -> PrefixDecrement
+                else -> null
             }
         }
     }

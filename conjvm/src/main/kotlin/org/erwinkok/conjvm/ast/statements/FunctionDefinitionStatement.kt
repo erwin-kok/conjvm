@@ -1,14 +1,12 @@
 package org.erwinkok.conjvm.ast.statements
 
 import org.erwinkok.conjvm.ast.AstStatementVisitor
-import org.erwinkok.conjvm.declarations.DeclarationSpecifier
-import org.erwinkok.conjvm.declarations.Declarator
+import org.erwinkok.conjvm.declarations.Entity
 import org.erwinkok.conjvm.parser.SourceLocation
 
 class FunctionDefinitionStatement(
     location: SourceLocation,
-    val declarationSpecifier: DeclarationSpecifier,
-    val declarator: Declarator,
+    val functionEntity: Entity.Function,
     val statements: BlockStatement,
 ) : Statement(location) {
     override fun <R> accept(visitor: AstStatementVisitor<R>): R = visitor.visitFunctionDefinition(this)
@@ -20,16 +18,13 @@ class FunctionDefinitionStatement(
         if (other !is FunctionDefinitionStatement) {
             return false
         }
-        if (declarationSpecifier != other.declarationSpecifier) return false
-        if (declarator != other.declarator) return false
+        if (functionEntity != other.functionEntity) return false
         if (statements != other.statements) return false
-
         return true
     }
 
     override fun hashCode(): Int {
-        var result = declarationSpecifier.hashCode()
-        result = 31 * result + declarator.hashCode()
+        var result = functionEntity.hashCode()
         result = 31 * result + statements.hashCode()
         return result
     }

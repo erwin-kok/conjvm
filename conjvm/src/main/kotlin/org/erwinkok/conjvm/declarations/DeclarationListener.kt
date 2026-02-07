@@ -214,7 +214,7 @@ class DeclarationListener(
         ctx: ParserRuleContext,
         declarationSpecifier: DeclarationSpecifier,
         declarator: Declarator,
-        initializer: CParser.InitializerContext?,
+        initializer: CParser.Assignment_expressionContext?,
     ) {
         val location = ctx.location
         validateDeclaration(location, declarationSpecifier, declarator)
@@ -364,7 +364,7 @@ class DeclarationListener(
         scope: Scope,
         declarationSpecifier: DeclarationSpecifier,
         declarator: Declarator,
-        initializer: CParser.InitializerContext?,
+        initializer: CParser.Assignment_expressionContext?,
     ): Entity.Variable? {
         val variable = Declaration.Variable(ctx.location, scope, declarationSpecifier, declarator, initializer)
         val name = variable.name
@@ -391,7 +391,7 @@ class DeclarationListener(
             }
         }
         entity.declarations.add(variable)
-        if (variable.initializer != null) {
+        if (variable.initializerCtx != null) {
             val definition = entity.definition
             if (definition != null) {
                 reporter.reportError(
@@ -559,7 +559,7 @@ class DeclarationListener(
                                 scope = scope,
                                 declarationSpecifier = declaration.declarationSpecifier,
                                 declarator = declaration.declarator,
-                                initializer = null,
+                                initializerCtx = null,
                                 isSyntheticZeroInit = true,
                             )
                             entity.declarations.add(syntheticDeclaration)

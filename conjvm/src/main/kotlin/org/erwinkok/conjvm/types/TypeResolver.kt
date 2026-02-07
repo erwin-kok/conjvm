@@ -80,7 +80,7 @@ class TypeResolver(
                 val memberType = structDeclarator.declarator?.let {
                     applyDeclarator(baseType, it, entity.scope)
                 } ?: baseType
-                val bitFieldWidth = structDeclarator.bitWidth?.let { ctx ->
+                val bitFieldWidth = structDeclarator.bitWidthCtx?.let { ctx ->
                     constantEvaluator.visit(ctx)?.toInt()
                 }
                 val memberAlignment = computeTypeAlignment(memberType)
@@ -115,8 +115,8 @@ class TypeResolver(
         val constants = mutableMapOf<String, Long>()
         var currentValue = 0L
         definition.enumerators.forEach { enumerator ->
-            val value = if (enumerator.value != null) {
-                constantEvaluator.visit(enumerator.value) ?: currentValue
+            val value = if (enumerator.valueCtx != null) {
+                constantEvaluator.visit(enumerator.valueCtx) ?: currentValue
             } else {
                 currentValue
             }
@@ -300,14 +300,12 @@ class TypeResolver(
                 val size = declarator.sizeCtx?.let {
                     constantEvaluator.visit(it)
                 }
-
                 if (size != null && size <= 0) {
                     reporter.reportError(
                         declarator.location,
                         "array size must be positive, got $size",
                     )
                 }
-
                 QualType(Type.Array(elementType, size))
             }
 
@@ -473,7 +471,9 @@ class TypeResolver(
             is Type.Enum -> 4 // Same as int
 
             is Type.Struct -> {
-                if (canonical.members == null) return 1
+                if (canonical.members == null) {
+                    return 1
+                }
 
                 // Struct alignment is the maximum of all member alignments
                 canonical.members.maxOfOrNull { member ->

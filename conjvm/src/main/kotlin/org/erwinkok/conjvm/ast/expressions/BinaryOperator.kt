@@ -45,7 +45,7 @@ enum class BinaryOperator {
     }
 
     companion object {
-        fun parse(type: String): BinaryOperator {
+        fun parse(type: String): BinaryOperator? {
             return when (type) {
                 "||" -> LogicalOr
                 "&&" -> LogicalAnd
@@ -65,7 +65,7 @@ enum class BinaryOperator {
                 "*" -> Multiply
                 "/" -> Divide
                 "%" -> Modulo
-                else -> error("Invalid binary expression type: $type")
+                else -> null
             }
         }
     }

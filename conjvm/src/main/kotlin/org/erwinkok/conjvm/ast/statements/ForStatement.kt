@@ -8,6 +8,7 @@ import org.erwinkok.conjvm.parser.SourceLocation
 sealed class ForInit
 
 class ForInitAssignmentExpression(
+    val location: SourceLocation,
     val assignments: List<AssignmentExpression>,
 ) : ForInit() {
     override fun equals(other: Any?): Boolean {
@@ -17,9 +18,7 @@ class ForInitAssignmentExpression(
         if (other !is ForInitAssignmentExpression) {
             return false
         }
-
         if (assignments != other.assignments) return false
-
         return true
     }
 
@@ -29,7 +28,8 @@ class ForInitAssignmentExpression(
 }
 
 class ForInitVariableDeclaration(
-    val variableDeclaration: VariableDeclarationStatement,
+    val location: SourceLocation,
+    val variables: VariableDeclarationStatement,
 ) : ForInit() {
     override fun equals(other: Any?): Boolean {
         if (other === this) {
@@ -38,14 +38,12 @@ class ForInitVariableDeclaration(
         if (other !is ForInitVariableDeclaration) {
             return false
         }
-
-        if (variableDeclaration != other.variableDeclaration) return false
-
+        if (variables != other.variables) return false
         return true
     }
 
     override fun hashCode(): Int {
-        return variableDeclaration.hashCode()
+        return variables.hashCode()
     }
 }
 

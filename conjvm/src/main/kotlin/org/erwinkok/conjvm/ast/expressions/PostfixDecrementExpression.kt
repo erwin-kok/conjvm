@@ -2,11 +2,13 @@ package org.erwinkok.conjvm.ast.expressions
 
 import org.erwinkok.conjvm.ast.AstExpressionVisitor
 import org.erwinkok.conjvm.parser.SourceLocation
+import org.erwinkok.conjvm.types.QualType
 
 class PostfixDecrementExpression(
     location: SourceLocation,
     val expression: Expression,
-) : Expression(location) {
+    type: QualType,
+) : Expression(location, type) {
     override fun <R> accept(visitor: AstExpressionVisitor<R>): R = visitor.visitPostfixDecrement(this)
 
     override fun toString(): String {
@@ -20,11 +22,14 @@ class PostfixDecrementExpression(
         if (other !is PostfixDecrementExpression) {
             return false
         }
-
-        return expression == other.expression
+        if (expression != other.expression) return false
+        if (type != other.type) return false
+        return true
     }
 
     override fun hashCode(): Int {
-        return expression.hashCode()
+        var result = expression.hashCode()
+        result = 31 * result + type.hashCode()
+        return result
     }
 }

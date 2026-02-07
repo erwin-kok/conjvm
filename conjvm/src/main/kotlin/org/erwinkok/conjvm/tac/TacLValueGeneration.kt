@@ -75,9 +75,9 @@ class TacLValueGeneration(private val rValueVisitor: TacRValueGeneration) : AstE
     }
 
     override fun visitFieldAccess(expression: FieldAccessExpression): TacAddressResult {
-        val (ts, te) = translate(expression.base)
+        val (ts, te) = translate(expression.struct)
         requireNotNull(te)
-        return TacAddressResult(ts, FieldLValue(te, expression.field))
+        return TacAddressResult(ts, FieldLValue(te, expression.memberName))
     }
 
     override fun visitParenthesized(expression: ParenthesizedExpression): TacAddressResult {

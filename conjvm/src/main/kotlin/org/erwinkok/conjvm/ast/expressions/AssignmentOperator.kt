@@ -31,7 +31,7 @@ enum class AssignmentOperator {
     }
 
     companion object {
-        fun parse(type: String): AssignmentOperator {
+        fun parse(type: String): AssignmentOperator? {
             return when (type) {
                 "=" -> Assign
                 "+=" -> PlusAssign
@@ -44,7 +44,7 @@ enum class AssignmentOperator {
                 "^=" -> XorAssign
                 "<<=" -> LeftShiftAssign
                 ">>=" -> RightShiftAssign
-                else -> error("Invalid binary expression type: $type")
+                else -> null
             }
         }
     }

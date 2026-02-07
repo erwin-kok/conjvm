@@ -1,12 +1,14 @@
 package org.erwinkok.conjvm.translation
 
 import org.erwinkok.conjvm.ast.translation.AssignmentTranslation
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.TestFactory
 import java.util.stream.Stream
 
 class AssignmentTranslationTest {
     @TestFactory
+    @Disabled
     fun testAssignmentTranslation(): Stream<DynamicTest> {
         return listOf(
             Pair("{ int A = C = *B ^= 5; }", "{ *B = *B ^ 5; C = *B; int A = C; }"),

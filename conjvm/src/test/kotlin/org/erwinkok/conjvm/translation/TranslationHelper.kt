@@ -12,10 +12,8 @@ import org.erwinkok.conjvm.parser.ErrorReporter
 import org.erwinkok.conjvm.parser.Parser
 import org.erwinkok.conjvm.parser.SourceFile
 import org.erwinkok.conjvm.types.QualType
-import org.erwinkok.conjvm.types.SymbolTable
 import org.erwinkok.conjvm.types.Type
 import org.erwinkok.conjvm.types.TypeResolutionResult
-import org.erwinkok.conjvm.types.TypeVisitor
 import org.junit.jupiter.api.Assertions.assertEquals
 
 fun ErrorReporter.assertNoDiagnostics() {
@@ -52,14 +50,11 @@ fun parseBlock(inputText: String): QualType {
         val typeResolution = TypeResolutionResult(declarationResult.sourceFile, declarationResult.rootScope, declarationResult.entityTable, declarationResult.parseTree)
         val astBuilder = AstBuilder(reporter, source, typeResolution)
         val statement = astBuilder.visit(declarationResult.parseTree).cast<BlockStatement>()
-        val typeVisitor = TypeVisitor(SymbolTable(), reporter)
-        typeVisitor.visit(statement)
         val last = statement.statements.lastOrNull()
         requireNotNull(last)
         require(last is ExpressionStatement)
-        val expressionType = last.expression.expressionType
-        requireNotNull(expressionType) { "expression type is not filled in '${last.expression::class.simpleName}'" }
-        return expressionType.type.canonical
+        val expressionType = last.expression.type
+        return expressionType.canonical
     } catch (_: ParseCancellationException) {
         reporter.assertNoDiagnostics()
         error("unable to parse statement")
@@ -68,8 +63,7 @@ fun parseBlock(inputText: String): QualType {
 
 fun parseStatement(sourceFile: SourceFile, translationVisitor: List<TranslationStep> = listOf(::NoOp)): Statement? {
     val reporter = ErrorReporter()
-    val parser = Parser(reporter, sourceFile)
-    val declarationResult = parser.parseStatement()
+    val declarationResult = Parser(reporter, sourceFile).parseStatement()
     requireNotNull(declarationResult)
     reporter.assertNoDiagnostics()
     val typeResolution = TypeResolutionResult(declarationResult.sourceFile, declarationResult.rootScope, declarationResult.entityTable, declarationResult.parseTree)
