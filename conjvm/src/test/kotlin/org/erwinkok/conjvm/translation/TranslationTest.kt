@@ -41,6 +41,7 @@ class TranslationTest {
             "<statement>",
             """
             |typedef unsigned int A, B;
+            |typedef A C;
             |A x = 4;
             |int y = (x) & 0xf0;
             """.trimMargin(),
@@ -50,8 +51,26 @@ class TranslationTest {
     }
 
     @Test
-    @Disabled
     fun translationTest3() {
+        val reporter = ErrorReporter()
+        val source = SourceFile.ofString(
+            "<statement>",
+            """
+            | struct Student {
+            |    char name[20];
+            |    int age;
+            | };
+            | typedef struct Student St;
+            | St x;
+            """.trimMargin(),
+        )
+        val statement = Compiler(reporter).compile(listOf(source))
+        reporter.assertNoDiagnostics()
+    }
+
+    @Test
+    @Disabled
+    fun translationTest4() {
         val reporter = ErrorReporter()
         val source = readResource("input.c.gz")
         val parser = Parser(reporter, source)

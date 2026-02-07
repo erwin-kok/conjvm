@@ -31,6 +31,10 @@ class TypeResolver(
     // ========================================================================
 
     fun resolveTypedef(entity: Entity.Typedef) {
+        // Check if already resolved
+        if (entity.type != null) {
+            return
+        }
         val declaration = entity.declarations.first()
         val baseType = buildTypeFromDeclaration(declaration.declarationSpecifier, entity.scope)
         val qualType = applyDeclarator(baseType, declaration.declarator, entity.scope)
@@ -40,6 +44,9 @@ class TypeResolver(
     }
 
     fun resolveVariable(entity: Entity.Variable) {
+        if (entity.type != null) {
+            return
+        }
         val declaration = entity.definition ?: entity.declarations.first()
         val baseType = buildTypeFromDeclaration(declaration.declarationSpecifier, entity.scope)
         val qualType = applyDeclarator(baseType, declaration.declarator, entity.scope)
@@ -49,6 +56,9 @@ class TypeResolver(
     }
 
     fun resolveFunction(entity: Entity.Function) {
+        if (entity.returnType != null) {
+            return
+        }
         val declaration = entity.definition ?: entity.declarations.first()
         val baseType = buildTypeFromDeclaration(declaration.declarationSpecifier, entity.scope)
         val declarator = declaration.declarator as? Declarator.FunctionDeclarator
@@ -68,6 +78,9 @@ class TypeResolver(
     }
 
     fun resolveStruct(entity: Entity.Struct) {
+        if (entity.members != null) {
+            return
+        }
         // Check cache for recursive types
         if (entity.id in structCache) {
             return
@@ -133,6 +146,10 @@ class TypeResolver(
     }
 
     fun resolveEnum(entity: Entity.Enum) {
+        if (entity.constants != null) {
+            return
+        }
+
         val definition = entity.definition ?: entity.declarations.first()
 
         if (!definition.isDefinition) {
@@ -177,115 +194,95 @@ class TypeResolver(
      */
     private fun buildTypeFromDeclaration(declSpec: DeclarationSpecifier, scope: Scope): QualType {
         val typeSpecs = declSpec.typeSpecs
-
-        // Check for struct/enum/typedef
-        typeSpecs.forEach { typeSpec ->
-            when (typeSpec) {
-                is TypeSpec.TypedefName -> {
-                    // Look up typedef ENTITY (not type!)
-                    val typedefEntity = scope.lookupTypedefEntity(typeSpec.name)
-                    if (typedefEntity == null) {
-                        reporter.reportError(
-                            UnknownLocation,
-                            "undefined type '${typeSpec.name}'",
-                        )
-                        return QualType(Type.Error)
-                    }
-
-                    // Check if already resolved
-                    val resolvedType = typedefEntity.type
-                    if (resolvedType != null) {
-                        // Already resolved - use it
-                        return resolvedType.withQualifiers(declSpec.qualifiers)
-                    }
-
-                    // Not yet resolved - resolve it now
-                    // This handles forward references and ensures dependency order
-                    val typedefDecl = typedefEntity.declarations.first()
-                    val baseType = buildTypeFromDeclaration(
-                        typedefDecl.declarationSpecifier,
-                        typedefEntity.scope,
-                    )
-                    val typedefType = applyDeclarator(
-                        baseType,
-                        typedefDecl.declarator,
-                        typedefEntity.scope,
-                    )
-
-                    // Cache it for future lookups
-                    typedefEntity.type = typedefType
-
-                    // Return with additional qualifiers
-                    return typedefType.withQualifiers(declSpec.qualifiers)
+        val typedefSpec = typeSpecs.filterIsInstance<TypeSpec.TypedefName>().singleOrNull()
+        val structSpec = typeSpecs.filterIsInstance<TypeSpec.Struct>().singleOrNull()
+        val enumSpec = typeSpecs.filterIsInstance<TypeSpec.Enum>().singleOrNull()
+        val namedTypes = listOfNotNull(typedefSpec, structSpec, enumSpec)
+        if (namedTypes.size > 1) {
+            reporter.reportError(UnknownLocation, "conflicting type specifiers")
+            return QualType(Type.Error)
+        }
+        return when {
+            typedefSpec != null -> {
+                val typedefEntity = scope.lookupTypedefEntity(typedefSpec.name)
+                if (typedefEntity == null) {
+                    reporter.reportError(UnknownLocation, "undefined type '${typedefSpec.name}'")
+                    return QualType(Type.Error)
                 }
 
-                is TypeSpec.Struct -> {
-                    val structTag = typeSpec.name
-                    if (structTag == null) {
-                        reporter.reportError(
-                            UnknownLocation,
-                            "anonymous struct in type specifier",
-                        )
-                        return QualType(Type.Error)
-                    }
-
-                    val structEntity = scope.lookupStructTag(structTag)
-                    if (structEntity == null) {
-                        reporter.reportError(
-                            UnknownLocation,
-                            "undefined struct '$structTag'",
-                        )
-                        return QualType(Type.Error)
-                    }
-
-                    // Build struct type
-                    // Members might be null if incomplete or not yet resolved
-                    val structType = Type.Struct(
-                        id = structEntity.id,
-                        tag = structEntity.name,
-                        members = structEntity.members,  // Might be null
-                    )
-
-                    return QualType(structType, declSpec.qualifiers)
+                // Check if already resolved
+                val resolvedType = typedefEntity.type
+                if (resolvedType != null) {
+                    // Already resolved - use it
+                    return resolvedType.withQualifiers(declSpec.qualifiers)
                 }
 
-                is TypeSpec.Enum -> {
-                    val enumTag = typeSpec.name
-                    if (enumTag == null) {
-                        reporter.reportError(
-                            UnknownLocation,
-                            "anonymous enum in type specifier",
-                        )
-                        return QualType(Type.Error)
-                    }
+                // Not yet resolved - resolve it now
+                resolveTypedef(typedefEntity)
 
-                    val enumEntity = scope.lookupEnumTag(enumTag)
-                    if (enumEntity == null) {
-                        reporter.reportError(
-                            UnknownLocation,
-                            "undefined enum '$enumTag'",
-                        )
-                        return QualType(Type.Error)
-                    }
+                // Get the resolved type (should be set now, or Error if circular)
+                val finalType = typedefEntity.type ?: QualType(Type.Error) // Shouldn't happen, but safety
 
-                    // Build enum type
-                    // Constants might be null if not yet resolved
-                    val enumType = Type.Enum(
-                        id = enumEntity.id,
-                        tag = enumEntity.name,
-                        constants = enumEntity.constants,  // Might be null
-                    )
+                // Return with additional qualifiers
+                finalType.withQualifiers(declSpec.qualifiers)
+            }
 
-                    return QualType(enumType, declSpec.qualifiers)
+            structSpec != null -> {
+                val structTag = structSpec.name
+                if (structTag == null) {
+                    reporter.reportError(UnknownLocation, "anonymous struct in type specifier")
+                    return QualType(Type.Error)
                 }
 
-                else -> Unit // Handled below
+                val structEntity = scope.lookupStructTag(structTag)
+                if (structEntity == null) {
+                    reporter.reportError(UnknownLocation, "undefined struct '$structTag'")
+                    return QualType(Type.Error)
+                }
+
+                // Build struct type
+                // Members might be null if incomplete or not yet resolved
+                val structType = Type.Struct(
+                    id = structEntity.id,
+                    tag = structEntity.name,
+                    members = structEntity.members, // Might be null
+                )
+
+                QualType(structType, declSpec.qualifiers)
+            }
+
+            enumSpec != null -> {
+                val tag = enumSpec.name
+                    ?: run {
+                        reporter.reportError(UnknownLocation, "anonymous enum in type specifier")
+                        return QualType(Type.Error)
+                    }
+
+                val entity = scope.lookupEnumTag(tag)
+                    ?: run {
+                        reporter.reportError(
+                            UnknownLocation,
+                            "undefined enum '$tag'",
+                        )
+                        return QualType(Type.Error)
+                    }
+
+                QualType(
+                    Type.Enum(
+                        id = entity.id,
+                        tag = entity.name,
+                        constants = entity.constants,
+                    ),
+                    declSpec.qualifiers,
+                )
+            }
+
+            else -> {
+                // Build primitive type
+                val primitiveType = buildPrimitiveType(typeSpecs)
+                QualType(primitiveType, declSpec.qualifiers)
             }
         }
-
-        // Build primitive type
-        val primitiveType = buildPrimitiveType(typeSpecs)
-        return QualType(primitiveType, declSpec.qualifiers)
     }
 
     /**
@@ -516,7 +513,7 @@ class TypeResolver(
                 computeTypeSize(canonical.base)
             }
 
-            is Type.Enum -> 4  // sizeof(int)
+            is Type.Enum -> 4 // sizeof(int)
 
             is Type.Struct -> {
                 if (canonical.members == null) {

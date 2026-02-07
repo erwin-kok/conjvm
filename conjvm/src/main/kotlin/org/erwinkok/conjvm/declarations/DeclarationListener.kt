@@ -286,13 +286,31 @@ class DeclarationListener(
         //
         // When something like "typedef unsigned int a, b;" is defined, no ambiguity occurs since "a, b" must be
         // part of "init_declarator_list". However, when there is only a single declarator, the declarator can be
-        // treated as part of the declaration_specifiers since init_declarator_list might be null.
-        val typedefName = declarationSpecifier.typeSpecs.filterIsInstance<TypeSpec.TypedefName>().lastOrNull()
-        typedefName?.let {
+        // treated as part of the declaration_specifiers since init_declarator_list might be null. All parts of
+        // the declaration_specifiers must be declared before. So, when a part of the declaration_specifiers
+        // is not known, it must be part of the init_declarator_list.
+        //
+        // For example:
+        // typedef unsigned int a; // "unsigned int" is known, so "a" must be part of init_declarator_list
+        //
+        // typedef struct Student; // "struct Student" is known, so this is a forward declaration of struct Student,
+        // and there is no init_declarator_list
+        val newTypeSpecs = mutableListOf<TypeSpec>()
+        val typedefs = mutableListOf<TypeSpec.TypedefName>()
+        for (typeSpec in declarationSpecifier.typeSpecs) {
+            if (typeSpec is TypeSpec.TypedefName && !currentScope.isTypedefName(typeSpec.name)) {
+                typedefs.add(typeSpec)
+            } else {
+                newTypeSpecs.add(typeSpec)
+            }
+        }
+        val newDeclarationSpecifier = declarationSpecifier.copy(typeSpecs = newTypeSpecs)
+        require(typedefs.size == 1) { "Expected exactly one typedef name when init_declarator_list is missing" }
+        typedefs.forEach {
             defineTypedef(
                 ctx = ctx,
                 scope = currentScope,
-                declarationSpecifier = declarationSpecifier,
+                declarationSpecifier = newDeclarationSpecifier,
                 declarator = Declarator.IdentifierDeclarator(ctx.location, it.name),
             )?.let {
                 entityTable.registerTypedef(ctx, it)
