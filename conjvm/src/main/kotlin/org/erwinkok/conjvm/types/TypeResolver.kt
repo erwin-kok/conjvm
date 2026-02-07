@@ -26,30 +26,43 @@ class TypeResolver(
         scope = rootScope,
     )
 
+    // ========================================================================
+    // PUBLIC API - Resolve entities and populate their type fields
+    // ========================================================================
+
     fun resolveTypedef(entity: Entity.Typedef) {
         val declaration = entity.declarations.first()
-        val baseType = buildBaseType(declaration.declarationSpecifier, entity.scope)
+        val baseType = buildTypeFromDeclaration(declaration.declarationSpecifier, entity.scope)
         val qualType = applyDeclarator(baseType, declaration.declarator, entity.scope)
+
+        // Store resolved type in entity
         entity.type = qualType
     }
 
     fun resolveVariable(entity: Entity.Variable) {
         val declaration = entity.definition ?: entity.declarations.first()
-        val baseType = buildBaseType(declaration.declarationSpecifier, entity.scope)
+        val baseType = buildTypeFromDeclaration(declaration.declarationSpecifier, entity.scope)
         val qualType = applyDeclarator(baseType, declaration.declarator, entity.scope)
+
+        // Store resolved type in entity
         entity.type = qualType
     }
 
     fun resolveFunction(entity: Entity.Function) {
         val declaration = entity.definition ?: entity.declarations.first()
-        val baseType = buildBaseType(declaration.declarationSpecifier, entity.scope)
+        val baseType = buildTypeFromDeclaration(declaration.declarationSpecifier, entity.scope)
         val declarator = declaration.declarator as? Declarator.FunctionDeclarator
             ?: error("Function must have function declarator")
+
         val returnType = applyDeclarator(baseType, declarator.declarator, entity.scope)
+
+        // Build parameter types
         val parameterTypes = declaration.parameters.map { param ->
-            val paramBaseType = buildBaseType(param.declarationSpecifier, entity.scope)
+            val paramBaseType = buildTypeFromDeclaration(param.declarationSpecifier, entity.scope)
             applyDeclarator(paramBaseType, param.declarator, entity.scope)
         }
+
+        // Store resolved types in entity
         entity.returnType = returnType
         entity.parameterTypes = parameterTypes
     }
@@ -59,7 +72,6 @@ class TypeResolver(
         if (entity.id in structCache) {
             return
         }
-
         structCache[entity.id] = entity
 
         val definition = entity.definition ?: entity.declarations.first()
@@ -75,24 +87,35 @@ class TypeResolver(
         var maxAlignment = 1L
 
         definition.structDeclarations.forEach { structDecl ->
-            val baseType = buildBaseType(structDecl.declarationSpecifier, entity.scope)
+            // Build member type from declaration
+            val baseType = buildTypeFromDeclaration(
+                structDecl.declarationSpecifier,
+                entity.scope,
+            )
+
             structDecl.declarators?.forEach { structDeclarator ->
                 val memberType = structDeclarator.declarator?.let {
                     applyDeclarator(baseType, it, entity.scope)
                 } ?: baseType
+
                 val bitFieldWidth = structDeclarator.bitWidthCtx?.let { ctx ->
                     constantEvaluator.visit(ctx)?.toInt()
                 }
+
                 val memberAlignment = computeTypeAlignment(memberType)
                 maxAlignment = maxOf(maxAlignment, memberAlignment)
+
                 val alignedOffset = alignTo(currentOffset, memberAlignment)
+
                 val member = StructMember(
                     name = structDeclarator.declarator?.name(),
                     type = memberType,
                     offset = alignedOffset,
                     bitFieldWidth = bitFieldWidth,
                 )
+
                 members.add(member)
+
                 if (bitFieldWidth != null) {
                     currentOffset = alignedOffset + ((bitFieldWidth + 7) / 8)
                 } else {
@@ -102,6 +125,8 @@ class TypeResolver(
         }
 
         val totalSize = alignTo(currentOffset, maxAlignment)
+
+        // Store resolved information in entity
         entity.members = members
         entity.size = totalSize
         entity.alignment = maxAlignment
@@ -109,104 +134,163 @@ class TypeResolver(
 
     fun resolveEnum(entity: Entity.Enum) {
         val definition = entity.definition ?: entity.declarations.first()
+
         if (!definition.isDefinition) {
             return
         }
+
         val constants = mutableMapOf<String, Long>()
         var currentValue = 0L
+
         definition.enumerators.forEach { enumerator ->
             val value = if (enumerator.valueCtx != null) {
                 constantEvaluator.visit(enumerator.valueCtx) ?: currentValue
             } else {
                 currentValue
             }
+
             constants[enumerator.text] = value
             currentValue = value + 1
         }
+
+        // Store resolved information in entity
         entity.constants = constants
         entity.underlyingType = QualType(Type.Int(signed = true))
     }
 
     fun buildType(declarationSpecifier: DeclarationSpecifier, declarator: Declarator, scope: Scope): QualType {
-        val paramBaseType = buildBaseType(declarationSpecifier, scope)
+        val paramBaseType = buildTypeFromDeclaration(declarationSpecifier, scope)
         return applyDeclarator(paramBaseType, declarator, scope)
     }
 
-    private fun buildBaseType(declSpec: DeclarationSpecifier, scope: Scope): QualType {
+    // ========================================================================
+    // BUILD TYPE FROM DECLARATION (used during type resolution)
+    // ========================================================================
+
+    /**
+     * Build a type from a declaration specifier.
+     * This is used DURING type resolution, so it doesn't look up typedef types
+     * (they might not be resolved yet).
+     *
+     * For typedefs: looks up the typedef entity and recursively builds its type.
+     * For structs/enums: looks up the entity and uses its resolved type info.
+     */
+    private fun buildTypeFromDeclaration(declSpec: DeclarationSpecifier, scope: Scope): QualType {
         val typeSpecs = declSpec.typeSpecs
 
         // Check for struct/enum/typedef
         typeSpecs.forEach { typeSpec ->
             when (typeSpec) {
                 is TypeSpec.TypedefName -> {
-                    // Look up typedef
-                    val typedef = scope.lookupTypedefEntity(typeSpec.name)
-                    if (typedef == null) {
+                    // Look up typedef ENTITY (not type!)
+                    val typedefEntity = scope.lookupTypedefEntity(typeSpec.name)
+                    if (typedefEntity == null) {
                         reporter.reportError(
                             UnknownLocation,
                             "undefined type '${typeSpec.name}'",
                         )
                         return QualType(Type.Error)
                     }
-                    val type = typedef.type
-                    if (type == null) {
-                        reporter.reportError(
-                            UnknownLocation,
-                            "typedef '${typedef.name}' should have a type",
-                        )
-                        return QualType(Type.Error)
+
+                    // Check if already resolved
+                    val resolvedType = typedefEntity.type
+                    if (resolvedType != null) {
+                        // Already resolved - use it
+                        return resolvedType.withQualifiers(declSpec.qualifiers)
                     }
-                    // Return typedef's type with additional qualifiers
-                    return type.withQualifiers(declSpec.qualifiers)
+
+                    // Not yet resolved - resolve it now
+                    // This handles forward references and ensures dependency order
+                    val typedefDecl = typedefEntity.declarations.first()
+                    val baseType = buildTypeFromDeclaration(
+                        typedefDecl.declarationSpecifier,
+                        typedefEntity.scope,
+                    )
+                    val typedefType = applyDeclarator(
+                        baseType,
+                        typedefDecl.declarator,
+                        typedefEntity.scope,
+                    )
+
+                    // Cache it for future lookups
+                    typedefEntity.type = typedefType
+
+                    // Return with additional qualifiers
+                    return typedefType.withQualifiers(declSpec.qualifiers)
                 }
 
                 is TypeSpec.Struct -> {
-                    // Look up struct
                     val structTag = typeSpec.name
                     if (structTag == null) {
-                        reporter.reportError(UnknownLocation, "anonymous struct in type name")
+                        reporter.reportError(
+                            UnknownLocation,
+                            "anonymous struct in type specifier",
+                        )
                         return QualType(Type.Error)
                     }
+
                     val structEntity = scope.lookupStructTag(structTag)
                     if (structEntity == null) {
-                        reporter.reportError(UnknownLocation, "undefined struct '$structTag'")
+                        reporter.reportError(
+                            UnknownLocation,
+                            "undefined struct '$structTag'",
+                        )
                         return QualType(Type.Error)
                     }
+
+                    // Build struct type
+                    // Members might be null if incomplete or not yet resolved
                     val structType = Type.Struct(
                         id = structEntity.id,
                         tag = structEntity.name,
-                        members = structEntity.members,
+                        members = structEntity.members,  // Might be null
                     )
+
                     return QualType(structType, declSpec.qualifiers)
                 }
 
                 is TypeSpec.Enum -> {
-                    // Look up enum
                     val enumTag = typeSpec.name
                     if (enumTag == null) {
-                        reporter.reportError(UnknownLocation, "anonymous enum in type name")
+                        reporter.reportError(
+                            UnknownLocation,
+                            "anonymous enum in type specifier",
+                        )
                         return QualType(Type.Error)
                     }
+
                     val enumEntity = scope.lookupEnumTag(enumTag)
                     if (enumEntity == null) {
-                        reporter.reportError(UnknownLocation, "undefined enum '$enumTag'")
+                        reporter.reportError(
+                            UnknownLocation,
+                            "undefined enum '$enumTag'",
+                        )
                         return QualType(Type.Error)
                     }
-                    val structType = Type.Enum(
+
+                    // Build enum type
+                    // Constants might be null if not yet resolved
+                    val enumType = Type.Enum(
                         id = enumEntity.id,
                         tag = enumEntity.name,
-                        constants = enumEntity.constants,
+                        constants = enumEntity.constants,  // Might be null
                     )
-                    return QualType(structType, declSpec.qualifiers)
+
+                    return QualType(enumType, declSpec.qualifiers)
                 }
 
                 else -> Unit // Handled below
             }
         }
+
+        // Build primitive type
         val primitiveType = buildPrimitiveType(typeSpecs)
         return QualType(primitiveType, declSpec.qualifiers)
     }
 
+    /**
+     * Build a primitive type from type specifiers.
+     */
     private fun buildPrimitiveType(typeSpecs: List<TypeSpec>): Type {
         // Determine signed/unsigned
         val hasUnsigned = typeSpecs.contains(TypeSpec.UNSIGNED)
@@ -217,78 +301,113 @@ class TypeResolver(
         val longCount = typeSpecs.count { it == TypeSpec.LONG }
         val shortCount = typeSpecs.count { it == TypeSpec.SHORT }
 
-        val baseType = when {
+        return when {
             typeSpecs.contains(TypeSpec.VOID) -> {
                 if (typeSpecs.size > 1) {
-                    throw TypeException("invalid type specifier: void cannot be combined")
+                    reporter.reportError(
+                        UnknownLocation,
+                        "void cannot be combined with other type specifiers",
+                    )
                 }
                 Type.Void
             }
 
             typeSpecs.contains(TypeSpec.BOOL) -> {
-                if (typeSpecs.any { it == TypeSpec.SIGNED || it == TypeSpec.UNSIGNED }) {
-                    throw TypeException("invalid type specifier: _Bool cannot be signed/unsigned")
+                if (hasUnsigned || hasSigned) {
+                    reporter.reportError(
+                        UnknownLocation,
+                        "_Bool cannot be signed or unsigned",
+                    )
                 }
                 Type.Bool
             }
 
             typeSpecs.contains(TypeSpec.FLOAT) -> {
-                if (typeSpecs.any { it == TypeSpec.SIGNED || it == TypeSpec.UNSIGNED }) {
-                    throw TypeException("invalid type specifier: float cannot be signed/unsigned")
+                if (hasUnsigned || hasSigned) {
+                    reporter.reportError(
+                        UnknownLocation,
+                        "float cannot be signed or unsigned",
+                    )
                 }
                 Type.Float
             }
 
             typeSpecs.contains(TypeSpec.DOUBLE) -> {
-                if (typeSpecs.any { it == TypeSpec.SIGNED || it == TypeSpec.UNSIGNED }) {
-                    throw TypeException("invalid type specifier: double cannot be signed/unsigned")
+                if (hasUnsigned || hasSigned) {
+                    reporter.reportError(
+                        UnknownLocation,
+                        "double cannot be signed or unsigned",
+                    )
                 }
                 when (longCount) {
                     0 -> Type.Double
                     1 -> Type.LongDouble
-                    else -> throw TypeException("invalid type specifier: too many long specifiers")
+                    else -> {
+                        reporter.reportError(
+                            UnknownLocation,
+                            "too many 'long' specifiers",
+                        )
+                        Type.Double
+                    }
                 }
             }
 
             typeSpecs.contains(TypeSpec.CHAR) -> {
                 if (longCount > 0 || shortCount > 0) {
-                    throw TypeException("invalid type specifier: char cannot be long/short")
+                    reporter.reportError(
+                        UnknownLocation,
+                        "char cannot be long or short",
+                    )
                 }
                 Type.Char(signed)
             }
 
             shortCount > 0 -> {
                 if (longCount > 0) {
-                    throw TypeException("invalid type specifier: short and long together")
+                    reporter.reportError(
+                        UnknownLocation,
+                        "cannot combine short and long",
+                    )
                 }
                 if (shortCount > 1) {
-                    throw TypeException("invalid type specifier: duplicate short")
+                    reporter.reportError(
+                        UnknownLocation,
+                        "duplicate 'short'",
+                    )
                 }
                 Type.Short(signed)
             }
 
             longCount == 1 -> Type.Long(signed)
             longCount == 2 -> Type.LongLong(signed)
-            longCount > 2 -> throw TypeException("invalid type specifier: too many long specifiers")
+            longCount > 2 -> {
+                reporter.reportError(
+                    UnknownLocation,
+                    "too many 'long' specifiers",
+                )
+                Type.LongLong(signed)
+            }
 
             typeSpecs.isEmpty() -> {
+                // Implicit int (deprecated in C99)
+                reporter.reportWarning(
+                    UnknownLocation,
+                    "type specifier missing, defaults to 'int'",
+                )
                 Type.Int(signed)
             }
 
             else -> Type.Int(signed)
         }
-        return baseType
     }
 
+    /**
+     * Apply a declarator to a base type.
+     */
     private fun applyDeclarator(baseType: QualType, declarator: Declarator, scope: Scope): QualType {
         return when (declarator) {
-            is Declarator.IdentifierDeclarator -> {
-                baseType
-            }
-
-            is Declarator.AnonymousDeclarator -> {
-                baseType
-            }
+            is Declarator.IdentifierDeclarator -> baseType
+            is Declarator.AnonymousDeclarator -> baseType
 
             is Declarator.PointerDeclarator -> {
                 val pointeeType = applyDeclarator(baseType, declarator.pointee, scope)
@@ -300,21 +419,26 @@ class TypeResolver(
                 val size = declarator.sizeCtx?.let {
                     constantEvaluator.visit(it)
                 }
+
                 if (size != null && size <= 0) {
                     reporter.reportError(
                         declarator.location,
                         "array size must be positive, got $size",
                     )
                 }
+
                 QualType(Type.Array(elementType, size))
             }
 
             is Declarator.FunctionDeclarator -> {
                 val returnType = applyDeclarator(baseType, declarator.declarator, scope)
 
-                // Apply array-to-pointer and function-to-pointer decay for parameters
+                // Apply parameter type adjustments (array/function decay)
                 val params = declarator.parameters.map { p ->
-                    val paramBaseType = buildBaseType(p.declarationSpecifier, scope)
+                    val paramBaseType = buildTypeFromDeclaration(
+                        p.declarationSpecifier,
+                        scope,
+                    )
                     val paramType = applyDeclarator(paramBaseType, p.declarator, scope)
 
                     // Parameter type adjustments per C standard
@@ -337,13 +461,14 @@ class TypeResolver(
             }
 
             is Declarator.BitFieldDeclarator -> {
-                // Bit-fields must be integral types
-                if (baseType.type !is Type.Int &&
-                    baseType.type !is Type.Char &&
-                    baseType.type !is Type.Short &&
-                    baseType.type !is Type.Long &&
-                    baseType.type !is Type.LongLong &&
-                    baseType.type !is Type.Bool
+                // Validate bit-field type
+                val canonicalType = baseType.canonical.type
+                if (canonicalType !is Type.Int &&
+                    canonicalType !is Type.Char &&
+                    canonicalType !is Type.Short &&
+                    canonicalType !is Type.Long &&
+                    canonicalType !is Type.LongLong &&
+                    canonicalType !is Type.Bool
                 ) {
                     reporter.reportError(
                         declarator.location,
@@ -356,9 +481,12 @@ class TypeResolver(
         }
     }
 
+    // ========================================================================
+    // SIZE AND ALIGNMENT COMPUTATION
+    // ========================================================================
+
     private fun computeTypeSize(type: QualType): Long {
         return when (val canonical = type.canonical.type) {
-            // Primitive types
             is Type.Void -> 1
             is Type.Bool -> 1
             is Type.Char -> 1
@@ -371,10 +499,12 @@ class TypeResolver(
             is Type.LongDouble -> 16
             is Type.Pointer -> 8
 
-            // Composite types
             is Type.Array -> {
                 if (canonical.size == null) {
-                    reporter.reportError(UnknownLocation, "cannot compute size of incomplete array type")
+                    reporter.reportError(
+                        UnknownLocation,
+                        "cannot compute size of incomplete array type",
+                    )
                     return 0
                 }
                 val elementSize = computeTypeSize(canonical.elementType)
@@ -382,28 +512,24 @@ class TypeResolver(
             }
 
             is Type.BitField -> {
-                // Bit-fields don't have a size on their own - they're part of structs
-                // But if we need to compute it, use the size of the underlying type
+                // Bit-fields are part of structs, use underlying type size
                 computeTypeSize(canonical.base)
             }
 
-            is Type.Enum -> {
-                // Enums have the same size as int in C
-                4 // sizeof(int)
-            }
+            is Type.Enum -> 4  // sizeof(int)
 
             is Type.Struct -> {
                 if (canonical.members == null) {
-                    reporter.reportError(UnknownLocation, "cannot compute size of incomplete struct type '${canonical.tag ?: "<anonymous>"}'")
+                    reporter.reportError(
+                        UnknownLocation,
+                        "cannot compute size of incomplete struct '${canonical.tag ?: "<anonymous>"}'",
+                    )
                     return 0
                 }
-                // The size should have been computed during struct resolution
-                // Find the struct symbol to get its computed size
+
+                // Use pre-computed size from struct entity
                 val structEntity = canonical.tag?.let { rootScope.lookupStructTag(it) }
-                structEntity?.size ?: run {
-                    // Fallback: compute it manually
-                    computeStructSize(canonical)
-                }
+                structEntity?.size ?: computeStructSize(canonical)
             }
 
             is Type.Typedef -> {
@@ -426,27 +552,19 @@ class TypeResolver(
         var maxAlignment = 1L
 
         members.forEach { member ->
-            val memberType = member.type
-            val memberSize = computeTypeSize(memberType)
-            val memberAlignment = computeTypeAlignment(memberType)
-
+            val memberAlignment = computeTypeAlignment(member.type)
             maxAlignment = maxOf(maxAlignment, memberAlignment)
 
-            // Align current offset to member's alignment
             currentOffset = alignTo(currentOffset, memberAlignment)
 
-            // Add member's size
-            val bitFieldWidth = member.bitFieldWidth
-            if (bitFieldWidth != null) {
-                // Bit-field handling (simplified)
-                val bitFieldBytes = (bitFieldWidth + 7) / 8
+            if (member.bitFieldWidth != null) {
+                val bitFieldBytes = (member.bitFieldWidth + 7) / 8
                 currentOffset += bitFieldBytes
             } else {
-                currentOffset += memberSize
+                currentOffset += computeTypeSize(member.type)
             }
         }
 
-        // Final struct size must be aligned to its own alignment
         return alignTo(currentOffset, maxAlignment)
     }
 
@@ -465,17 +583,11 @@ class TypeResolver(
             is Type.Pointer -> 8
 
             is Type.Array -> computeTypeAlignment(canonical.elementType)
-
             is Type.BitField -> computeTypeAlignment(canonical.base)
-
-            is Type.Enum -> 4 // Same as int
+            is Type.Enum -> 4
 
             is Type.Struct -> {
-                if (canonical.members == null) {
-                    return 1
-                }
-
-                // Struct alignment is the maximum of all member alignments
+                if (canonical.members == null) return 1
                 canonical.members.maxOfOrNull { member ->
                     computeTypeAlignment(member.type)
                 } ?: 1
