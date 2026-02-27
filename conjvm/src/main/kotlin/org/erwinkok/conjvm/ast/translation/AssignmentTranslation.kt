@@ -13,7 +13,7 @@ import org.erwinkok.conjvm.ast.statements.BlockStatement
 import org.erwinkok.conjvm.ast.statements.ExpressionStatement
 import org.erwinkok.conjvm.ast.statements.Statement
 import org.erwinkok.conjvm.ast.statements.VariableDeclarationStatement
-import org.erwinkok.conjvm.parser.ErrorReporter
+import org.erwinkok.conjvm.error.ErrorReporter
 
 class AssignmentTranslation(reporter: ErrorReporter) : BaseTranslationVisitor(reporter) {
     override fun translateAssignment(expression: AssignmentExpression): TranslationResult {

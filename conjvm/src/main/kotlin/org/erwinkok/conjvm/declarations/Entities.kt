@@ -11,6 +11,12 @@ enum class Linkage {
     EXTERNAL,
 }
 
+enum class DefinitionKind {
+    NONE,
+    TENTATIVE,
+    FULL,
+}
+
 data class EnumConstant(
     val name: String,
     val value: Long,
@@ -36,6 +42,7 @@ sealed interface Entity {
         val declarations = mutableListOf<Declaration.Variable>()
         var definition: Declaration.Variable? = null
         var linkage = Linkage.NONE
+        var definitionKind = DefinitionKind.NONE
         var type: QualType? = null
         var initializer: Expression? = null
         val isDefinition: Boolean

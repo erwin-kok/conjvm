@@ -1,7 +1,7 @@
 package org.erwinkok.conjvm.translation
 
 import org.erwinkok.conjvm.compiler.Compiler
-import org.erwinkok.conjvm.parser.ErrorReporter
+import org.erwinkok.conjvm.error.ErrorReporter
 import org.erwinkok.conjvm.parser.Parser
 import org.erwinkok.conjvm.parser.SourceFile
 import org.erwinkok.conjvm.tac.TacCodeWriter

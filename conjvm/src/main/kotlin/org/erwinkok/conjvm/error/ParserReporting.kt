@@ -1,7 +1,7 @@
-package org.erwinkok.conjvm.utils
+package org.erwinkok.conjvm.error
 
 import org.antlr.v4.runtime.ParserRuleContext
-import org.erwinkok.conjvm.parser.ErrorReporter
+import org.erwinkok.conjvm.error.ErrorReporter
 import org.erwinkok.conjvm.parser.SourceFile
 import org.erwinkok.conjvm.parser.SourceFileLocation
 import org.erwinkok.conjvm.parser.SourceLocation

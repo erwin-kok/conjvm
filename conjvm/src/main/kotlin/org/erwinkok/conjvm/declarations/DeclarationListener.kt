@@ -3,10 +3,10 @@ package org.erwinkok.conjvm.declarations
 import org.antlr.v4.runtime.ParserRuleContext
 import org.erwinkok.conjvm.CBaseListener
 import org.erwinkok.conjvm.CParser
-import org.erwinkok.conjvm.parser.ErrorReporter
+import org.erwinkok.conjvm.error.ErrorReporter
+import org.erwinkok.conjvm.error.ParserReporting
 import org.erwinkok.conjvm.parser.SourceFile
 import org.erwinkok.conjvm.parser.SourceLocation
-import org.erwinkok.conjvm.utils.ParserReporting
 
 class DeclarationListener(
     override val reporter: ErrorReporter,
@@ -141,15 +141,14 @@ class DeclarationListener(
 
     override fun exitDeclaration(ctx: CParser.DeclarationContext) {
         val declarationSpecifier = declarationParser.visit(ctx.declaration_specifiers()).cast<DeclarationSpecifier>()
-        val isTypedef = declarationSpecifier.hasTypedef
         val initDeclaratorList = ctx.init_declarator_list()
         if (initDeclaratorList != null) {
-            val declarators = declarationParser.visit(initDeclaratorList).cast<List<InitDeclarator>>()
-            declarators.forEach { (declarator, initializer) ->
+            val initDeclarators = declarationParser.visit(initDeclaratorList).cast<List<InitDeclarator>>()
+            initDeclarators.forEach { (declarator, initializer) ->
                 handleDeclarator(ctx, declarationSpecifier, declarator, initializer)
             }
-        } else if (isTypedef) {
-            handleTypedefWithoutInitDeclaratorList(ctx, declarationSpecifier)
+        } else {
+            handleWithoutInitDeclaratorList(ctx, declarationSpecifier)
         }
     }
 
@@ -276,7 +275,7 @@ class DeclarationListener(
         }
     }
 
-    private fun handleTypedefWithoutInitDeclaratorList(
+    private fun handleWithoutInitDeclaratorList(
         ctx: CParser.DeclarationContext,
         declarationSpecifier: DeclarationSpecifier,
     ) {
@@ -284,36 +283,62 @@ class DeclarationListener(
         //
         // declaration_specifiers init_declarator_list? ';'
         //
-        // When something like "typedef unsigned int a, b;" is defined, no ambiguity occurs since "a, b" must be
-        // part of "init_declarator_list". However, when there is only a single declarator, the declarator can be
-        // treated as part of the declaration_specifiers since init_declarator_list might be null. All parts of
-        // the declaration_specifiers must be declared before. So, when a part of the declaration_specifiers
-        // is not known, it must be part of the init_declarator_list.
+        // One of the problems in parsing C is the difference between type names and identifiers. For example,
+        // when we encounter "typedef unsigned int a;", or just "int a;"we don't know whether "a" is a typedef name
+        // or an identifier until we have parsed the entire declaration. The C grammar allows for both possibilities,
+        // which can lead to ambiguity.
         //
-        // For example:
-        // typedef unsigned int a; // "unsigned int" is known, so "a" must be part of init_declarator_list
+        // To resolve this ambiguity, we can use the following approach:
+        // 1. Parse the declaration_specifiers first and collect all type specifiers and qualifiers.
+        // 2. Check if all type specifiers are known. If there is any unknown type specifier, it must be part of the
+        //    init_declarator_list. For example:
         //
-        // typedef struct Student; // "struct Student" is known, so this is a forward declaration of struct Student,
-        // and there is no init_declarator_list
+        //    typedef int a; // "int" is known, so "a" must be part of init_declarator_list
+        //
+        //    typedef struct Student; // "struct Student" is known, so this is a forward declaration of struct Student, and
+        //    there is no init_declarator_list
+        //
+        //    int a; // "int" is known, so "a" must be part of init_declarator_list
+        //
+        //    A x; // In this case, "A" is probably a typedef that was defined before, and therefore known. "x" however, is not a typedef
+        //    or another specifier, so it must be part of init_declarator_list.
+        //
         val newTypeSpecs = mutableListOf<TypeSpec>()
-        val typedefs = mutableListOf<TypeSpec.TypedefName>()
+        val declarators = mutableListOf<TypeSpec.TypedefName>()
         for (typeSpec in declarationSpecifier.typeSpecs) {
             if (typeSpec is TypeSpec.TypedefName && !currentScope.isTypedefName(typeSpec.name)) {
-                typedefs.add(typeSpec)
+                declarators.add(typeSpec)
             } else {
                 newTypeSpecs.add(typeSpec)
             }
         }
         val newDeclarationSpecifier = declarationSpecifier.copy(typeSpecs = newTypeSpecs)
-        require(typedefs.size == 1) { "Expected exactly one typedef name when init_declarator_list is missing" }
-        typedefs.forEach {
-            defineTypedef(
-                ctx = ctx,
-                scope = currentScope,
-                declarationSpecifier = newDeclarationSpecifier,
-                declarator = Declarator.IdentifierDeclarator(ctx.location, it.name),
-            )?.let {
-                entityTable.registerTypedef(ctx, it)
+//        require(declarators.size == 1) { "Expected exactly one typedef name when init_declarator_list is missing" }
+        val declarator = declarators.firstOrNull()
+
+        if (declarator != null) {
+            // If the declaration has no init_declarator_list, then it must be either a typedef declaration or an variable declaration
+            // without an initializer.
+            val isTypedef = declarationSpecifier.hasTypedef
+            if (isTypedef) {
+                defineTypedef(
+                    ctx = ctx,
+                    scope = currentScope,
+                    declarationSpecifier = newDeclarationSpecifier,
+                    declarator = Declarator.IdentifierDeclarator(ctx.location, declarator.name),
+                )?.let {
+                    entityTable.registerTypedef(ctx, it)
+                }
+            } else {
+                defineVariable(
+                    ctx = ctx,
+                    scope = currentScope,
+                    declarationSpecifier = newDeclarationSpecifier,
+                    declarator = Declarator.IdentifierDeclarator(ctx.location, declarator.name),
+                    initializer = null,
+                )?.let {
+                    entityTable.registerVariable(ctx, it)
+                }
             }
         }
     }
@@ -390,12 +415,9 @@ class DeclarationListener(
             reporter.reportError(ctx.location, "Variable should have a name")
             return null
         }
-        val hasExtern = declarationSpecifier.storage.contains(StorageClass.EXTERN)
-        if (scope.kind != ScopeKind.FILE && hasExtern && initializer != null) {
-            reporter.reportError(ctx.location, "Variable can not be extern and have an initializer")
-            return null
-        }
         val entity = scope.getOrCreateVariableEntity(name)
+        val hasExtern = declarationSpecifier.storage.contains(StorageClass.EXTERN)
+        val isFileScope = scope.kind == ScopeKind.FILE
         if (entity.declarations.isEmpty()) {
             entity.linkage = determineLinkage(variable, scope.kind)
         } else {
@@ -409,15 +431,36 @@ class DeclarationListener(
             }
         }
         entity.declarations.add(variable)
-        if (variable.initializerCtx != null) {
-            val definition = entity.definition
-            if (definition != null) {
-                reporter.reportError(
-                    ctx.location,
-                    "redefinition of variable '$name'; previous definition at ${definition.location}",
-                )
-            } else {
-                entity.definition = variable
+        val newDefinitionKind = when {
+            hasExtern && initializer == null -> DefinitionKind.NONE // extern int a;
+            initializer != null -> DefinitionKind.FULL // file-scope int a = 3;
+            isFileScope -> DefinitionKind.TENTATIVE // file-scope int a;
+            else -> DefinitionKind.FULL // block-scope int a;
+        }
+        when (newDefinitionKind) {
+            DefinitionKind.NONE -> Unit
+            DefinitionKind.TENTATIVE -> {
+                when (entity.definitionKind) {
+                    DefinitionKind.NONE -> {
+                        entity.definitionKind = DefinitionKind.TENTATIVE
+                        entity.definition = variable
+                    }
+
+                    DefinitionKind.TENTATIVE -> Unit
+                    DefinitionKind.FULL -> Unit
+                }
+            }
+
+            DefinitionKind.FULL -> {
+                if (entity.definitionKind == DefinitionKind.FULL) {
+                    reporter.reportError(
+                        ctx.location,
+                        "redefinition of variable '$name'; previous definition at ${entity.definition?.location}",
+                    )
+                } else {
+                    entity.definitionKind = DefinitionKind.FULL
+                    entity.definition = variable
+                }
             }
         }
         return entity
@@ -566,23 +609,20 @@ class DeclarationListener(
     fun resolveTentativeDefinitions(scope: Scope) {
         if (scope.kind == ScopeKind.FILE) {
             scope.localVariables.forEach { entity ->
-                if (entity.definition == null && entity.linkage == Linkage.EXTERNAL) {
-                    val declaration = entity.declarations.firstOrNull()
-                    if (declaration != null) {
-                        val hasExtern = declaration.declarationSpecifier.storage
-                            .contains(StorageClass.EXTERN)
-                        if (!hasExtern) {
-                            val syntheticDeclaration = Declaration.Variable(
-                                location = declaration.location,
-                                scope = scope,
-                                declarationSpecifier = declaration.declarationSpecifier,
-                                declarator = declaration.declarator,
-                                initializerCtx = null,
-                                isSyntheticZeroInit = true,
-                            )
-                            entity.declarations.add(syntheticDeclaration)
-                            entity.definition = syntheticDeclaration
-                        }
+                if (entity.definitionKind == DefinitionKind.TENTATIVE) {
+                    val originalDecl = entity.definition
+                    if (originalDecl != null) {
+                        val synthetic = Declaration.Variable(
+                            location = originalDecl.location,
+                            scope = scope,
+                            declarationSpecifier = originalDecl.declarationSpecifier,
+                            declarator = originalDecl.declarator,
+                            initializerCtx = null,
+                            isSyntheticZeroInit = true,
+                        )
+                        entity.declarations.add(synthetic)
+                        entity.definition = synthetic
+                        entity.definitionKind = DefinitionKind.FULL
                     }
                 }
             }

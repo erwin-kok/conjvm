@@ -1,14 +1,13 @@
 package org.erwinkok.conjvm.compiler
 
-import org.erwinkok.conjvm.ast.AstBuilder
 import org.erwinkok.conjvm.ast.AstConstruction
-import org.erwinkok.conjvm.ast.statements.Statement
+import org.erwinkok.conjvm.error.ErrorReporter
 import org.erwinkok.conjvm.linking.Linker
-import org.erwinkok.conjvm.parser.ErrorReporter
 import org.erwinkok.conjvm.parser.Parser
 import org.erwinkok.conjvm.parser.SourceFile
 import org.erwinkok.conjvm.tac.TacTranslation
 import org.erwinkok.conjvm.tac.instructions.TacFunctionDefinition
+import org.erwinkok.conjvm.tac.instructions.TacInstruction
 import org.erwinkok.conjvm.types.TypeResolution
 
 class Compiler(
@@ -44,7 +43,7 @@ class Compiler(
         return translationVisitor.functions
     }
 
-    fun compileStatement(statement: String): Statement? {
+    fun compileStatement(statement: String): List<TacInstruction>? {
         val sourceFile = SourceFile.ofString("<statement>", statement)
         val declarationResult = Parser(reporter, sourceFile).parseStatement()
         if (declarationResult == null || reporter.hasErrors) {
@@ -55,6 +54,9 @@ class Compiler(
             return null
         }
         val astResult = AstConstruction(reporter, sourceFile).analyzeStatement(typeResolutionResult)
-        return AstBuilder(reporter, sourceFile, typeResolutionResult).visit(declarationResult.parseTree).cast<Statement>()
+        val translationVisitor = TacTranslation(reporter)
+        val result = translationVisitor.translateStatement(astResult.astStatement)
+        require(result.tacValue == null)
+        return result.statements
     }
 }

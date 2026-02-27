@@ -1,5 +1,6 @@
-package org.erwinkok.conjvm.parser
+package org.erwinkok.conjvm.error
 
+import org.erwinkok.conjvm.parser.SourceLocation
 import java.io.Writer
 
 class ErrorReporter {

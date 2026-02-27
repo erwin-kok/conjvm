@@ -11,6 +11,7 @@ import org.erwinkok.conjvm.declarations.DeclarationResult
 import org.erwinkok.conjvm.declarations.EntityTable
 import org.erwinkok.conjvm.declarations.Scope
 import org.erwinkok.conjvm.declarations.ScopeKind
+import org.erwinkok.conjvm.error.ErrorReporter
 
 class Parser(
     override val reporter: ErrorReporter,

@@ -1,7 +1,7 @@
 package org.erwinkok.conjvm.linking
 
 import org.erwinkok.conjvm.declarations.Entity
-import org.erwinkok.conjvm.parser.ErrorReporter
+import org.erwinkok.conjvm.error.ErrorReporter
 
 class GlobalEntityTable {
     fun addVariable(entity: Entity.Variable) {

@@ -1,5 +1,7 @@
 package org.erwinkok.conjvm.parser
 
+import org.erwinkok.conjvm.error.Severity
+
 interface SourceLocation {
     fun render(severity: Severity, message: String): String
 }

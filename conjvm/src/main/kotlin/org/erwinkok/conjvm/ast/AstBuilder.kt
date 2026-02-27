@@ -49,7 +49,9 @@ import org.erwinkok.conjvm.ast.statements.VariableDeclarationStatement
 import org.erwinkok.conjvm.ast.statements.WhileStatement
 import org.erwinkok.conjvm.declarations.Entity
 import org.erwinkok.conjvm.declarations.Scope
-import org.erwinkok.conjvm.parser.ErrorReporter
+import org.erwinkok.conjvm.error.ErrorReporter
+import org.erwinkok.conjvm.error.ParserReporting
+import org.erwinkok.conjvm.error.Value
 import org.erwinkok.conjvm.parser.SourceFile
 import org.erwinkok.conjvm.parser.SourceLocation
 import org.erwinkok.conjvm.parser.UnknownLocation
@@ -58,8 +60,6 @@ import org.erwinkok.conjvm.types.Type
 import org.erwinkok.conjvm.types.TypeException
 import org.erwinkok.conjvm.types.TypeResolutionResult
 import org.erwinkok.conjvm.types.TypeResolver
-import org.erwinkok.conjvm.utils.ParserReporting
-import org.erwinkok.conjvm.utils.Value
 
 class AstBuilder(
     override val reporter: ErrorReporter,
@@ -859,7 +859,7 @@ class AstBuilder(
         // Try variable lookup
         val entity = currentScope?.lookupVariable(name) ?: throw TypeException("undefined identifier '$name'")
         val type = entity.type ?: throw TypeException("entity '$name' has no type")
-        return VariableReference(location, name, entity, type)
+        return VariableReference(location, name, entity, type).also { it.isLValue = true }
     }
 
     // ========================================================================

@@ -1,7 +1,7 @@
 package org.erwinkok.conjvm.linking
 
 import org.erwinkok.conjvm.ast.AstResult
-import org.erwinkok.conjvm.parser.ErrorReporter
+import org.erwinkok.conjvm.error.ErrorReporter
 
 class Linker(
     val reporter: ErrorReporter,

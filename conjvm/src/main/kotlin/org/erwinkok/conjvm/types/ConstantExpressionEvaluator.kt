@@ -4,9 +4,9 @@ import org.antlr.v4.runtime.ParserRuleContext
 import org.erwinkok.conjvm.CBaseVisitor
 import org.erwinkok.conjvm.CParser
 import org.erwinkok.conjvm.declarations.Scope
-import org.erwinkok.conjvm.parser.ErrorReporter
+import org.erwinkok.conjvm.error.ErrorReporter
+import org.erwinkok.conjvm.error.ParserReporting
 import org.erwinkok.conjvm.parser.SourceFile
-import org.erwinkok.conjvm.utils.ParserReporting
 
 class ConstantExpressionEvaluator(
     override val reporter: ErrorReporter,

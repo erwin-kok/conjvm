@@ -6,10 +6,10 @@ import org.erwinkok.conjvm.CParser.DeclSpecFuncSpecContext
 import org.erwinkok.conjvm.CParser.DeclSpecTypeQualContext
 import org.erwinkok.conjvm.CParser.DeclSpecTypeSpecContext
 import org.erwinkok.conjvm.CParser.StorageClassSpecContext
-import org.erwinkok.conjvm.parser.ErrorReporter
+import org.erwinkok.conjvm.error.ErrorReporter
+import org.erwinkok.conjvm.error.ParserReporting
+import org.erwinkok.conjvm.error.Value
 import org.erwinkok.conjvm.parser.SourceFile
-import org.erwinkok.conjvm.utils.ParserReporting
-import org.erwinkok.conjvm.utils.Value
 
 class DeclarationParser(
     override val reporter: ErrorReporter,

@@ -8,7 +8,7 @@ import org.erwinkok.conjvm.ast.statements.Statement
 import org.erwinkok.conjvm.ast.translation.AstTranslator
 import org.erwinkok.conjvm.ast.translation.BaseTranslationVisitor
 import org.erwinkok.conjvm.ast.translation.TranslationStep
-import org.erwinkok.conjvm.parser.ErrorReporter
+import org.erwinkok.conjvm.error.ErrorReporter
 import org.erwinkok.conjvm.parser.Parser
 import org.erwinkok.conjvm.parser.SourceFile
 import org.erwinkok.conjvm.types.QualType

@@ -14,7 +14,7 @@ import org.erwinkok.conjvm.ast.statements.IfThenStatement
 import org.erwinkok.conjvm.ast.statements.Statement
 import org.erwinkok.conjvm.ast.statements.SwitchStatement
 import org.erwinkok.conjvm.ast.statements.WhileStatement
-import org.erwinkok.conjvm.parser.ErrorReporter
+import org.erwinkok.conjvm.error.ErrorReporter
 import org.erwinkok.conjvm.parser.SourceLocation
 import org.erwinkok.conjvm.types.QualType
 import org.erwinkok.conjvm.types.Type

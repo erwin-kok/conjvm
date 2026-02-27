@@ -3,7 +3,7 @@ package org.erwinkok.conjvm.types
 import org.erwinkok.conjvm.compiler.CompilerPhase
 import org.erwinkok.conjvm.declarations.DeclarationResult
 import org.erwinkok.conjvm.declarations.Scope
-import org.erwinkok.conjvm.parser.ErrorReporter
+import org.erwinkok.conjvm.error.ErrorReporter
 import org.erwinkok.conjvm.parser.SourceFile
 
 class TypeResolution(

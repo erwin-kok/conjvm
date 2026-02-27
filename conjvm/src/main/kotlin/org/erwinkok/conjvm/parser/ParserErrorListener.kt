@@ -4,6 +4,7 @@ import org.antlr.v4.runtime.BaseErrorListener
 import org.antlr.v4.runtime.RecognitionException
 import org.antlr.v4.runtime.Recognizer
 import org.antlr.v4.runtime.Token
+import org.erwinkok.conjvm.error.ErrorReporter
 
 class ParserErrorListener(
     private val reporter: ErrorReporter,

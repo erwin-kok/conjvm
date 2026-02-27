@@ -3,6 +3,7 @@ package org.erwinkok.conjvm.parser
 import org.antlr.v4.runtime.BaseErrorListener
 import org.antlr.v4.runtime.RecognitionException
 import org.antlr.v4.runtime.Recognizer
+import org.erwinkok.conjvm.error.ErrorReporter
 
 class LexerErrorListener(
     private val reporter: ErrorReporter,

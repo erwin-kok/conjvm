@@ -6,10 +6,10 @@ import org.erwinkok.conjvm.declarations.Entity
 import org.erwinkok.conjvm.declarations.EntityTable
 import org.erwinkok.conjvm.declarations.Scope
 import org.erwinkok.conjvm.declarations.TypeSpec
-import org.erwinkok.conjvm.parser.ErrorReporter
+import org.erwinkok.conjvm.error.ErrorReporter
+import org.erwinkok.conjvm.error.ParserReporting
 import org.erwinkok.conjvm.parser.SourceFile
 import org.erwinkok.conjvm.parser.UnknownLocation
-import org.erwinkok.conjvm.utils.ParserReporting
 import java.util.UUID
 
 class TypeResolver(
