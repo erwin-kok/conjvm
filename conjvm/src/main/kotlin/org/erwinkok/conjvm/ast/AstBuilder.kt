@@ -130,11 +130,11 @@ class AstBuilder(
     override fun visitCompoundAssignExpr(ctx: CParser.CompoundAssignExprContext): Value {
         val left = visit(ctx.unary_expression()).cast<Expression>()
         if (!left.isLValue) {
-            return reportErrorNode(ctx.unary_expression().location, "expression is not assignable")
+            throw TypeException("expression is not assignable")
         }
         val right = visit(ctx.assignment_expression()).cast<Expression>()
         val type = ctx.assignment_operator().text
-        val operator = AssignmentOperator.parse(type) ?: return reportErrorNode(ctx.location, "Unknown assignment operator: $type")
+        val operator = AssignmentOperator.parse(type) ?: throw TypeException("Unknown assignment operator: $type")
         if (!isAssignmentCompatible(left.type, right.type)) {
             reporter.reportError(
                 ctx.location,
@@ -240,14 +240,14 @@ class AstBuilder(
                     when (op) {
                         is CParser.PrefixIncrementContext -> {
                             if (!result.isLValue) {
-                                return reportErrorNode(ctx.location, "operand must be an lvalue")
+                                throw TypeException("operand must be an lvalue")
                             }
                             buildUnaryOp(ctx.location, UnaryOperator.PrefixIncrement, result)
                         }
 
                         is CParser.PrefixDecrementContext -> {
                             if (!result.isLValue) {
-                                return reportErrorNode(ctx.location, "operand must be an lvalue")
+                                throw TypeException("operand must be an lvalue")
                             }
                             buildUnaryOp(ctx.location, UnaryOperator.PrefixDecrement, result)
                         }
@@ -256,14 +256,16 @@ class AstBuilder(
                             error("sizeof operator is currently not supported")
                         }
 
-                        else -> return reportErrorNode(ctx.location, "Unknown unary expression")
+                        else -> {
+                            throw TypeException("Unknown unary expression")
+                        }
                     }
                 },
         )
     }
 
     override fun visitCompoundUnaryCore(ctx: CParser.CompoundUnaryCoreContext): Value {
-        val operator = UnaryOperator.parse(ctx.unary_operator().text) ?: return reportErrorNode(ctx.location, "Unknown unary operator")
+        val operator = UnaryOperator.parse(ctx.unary_operator().text) ?: throw TypeException("Unknown unary operator")
         val operand = visit(ctx.cast_expression()).cast<Expression>()
         return Value.of(buildUnaryOp(ctx.location, operator, operand))
     }
@@ -593,7 +595,7 @@ class AstBuilder(
     override fun visitForInitVarDecl(ctx: CParser.ForInitVarDeclContext): Value {
         val variables = entityTable.getVariables(ctx) ?: error("variables not found for for-loop init")
         for (variable in variables) {
-            val definedVar = variable.definition ?: return reportErrorNode(ctx.location, "variable not defined")
+            val definedVar = variable.definition ?: throw TypeException("variable not defined")
             val initializer = definedVar.initializerCtx?.let { visit(it).cast<Expression>() }
             variable.initializer = initializer
         }
@@ -643,7 +645,7 @@ class AstBuilder(
     override fun visitDeclaration(ctx: CParser.DeclarationContext): Value {
         val variables = entityTable.getVariables(ctx) ?: return Value.of(VariableDeclarationStatement(ctx.location, emptyList()))
         variables.forEach { variable ->
-            val definedVar = variable.definition ?: return reportErrorNode(ctx.location, "variable not defined")
+            val definedVar = variable.definition ?: throw TypeException("variable not defined")
             val initializer = definedVar.initializerCtx?.let { visit(it).cast<Expression>() }
             variable.initializer = initializer
         }
@@ -961,17 +963,6 @@ class AstBuilder(
         }
     }
 
-    private fun isCastValid(fromType: QualType, toType: QualType): Boolean {
-        // Most casts are valid in C (even if unsafe)
-        // Only invalid casts: struct to non-struct, etc.
-        return when {
-            fromType.isError || toType.isError -> true
-            fromType.canonical.type is Type.Struct && toType.canonical.type !is Type.Struct -> false
-            toType.canonical.type is Type.Struct && fromType.canonical.type !is Type.Struct -> false
-            else -> true
-        }
-    }
-
     private fun isScalarType(type: QualType): Boolean {
         return isArithmeticType(type) || isPointerType(type)
     }
@@ -1106,9 +1097,5 @@ class AstBuilder(
             .replace("\\\\", "\\")
             .replace("\\'", "'")
             .replace("\\\"", "\"")
-    }
-
-    private fun reportErrorNode(location: SourceLocation, message: String): Value {
-        throw TypeException(message)
     }
 }
